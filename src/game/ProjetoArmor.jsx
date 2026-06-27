@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 // ============================================================
-// TITAN — Capítulo 1: O Despertar
+// PROJETO ARMOR — Capítulo 1: O Despertar
 // HUD dupla: joystick mover (esq) + mirar (dir) · tiro · míssil · voar
 // ============================================================
 
@@ -16,7 +16,7 @@ const SPRITE_OLHA_PARA = 'direita';
 const ALT = 360;
 const RENDER_SCALE = 2;
 const WORLD_W = 1700;
-const ALTURA_TITAN = 105;
+const ALTURA_ARMOR = 105;
 const ZOOM_PERTO = 1.7;
 const ALTURA_IMG_CHAO = 230;
 const LINHA_PES = 0.18;
@@ -90,7 +90,7 @@ const IconeRelogio = ({ size = 13 }) => (
   </svg>
 );
 
-export default function Titan({ onVoltar }) {
+export default function ProjetoArmor({ onVoltar }) {
   const [fase, setFase] = useState('carregando');
   const [zoomPerto, setZoomPerto] = useState(false);
   const [relogioAtivo, setRelogioAtivo] = useState(false);
@@ -457,7 +457,7 @@ export default function Titan({ onVoltar }) {
       // ===== CÂMERA (segue também na vertical ao voar) =====
       const zAlvo = zoomAlvoRef.current;
       const perto = zAlvo > 1.001;
-      const fyAlvo = (perto ? -(ALTURA_TITAN * 0.5) : -(ALT * 0.22)) - p.y;
+      const fyAlvo = (perto ? -(ALTURA_ARMOR * 0.5) : -(ALT * 0.22)) - p.y;
       const halfW = VW / (2 * g.zoom);
       let fxAlvo = p.x;
       const minFx = halfW, maxFx = WORLD_W - halfW;
@@ -539,7 +539,7 @@ export default function Titan({ onVoltar }) {
       if (lum > 0.01) { ctx.fillStyle = rgbaStr([170, 200, 230], lum * 0.1); ctx.fillRect(leftW, dyImg, rightW - leftW, ghW + 300); }
 
       const corpoY = superficie - p.y;            // sobe ao pular/voar
-      const gy = corpoY - ALTURA_TITAN * 0.62;
+      const gy = corpoY - ALTURA_ARMOR * 0.62;
       const glow = ctx.createRadialGradient(p.x, gy, 5, p.x, gy, 80);
       glow.addColorStop(0, (correndo || g.flying) ? 'rgba(110,216,255,0.32)' : 'rgba(110,216,255,0.2)');
       glow.addColorStop(1, 'rgba(110,216,255,0)');
@@ -554,14 +554,14 @@ export default function Titan({ onVoltar }) {
         ctx.fillRect(p.x - 34, jy - 10, 68, 44); ctx.globalCompositeOperation = 'source-over';
       }
 
-      // TITAN
+      // PROJETO ARMOR
       const fw = sprite.width / nFrames, fh = sprite.height;
       let escala, gapPes = 0, offX = 0;
       if (calib) {
-        escala = ALTURA_TITAN / (calib.corpoR * fh);
+        escala = ALTURA_ARMOR / (calib.corpoR * fh);
         const f = calib.frames[frameAtual];
         gapPes = (1 - f.botR) * fh * escala; offX = (0.5 - f.cxR) * fw * escala;
-      } else escala = ALTURA_TITAN / fh;
+      } else escala = ALTURA_ARMOR / fh;
       const destW = fw * escala, destH = fh * escala;
       ctx.save();
       ctx.translate(p.x, corpoY);
@@ -571,7 +571,7 @@ export default function Titan({ onVoltar }) {
       ctx.restore();
 
       // ===== MIRA (origem nas mãos) =====
-      const ox = p.x + p.face * 4, oy = corpoY - ALTURA_TITAN * 0.55;
+      const ox = p.x + p.face * 4, oy = corpoY - ALTURA_ARMOR * 0.55;
       if (aimActive) {
         const ex = ox + Math.cos(aimAng) * 120, ey = oy + Math.sin(aimAng) * 120;
         ctx.globalCompositeOperation = 'lighter';
@@ -690,7 +690,7 @@ export default function Titan({ onVoltar }) {
 
   return createPortal(
     <div style={es.fundo}>
-      <canvas ref={canvasRef} className="titan-canvas" style={es.canvas} />
+      <canvas ref={canvasRef} className="armor-canvas" style={es.canvas} />
 
       {fase === 'jogando' && paisagem && (
         <>
@@ -714,18 +714,18 @@ export default function Titan({ onVoltar }) {
       {fase === 'erro' && (
         <div style={es.overlay}>
           <p style={{ ...es.txtGrande, color: '#FF6B81' }}>FALHA AO CARREGAR</p>
-          <p style={{ ...es.txtPeq, maxWidth: 280, textAlign: 'center', lineHeight: 1.6 }}>Verifica os links das sprites e do chão no topo do Titan.jsx</p>
+          <p style={{ ...es.txtPeq, maxWidth: 280, textAlign: 'center', lineHeight: 1.6 }}>Verifica os links das sprites e do chão no topo do ProjetoArmor.jsx</p>
         </div>
       )}
       {fase !== 'erro' && !paisagem && (
         <div style={es.overlay}>
-          <div className="titan-rotate-phone" />
+          <div className="armor-rotate-phone" />
           <p style={es.txtRodar}>VIRE O CELULAR</p>
         </div>
       )}
       {fase === 'pronto' && paisagem && (
         <div style={es.overlay}>
-          <p style={es.titulo}>TITAN</p>
+          <p style={es.titulo}>PROJETO ARMOR</p>
           <p style={{ ...es.txtPeq, marginBottom: 8 }}>Capítulo 1 — O Despertar</p>
           <p style={{ ...es.txtPeq, fontSize: 10, marginBottom: 26, opacity: 0.7 }}>Esquerda move · Direita mira · Tiro · Míssil · Voar</p>
           <button onClick={entrar} style={es.botaoEntrar}>▶ ENTRAR NO MUNDO</button>
@@ -733,14 +733,14 @@ export default function Titan({ onVoltar }) {
       )}
 
       <style>{`
-        .titan-canvas { image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; image-rendering: pixelated; }
+        .armor-canvas { image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; image-rendering: pixelated; }
         /* Animação "VIRE O CELULAR" — idêntica à do jogo Free Kick World */
-        .titan-rotate-phone { width:62px; height:110px; border:5px solid #7dd3fc; border-radius:14px;
+        .armor-rotate-phone { width:62px; height:110px; border:5px solid #7dd3fc; border-radius:14px;
           position:relative; margin-bottom:30px; box-shadow:0 0 26px rgba(125,211,252,.5);
           animation:rodarCelular 2.4s ease-in-out infinite; }
-        .titan-rotate-phone::before { content:''; position:absolute; left:50%; bottom:7px; width:20px; height:4px;
+        .armor-rotate-phone::before { content:''; position:absolute; left:50%; bottom:7px; width:20px; height:4px;
           border-radius:3px; background:#7dd3fc; transform:translateX(-50%); }
-        .titan-rotate-phone::after { content:''; position:absolute; inset:7px; border-radius:7px;
+        .armor-rotate-phone::after { content:''; position:absolute; inset:7px; border-radius:7px;
           background:rgba(125,211,252,.12); }
         @keyframes rodarCelular {
           0%,16%   { transform:rotate(0deg); }
@@ -762,7 +762,7 @@ const es = {
   voltar: { position: 'absolute', top: 30, left: 16, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, color: '#8E8E93', fontSize: 13, padding: '6px 13px', cursor: 'pointer', zIndex: 30 },
   overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, backdropFilter: 'blur(4px)', fontFamily: 'monospace' },
   txtRodar: { color: '#7dd3fc', fontSize: 'clamp(20px,6vw,30px)', fontWeight: 700, letterSpacing: '2px', textShadow: '2px 2px 0 #0a3d62', margin: 0 },
-  titulo: { color: '#F0C040', fontSize: 42, fontWeight: 800, letterSpacing: '0.28em', margin: 0, textShadow: '0 0 24px rgba(240,192,64,0.5)' },
+  titulo: { color: '#F0C040', fontSize: 'clamp(26px,7vw,42px)', fontWeight: 800, letterSpacing: '0.18em', margin: 0, textAlign: 'center', textShadow: '0 0 24px rgba(240,192,64,0.5)' },
   txtGrande: { color: '#F0C040', fontSize: 19, fontWeight: 700, letterSpacing: '0.18em', margin: '0 0 8px' },
   txtPeq: { color: '#8E8E93', fontSize: 12, letterSpacing: '0.1em', margin: 0 },
   botaoEntrar: { background: '#F0C040', border: 'none', borderRadius: 14, color: '#16161C', fontWeight: 800, fontSize: 15, padding: '15px 32px', cursor: 'pointer', fontFamily: 'monospace', letterSpacing: '0.1em', boxShadow: '0 0 30px rgba(240,192,64,0.35)' },
