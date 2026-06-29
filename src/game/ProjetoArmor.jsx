@@ -724,7 +724,7 @@ export default function ProjetoArmor({ onVoltar }) {
         </>
       )}
 
-      {onVoltar && fase === 'jogando' && <button onClick={onVoltar} style={es.voltar}>← Sair</button>}
+      {fase === 'jogando' && <button onClick={() => setFase('pronto')} style={es.voltar}>← Voltar</button>}
 
       {fase === 'erro' && (
         <div style={es.overlay}>
