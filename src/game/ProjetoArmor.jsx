@@ -710,7 +710,7 @@ export default function ProjetoArmor({ onVoltar }) {
         </>
       )}
 
-      {onVoltar && <button onClick={onVoltar} style={es.voltar}>← Sair</button>}
+      {onVoltar && fase === 'jogando' && <button onClick={onVoltar} style={es.voltar}>← Sair</button>}
 
       {fase === 'erro' && (
         <div style={es.overlay}>
@@ -725,9 +725,11 @@ export default function ProjetoArmor({ onVoltar }) {
         </div>
       )}
       {fase === 'pronto' && paisagem && (
-        <div style={es.overlay}>
-          {/* Vídeo do personagem ao fundo: toca uma vez ao acessar e
-              congela no último quadro (personagem encarando a câmera). */}
+        // Tela inicial = só o vídeo. Um toque em qualquer lugar entra no jogo
+        // em tela cheia.
+        <div style={es.overlayVideo} onClick={entrar}>
+          {/* Vídeo do personagem: toca uma vez ao acessar e congela no
+              último quadro (personagem encarando a câmera). */}
           <video
             ref={videoIntroRef}
             style={es.videoIntro}
@@ -745,11 +747,6 @@ export default function ProjetoArmor({ onVoltar }) {
               } catch (err) {}
             }}
           />
-          <div style={es.videoScrim} />
-          <p style={{ ...es.titulo, position: 'relative' }}>PROJETO ARMOR</p>
-          <p style={{ ...es.txtPeq, marginBottom: 8, position: 'relative' }}>Capítulo 1 — O Despertar</p>
-          <p style={{ ...es.txtPeq, fontSize: 10, marginBottom: 26, opacity: 0.7, position: 'relative' }}>Esquerda move · Direita mira · Tiro · Míssil · Voar</p>
-          <button onClick={entrar} style={{ ...es.botaoEntrar, position: 'relative' }}>▶ ENTRAR NO MUNDO</button>
         </div>
       )}
 
@@ -782,8 +779,8 @@ const es = {
   botaoRelogio: { position: 'absolute', top: 30, right: 16, display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 20, padding: '6px 12px', cursor: 'pointer', zIndex: 30, fontFamily: 'monospace' },
   voltar: { position: 'absolute', top: 30, left: 16, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, color: '#8E8E93', fontSize: 13, padding: '6px 13px', cursor: 'pointer', zIndex: 30 },
   overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, backdropFilter: 'blur(4px)', fontFamily: 'monospace' },
+  overlayVideo: { position: 'absolute', inset: 0, backgroundColor: '#000', zIndex: 20, cursor: 'pointer' },
   videoIntro: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', zIndex: 0, pointerEvents: 'none', backgroundColor: '#000' },
-  videoScrim: { position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', background: 'linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 38%, rgba(0,0,0,0.45) 70%, rgba(0,0,0,0.82) 100%)' },
   txtRodar: { color: '#7dd3fc', fontSize: 'clamp(20px,6vw,30px)', fontWeight: 700, letterSpacing: '2px', textShadow: '2px 2px 0 #0a3d62', margin: 0 },
   titulo: { color: '#F0C040', fontSize: 'clamp(26px,7vw,42px)', fontWeight: 800, letterSpacing: '0.18em', margin: 0, textAlign: 'center', textShadow: '0 0 24px rgba(240,192,64,0.5)' },
   txtGrande: { color: '#F0C040', fontSize: 19, fontWeight: 700, letterSpacing: '0.18em', margin: '0 0 8px' },
