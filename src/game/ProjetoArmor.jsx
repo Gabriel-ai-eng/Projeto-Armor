@@ -724,11 +724,28 @@ export default function ProjetoArmor({ onVoltar }) {
         </div>
       )}
       {fase === 'pronto' && paisagem && (
-        <div style={es.overlay}>
-          <p style={es.titulo}>PROJETO ARMOR</p>
-          <p style={{ ...es.txtPeq, marginBottom: 8 }}>Capítulo 1 — O Despertar</p>
-          <p style={{ ...es.txtPeq, fontSize: 10, marginBottom: 26, opacity: 0.7 }}>Esquerda move · Direita mira · Tiro · Míssil · Voar</p>
-          <button onClick={entrar} style={es.botaoEntrar}>▶ ENTRAR NO MUNDO</button>
+        <div style={{ ...es.overlay, backgroundColor: 'transparent', backdropFilter: 'none' }}>
+          <video
+            style={es.videoIntro}
+            src="/armor-intro.mp4"
+            autoPlay
+            muted
+            playsInline
+            preload="auto"
+            onEnded={(e) => {
+              // Trava no último frame: personagem encarando a câmera de frente.
+              const v = e.currentTarget;
+              v.pause();
+              if (isFinite(v.duration)) v.currentTime = v.duration;
+            }}
+          />
+          <div style={es.videoGradiente} />
+          <div style={es.inicioConteudo}>
+            <p style={es.titulo}>PROJETO ARMOR</p>
+            <p style={{ ...es.txtPeq, marginBottom: 8 }}>Capítulo 1 — O Despertar</p>
+            <p style={{ ...es.txtPeq, fontSize: 10, marginBottom: 26, opacity: 0.7 }}>Esquerda move · Direita mira · Tiro · Míssil · Voar</p>
+            <button onClick={entrar} style={es.botaoEntrar}>▶ ENTRAR NO MUNDO</button>
+          </div>
         </div>
       )}
 
@@ -766,4 +783,7 @@ const es = {
   txtGrande: { color: '#F0C040', fontSize: 19, fontWeight: 700, letterSpacing: '0.18em', margin: '0 0 8px' },
   txtPeq: { color: '#8E8E93', fontSize: 12, letterSpacing: '0.1em', margin: 0 },
   botaoEntrar: { background: '#F0C040', border: 'none', borderRadius: 14, color: '#16161C', fontWeight: 800, fontSize: 15, padding: '15px 32px', cursor: 'pointer', fontFamily: 'monospace', letterSpacing: '0.1em', boxShadow: '0 0 30px rgba(240,192,64,0.35)' },
+  videoIntro: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, backgroundColor: '#000' },
+  videoGradiente: { position: 'absolute', inset: 0, zIndex: 1, background: 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.15) 32%, rgba(0,0,0,0.25) 60%, rgba(0,0,0,0.78) 100%)' },
+  inicioConteudo: { position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
 };
