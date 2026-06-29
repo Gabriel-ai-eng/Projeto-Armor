@@ -90,11 +90,20 @@ const IconeRelogio = ({ size = 13 }) => (
   </svg>
 );
 
+// Botões "Jogar" e "Sair" desenhados dentro do vídeo da tela inicial.
+// Posições em % (medidas sobre o quadro do vídeo, mesma proporção da tela).
+// Ao segurar, o botão "salta para frente" (cresce um pouco).
+const BOTOES_INICIO = [
+  { id: 'jogar', src: '/btn-jogar.png', cx: 13.3, cy: 37.8, w: 21.4 },
+  { id: 'sair',  src: '/btn-sair.png',  cx: 13.3, cy: 91.2, w: 21.4 },
+];
+
 export default function ProjetoArmor({ onVoltar }) {
   const [fase, setFase] = useState('carregando');
   const [zoomPerto, setZoomPerto] = useState(false);
   const [relogioAtivo, setRelogioAtivo] = useState(false);
   const [horaTexto, setHoraTexto] = useState('--:--');
+  const [botaoPressionado, setBotaoPressionado] = useState(null); // 'jogar' | 'sair' | null
   const [paisagem, setPaisagem] = useState(
     typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : true
   );
@@ -752,6 +761,36 @@ export default function ProjetoArmor({ onVoltar }) {
               } catch (err) {}
             }}
           />
+          {/* Botões Jogar/Sair sobre o vídeo: invisíveis em repouso, e ao
+              segurar (pressionar) saltam para frente, crescendo um pouco. */}
+          {BOTOES_INICIO.map((b) => (
+            <img
+              key={b.id}
+              src={b.src}
+              alt={b.id}
+              draggable={false}
+              onPointerDown={() => setBotaoPressionado(b.id)}
+              onPointerUp={() => setBotaoPressionado(null)}
+              onPointerLeave={() => setBotaoPressionado((p) => (p === b.id ? null : p))}
+              onPointerCancel={() => setBotaoPressionado(null)}
+              style={{
+                position: 'absolute',
+                left: `${b.cx}%`,
+                top: `${b.cy}%`,
+                width: `${b.w}%`,
+                height: 'auto',
+                transformOrigin: 'center',
+                transform: `translate(-50%, -50%) scale(${botaoPressionado === b.id ? 1.12 : 1})`,
+                opacity: botaoPressionado === b.id ? 1 : 0,
+                transition: 'transform 0.12s ease, opacity 0.12s ease',
+                zIndex: 3,
+                cursor: 'pointer',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                touchAction: 'none',
+              }}
+            />
+          ))}
         </div>
       )}
 
