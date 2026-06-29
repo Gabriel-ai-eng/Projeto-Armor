@@ -94,8 +94,8 @@ const IconeRelogio = ({ size = 13 }) => (
 // Posições em % (medidas sobre o quadro do vídeo, mesma proporção da tela).
 // Ao segurar, o botão "salta para frente" (cresce um pouco).
 const BOTOES_INICIO = [
-  { id: 'jogar', src: '/btn-jogar.png', cx: 13.3, cy: 37.8, w: 21.4, aspect: 4.07 },
-  { id: 'sair',  src: '/btn-sair.png',  cx: 13.3, cy: 91.2, w: 21.4, aspect: 4.84 },
+  { id: 'jogar', src: '/btn-jogar.png', cx: 13.26, cy: 37.82, w: 20.4, aspect: 4.07 },
+  { id: 'sair',  src: '/btn-sair.png',  cx: 12.98, cy: 91.18, w: 17.1, aspect: 4.84 },
 ];
 
 export default function ProjetoArmor({ onVoltar }) {
@@ -789,7 +789,7 @@ export default function ProjetoArmor({ onVoltar }) {
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat',
                 transformOrigin: 'center',
-                transform: `translate(-50%, -50%) scale(${botaoPressionado === b.id ? 1.12 : 1})`,
+                transform: `translate(-50%, -50%) scale(${botaoPressionado === b.id ? 1.1 : 1})`,
                 opacity: botaoPressionado === b.id ? 1 : 0,
                 transition: 'transform 0.12s ease, opacity 0.12s ease',
                 zIndex: 3,
