@@ -94,8 +94,8 @@ const IconeRelogio = ({ size = 13 }) => (
 // Posições em % (medidas sobre o quadro do vídeo, mesma proporção da tela).
 // Ao segurar, o botão "salta para frente" (cresce um pouco).
 const BOTOES_INICIO = [
-  { id: 'jogar', src: '/btn-jogar.png', cx: 13.3, cy: 37.8, w: 21.4 },
-  { id: 'sair',  src: '/btn-sair.png',  cx: 13.3, cy: 91.2, w: 21.4 },
+  { id: 'jogar', src: '/btn-jogar.png', cx: 13.3, cy: 37.8, w: 21.4, aspect: 4.07 },
+  { id: 'sair',  src: '/btn-sair.png',  cx: 13.3, cy: 91.2, w: 21.4, aspect: 4.84 },
 ];
 
 export default function ProjetoArmor({ onVoltar }) {
@@ -741,7 +741,7 @@ export default function ProjetoArmor({ onVoltar }) {
       {fase === 'pronto' && paisagem && (
         // Tela inicial = só o vídeo. Um toque em qualquer lugar entra no jogo
         // em tela cheia.
-        <div style={es.overlayVideo} onClick={entrarTelaCheia}>
+        <div style={es.overlayVideo} onClick={entrarTelaCheia} onContextMenu={(e) => e.preventDefault()}>
           {/* Vídeo do personagem: toca uma vez ao acessar e congela no
               último quadro (personagem encarando a câmera). */}
           <video
@@ -764,21 +764,25 @@ export default function ProjetoArmor({ onVoltar }) {
           {/* Botões Jogar/Sair sobre o vídeo: invisíveis em repouso, e ao
               segurar (pressionar) saltam para frente, crescendo um pouco. */}
           {BOTOES_INICIO.map((b) => (
-            <img
+            <div
               key={b.id}
-              src={b.src}
-              alt={b.id}
-              draggable={false}
+              role="button"
+              aria-label={b.id}
               onPointerDown={() => setBotaoPressionado(b.id)}
               onPointerUp={() => setBotaoPressionado(null)}
               onPointerLeave={() => setBotaoPressionado((p) => (p === b.id ? null : p))}
               onPointerCancel={() => setBotaoPressionado(null)}
+              onContextMenu={(e) => e.preventDefault()}
               style={{
                 position: 'absolute',
                 left: `${b.cx}%`,
                 top: `${b.cy}%`,
                 width: `${b.w}%`,
-                height: 'auto',
+                aspectRatio: `${b.aspect}`,
+                backgroundImage: `url(${b.src})`,
+                backgroundSize: 'contain',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
                 transformOrigin: 'center',
                 transform: `translate(-50%, -50%) scale(${botaoPressionado === b.id ? 1.12 : 1})`,
                 opacity: botaoPressionado === b.id ? 1 : 0,
@@ -787,6 +791,7 @@ export default function ProjetoArmor({ onVoltar }) {
                 cursor: 'pointer',
                 userSelect: 'none',
                 WebkitUserSelect: 'none',
+                WebkitTouchCallout: 'none',
                 touchAction: 'none',
               }}
             />
@@ -823,7 +828,7 @@ const es = {
   botaoRelogio: { position: 'absolute', top: 30, right: 16, display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 20, padding: '6px 12px', cursor: 'pointer', zIndex: 30, fontFamily: 'monospace' },
   voltar: { position: 'absolute', top: 30, left: 16, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, color: '#8E8E93', fontSize: 13, padding: '6px 13px', cursor: 'pointer', zIndex: 30 },
   overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, backdropFilter: 'blur(4px)', fontFamily: 'monospace' },
-  overlayVideo: { position: 'absolute', inset: 0, backgroundColor: '#000', zIndex: 20, cursor: 'pointer' },
+  overlayVideo: { position: 'absolute', inset: 0, backgroundColor: '#000', zIndex: 20, cursor: 'pointer', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' },
   videoIntro: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', zIndex: 0, pointerEvents: 'none', backgroundColor: '#000' },
   txtRodar: { color: '#7dd3fc', fontSize: 'clamp(20px,6vw,30px)', fontWeight: 700, letterSpacing: '2px', textShadow: '2px 2px 0 #0a3d62', margin: 0 },
   titulo: { color: '#F0C040', fontSize: 'clamp(26px,7vw,42px)', fontWeight: 800, letterSpacing: '0.18em', margin: 0, textAlign: 'center', textShadow: '0 0 24px rgba(240,192,64,0.5)' },
