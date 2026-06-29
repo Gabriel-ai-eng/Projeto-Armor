@@ -773,6 +773,11 @@ export default function ProjetoArmor({ onVoltar }) {
               onPointerLeave={() => setBotaoPressionado((p) => (p === b.id ? null : p))}
               onPointerCancel={() => setBotaoPressionado(null)}
               onContextMenu={(e) => e.preventDefault()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (b.id === 'jogar') entrar();            // vai direto para o jogo
+                else if (b.id === 'sair') onVoltar && onVoltar(); // volta para a Home
+              }}
               style={{
                 position: 'absolute',
                 left: `${b.cx}%`,
