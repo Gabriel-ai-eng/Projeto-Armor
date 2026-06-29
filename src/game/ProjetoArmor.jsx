@@ -666,9 +666,14 @@ export default function ProjetoArmor({ onVoltar }) {
     };
   }, [fase]);
 
-  const entrar = async () => {
-    try { await document.documentElement.requestFullscreen(); } catch (e) {}
+  // Toque na tela inicial: apenas coloca em tela cheia (continua na tela inicial).
+  const entrarTelaCheia = async () => {
+    try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); } catch (e) {}
     try { await window.screen.orientation.lock('landscape'); } catch (e) {}
+  };
+  // Entrar de fato no jogo (usado pelo botão "Jogar").
+  const entrar = async () => {
+    await entrarTelaCheia();
     setFase('jogando');
   };
   const alternarZoom = () => {
@@ -727,7 +732,7 @@ export default function ProjetoArmor({ onVoltar }) {
       {fase === 'pronto' && paisagem && (
         // Tela inicial = só o vídeo. Um toque em qualquer lugar entra no jogo
         // em tela cheia.
-        <div style={es.overlayVideo} onClick={entrar}>
+        <div style={es.overlayVideo} onClick={entrarTelaCheia}>
           {/* Vídeo do personagem: toca uma vez ao acessar e congela no
               último quadro (personagem encarando a câmera). */}
           <video
