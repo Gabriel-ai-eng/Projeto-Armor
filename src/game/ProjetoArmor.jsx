@@ -21,7 +21,7 @@ const ZOOM_PERTO = 1.7;
 const ALTURA_IMG_CHAO = 230;
 const LINHA_PES = 0.18;
 
-const FRAMES_ANDAR = 39;   // frame 0 = parado; frames 1..38 = ciclo de caminhada (sequencial, da própria folha)
+const FRAMES_ANDAR = 36;   // frame 0 = parado; frames 1..35 = ciclo de caminhada (do GIF, em ordem)
 const FRAMES_CORRER = 15;
 const FRAME_PARADO = 0;
 
@@ -451,9 +451,10 @@ export default function ProjetoArmor({ onVoltar }) {
         p.animT += vAbs * 0.07; frameAtual = Math.floor(p.animT) % nFrames;
       } else if (modo === 'andar') {
         sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
-        // 0.358 = cadência sincronizada com o passo: um ciclo de 38 frames corresponde
+        // 0.33 = cadência sincronizada com o passo: um ciclo de 35 frames corresponde
         // à distância percorrida no chão, então os pés "agarram" o solo (sem patinar).
-        p.animT += vAbs * 0.358; frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
+        // Como o avanço é proporcional a vAbs, andar devagar = animação devagar e vice-versa.
+        p.animT += vAbs * 0.33; frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
       } else { sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; }
 
       // ===== CÂMERA (segue também na vertical ao voar) =====
