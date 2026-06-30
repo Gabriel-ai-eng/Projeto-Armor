@@ -6,7 +6,9 @@ import { createPortal } from 'react-dom';
 // HUD dupla: joystick mover (esq) + mirar (dir) · tiro · míssil · voar
 // ============================================================
 
-const SPRITE_ANDAR = 'https://i.ibb.co/mCV6kshs/1-1-20260612-185706-0000.png';
+// ?v=N força o navegador/CDN a baixar a imagem nova quando ela muda (cache-busting).
+// Incremente o número sempre que trocar o conteúdo de armor-andar.png.
+const SPRITE_ANDAR = '/armor-andar.png?v=3';
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
 const IMG_CHAO = 'https://i.ibb.co/KzVkz7dS/11-20260612-202236-0000.png';
 
@@ -21,7 +23,7 @@ const ZOOM_PERTO = 1.7;
 const ALTURA_IMG_CHAO = 230;
 const LINHA_PES = 0.18;
 
-const FRAMES_ANDAR = 7;
+const FRAMES_ANDAR = 39;   // frame 0 = parado; frames 1..38 = ciclo de caminhada (da folha, em ordem)
 const FRAMES_CORRER = 15;
 const FRAME_PARADO = 0;
 
@@ -451,7 +453,11 @@ export default function ProjetoArmor({ onVoltar }) {
         p.animT += vAbs * 0.07; frameAtual = Math.floor(p.animT) % nFrames;
       } else if (modo === 'andar') {
         sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
-        p.animT += vAbs * 0.085; frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
+        // 0.33 = cadência sincronizada com o passo: um ciclo de 35 frames corresponde
+        // à distância percorrida no chão, então os pés "agarram" o solo (sem patinar).
+        // Como o avanço é proporcional a vAbs, andar devagar = animação devagar e vice-versa.
+        // 0.358 = cadência para 38 frames de caminhada (1 ciclo = 1 passo no chão).
+        p.animT += vAbs * 0.358; frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
       } else { sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; }
 
       // ===== CÂMERA (segue também na vertical ao voar) =====
@@ -724,11 +730,28 @@ export default function ProjetoArmor({ onVoltar }) {
         </div>
       )}
       {fase === 'pronto' && paisagem && (
-        <div style={es.overlay}>
-          <p style={es.titulo}>PROJETO ARMOR</p>
-          <p style={{ ...es.txtPeq, marginBottom: 8 }}>Capítulo 1 — O Despertar</p>
-          <p style={{ ...es.txtPeq, fontSize: 10, marginBottom: 26, opacity: 0.7 }}>Esquerda move · Direita mira · Tiro · Míssil · Voar</p>
-          <button onClick={entrar} style={es.botaoEntrar}>▶ ENTRAR NO MUNDO</button>
+        <div style={{ ...es.overlay, backgroundColor: 'transparent', backdropFilter: 'none' }}>
+          <video
+            style={es.videoIntro}
+            src="/armor-intro.mp4"
+            autoPlay
+            muted
+            playsInline
+            preload="auto"
+            onEnded={(e) => {
+              // Trava no último frame: personagem encarando a câmera de frente.
+              const v = e.currentTarget;
+              v.pause();
+              if (isFinite(v.duration)) v.currentTime = v.duration;
+            }}
+          />
+          <div style={es.videoGradiente} />
+          <div style={es.inicioConteudo}>
+            <p style={es.titulo}>PROJETO ARMOR</p>
+            <p style={{ ...es.txtPeq, marginBottom: 8 }}>Capítulo 1 — O Despertar</p>
+            <p style={{ ...es.txtPeq, fontSize: 10, marginBottom: 26, opacity: 0.7 }}>Esquerda move · Direita mira · Tiro · Míssil · Voar</p>
+            <button onClick={entrar} style={es.botaoEntrar}>▶ ENTRAR NO MUNDO</button>
+          </div>
         </div>
       )}
 
@@ -766,4 +789,7 @@ const es = {
   txtGrande: { color: '#F0C040', fontSize: 19, fontWeight: 700, letterSpacing: '0.18em', margin: '0 0 8px' },
   txtPeq: { color: '#8E8E93', fontSize: 12, letterSpacing: '0.1em', margin: 0 },
   botaoEntrar: { background: '#F0C040', border: 'none', borderRadius: 14, color: '#16161C', fontWeight: 800, fontSize: 15, padding: '15px 32px', cursor: 'pointer', fontFamily: 'monospace', letterSpacing: '0.1em', boxShadow: '0 0 30px rgba(240,192,64,0.35)' },
+  videoIntro: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, backgroundColor: '#000' },
+  videoGradiente: { position: 'absolute', inset: 0, zIndex: 1, background: 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.15) 32%, rgba(0,0,0,0.25) 60%, rgba(0,0,0,0.78) 100%)' },
+  inicioConteudo: { position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
 };
