@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 // HUD dupla: joystick mover (esq) + mirar (dir) · tiro · míssil · voar
 // ============================================================
 
-const SPRITE_ANDAR = 'https://i.ibb.co/mCV6kshs/1-1-20260612-185706-0000.png';
+const SPRITE_ANDAR = '/armor-andar.png';
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
 const IMG_CHAO = 'https://i.ibb.co/KzVkz7dS/11-20260612-202236-0000.png';
 
@@ -21,7 +21,7 @@ const ZOOM_PERTO = 1.7;
 const ALTURA_IMG_CHAO = 230;
 const LINHA_PES = 0.18;
 
-const FRAMES_ANDAR = 7;
+const FRAMES_ANDAR = 39;   // frame 0 = parado; frames 1..38 = ciclo de caminhada
 const FRAMES_CORRER = 15;
 const FRAME_PARADO = 0;
 
