@@ -10,6 +10,10 @@ import { createPortal } from 'react-dom';
 // Incremente o número sempre que trocar o conteúdo de armor-andar.png.
 const SPRITE_ANDAR = '/armor-andar.png?v=3';
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
+// Pulo: folha em GRADE (10 colunas x 17 linhas = 170 frames), lida em zigue-zague
+// esquerda→direita, de cima→baixo. O ciclo completo: agacha (anticipação) →
+// impulso a jato → voo → aterrissagem com poeira → recupera e fica de pé.
+const SPRITE_PULAR = '/armor-pular.png?v=1';
 const IMG_CHAO = 'https://i.ibb.co/KzVkz7dS/11-20260612-202236-0000.png';
 
 const SPRITE_OLHA_PARA = 'direita';
@@ -33,6 +37,15 @@ const LIMIAR_CORRER = 0.75;
 
 // física vertical (pulo / voo)
 const GRAV = 0.5, JUMP_V = 10, FLY_THRUST = 0.92, VY_MAX = 4.4, VY_FALL = 11, ALT_MAX = 210;
+
+// ---------- Pulo roteirizado (folha em grade) ----------
+const PULAR_COLS = 10, PULAR_ROWS = 17, PULAR_FRAMES = 170;
+const PULAR_BODY_R = 0.797;   // altura do corpo ÷ altura da célula (frame em pé) → escala fixa
+const PULAR_FOOT_R = 0.12;    // distância dos pés até a base da célula (frames no chão) → planta os pés no solo
+const JUMP_ANIM_SPEED = 1.6;  // frames de sprite por tick (~1.8 s para os 170 frames)
+const JUMP_LAUNCH_F = 30;     // frame em que sai do chão (fim da anticipação)
+const JUMP_LAND_F = 129;      // frame em que aterrissa (impacto/poeira)
+const JUMP_ARC_H = 100;       // altura do arco do pulo (px) — casada com o pulo físico antigo
 // armas
 const COOLDOWN_TIRO = 8, COOLDOWN_MISSIL = 26, VEL_TIRO = 15, VEL_MISSIL = 8.5;
 
@@ -49,6 +62,14 @@ const rgbStr = (a) => `rgb(${Math.round(a[0])},${Math.round(a[1])},${Math.round(
 const rgbaStr = (a, al) => `rgba(${Math.round(a[0])},${Math.round(a[1])},${Math.round(a[2])},${al})`;
 const suave = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const dist2 = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+
+// Altura do pulo roteirizado em função do frame da animação: meia onda de seno
+// entre o frame de impulso e o de aterrissagem (0 antes/depois → pés no chão).
+const jumpArc = (f) => {
+  if (f <= JUMP_LAUNCH_F || f >= JUMP_LAND_F) return 0;
+  const t = (f - JUMP_LAUNCH_F) / (JUMP_LAND_F - JUMP_LAUNCH_F);
+  return JUMP_ARC_H * Math.sin(Math.PI * t);
+};
 
 function calcularSol(lat, date) {
   const inicio = new Date(date.getFullYear(), 0, 0);
@@ -107,7 +128,7 @@ export default function ProjetoArmor({ onVoltar }) {
   const relogioAtivoRef = useRef(false);
   const solRef = useRef({ sr: 6.5, ss: 18.5 });
   const latRef = useRef(null);
-  const imgsRef = useRef({ andar: null, correr: null, chao: null, calibAndar: null, calibCorrer: null, chaoCalib: null });
+  const imgsRef = useRef({ andar: null, correr: null, chao: null, pular: null, calibAndar: null, calibCorrer: null, chaoCalib: null });
 
   // ---------- CARREGAMENTO + AUTOCALIBRAÇÃO ----------
   useEffect(() => {
@@ -172,11 +193,12 @@ export default function ProjetoArmor({ onVoltar }) {
       carregarSprite(SPRITE_ANDAR, (im) => calibrar(im, FRAMES_ANDAR)),
       carregarSprite(SPRITE_CORRER, (im) => calibrar(im, FRAMES_CORRER)),
       carregarSprite(IMG_CHAO, calibrarChao),
-    ]).then(([a, r, solo]) => {
+      carregarSprite(SPRITE_PULAR, () => null),   // grade fixa: não precisa de autocalibração
+    ]).then(([a, r, solo, pl]) => {
       if (!vivos) return;
       imgsRef.current = {
         andar: a.img, calibAndar: a.leitura, correr: r.img, calibCorrer: r.leitura,
-        chao: solo.img, chaoCalib: solo.leitura,
+        chao: solo.img, chaoCalib: solo.leitura, pular: pl.img,
       };
       setFase('pronto');
     }).catch(() => vivos && setFase('erro'));
@@ -224,7 +246,7 @@ export default function ProjetoArmor({ onVoltar }) {
       p: { x: 260, y: 0, vx: 0, vy: 0, face: 1, animT: 0, modo: 'parado' },
       fx: 260, fy: -(ALT * 0.22), zoom: zoomAlvoRef.current,
       t: 0, toques: {},
-      flying: false, lastFlyDown: 0,
+      flying: false, lastFlyDown: 0, jump: null,
       tiroHeld: false, tiroCd: 0, missilQueued: false, missilCd: 0,
       projeteis: [], particulas: [],
     };
@@ -247,8 +269,8 @@ export default function ProjetoArmor({ onVoltar }) {
     // ---- botão de voar: 1 toque = pulo · 2 toques + segurar = voar ----
     const voarDown = () => {
       const g = G.current, now = performance.now();
-      if (now - g.lastFlyDown < 320) g.flying = true;          // 2º toque rápido → voa
-      else if (g.p.y <= 2) g.p.vy = JUMP_V;                    // toque único → pulo
+      if (now - g.lastFlyDown < 320) { g.flying = true; g.jump = null; }  // 2º toque rápido → voa (cancela o pulo)
+      else if (g.p.y <= 2 && !g.jump) g.jump = { f: 0 };                  // toque único no chão → anima o pulo
       g.lastFlyDown = now;
     };
     const voarUp = () => { G.current.flying = false; };        // soltar → cai
@@ -389,7 +411,7 @@ export default function ProjetoArmor({ onVoltar }) {
     const passo = () => {
       raf = requestAnimationFrame(passo);
       const g = G.current;
-      const { andar, correr, chao, calibAndar, calibCorrer, chaoCalib } = imgsRef.current;
+      const { andar, correr, chao, pular, calibAndar, calibCorrer, chaoCalib } = imgsRef.current;
       if (!g || !andar || !chao) return;
 
       ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
@@ -430,25 +452,38 @@ export default function ProjetoArmor({ onVoltar }) {
       if (aimActive && Math.abs(Math.cos(aimAng)) > 0.25) p.face = Math.cos(aimAng) >= 0 ? 1 : -1;
       else if (Math.abs(p.vx) > 0.3) p.face = p.vx > 0 ? 1 : -1;
 
-      // ===== FÍSICA VERTICAL (pulo / voo) =====
-      if (g.flying) p.vy += FLY_THRUST;
-      p.vy -= GRAV;
-      p.vy = Math.max(-VY_FALL, Math.min(VY_MAX, p.vy));
-      p.y += p.vy;
-      if (p.y <= 0) { p.y = 0; if (p.vy < 0) p.vy = 0; }
-      if (p.y >= ALT_MAX) { p.y = ALT_MAX; if (p.vy > 0) p.vy = 0; }
+      // ===== FÍSICA VERTICAL (pulo roteirizado / voo) =====
+      if (g.flying && g.jump) g.jump = null;            // voar cancela o pulo roteirizado
+      if (g.jump) {
+        // o pulo segue a animação: a altura vem do arco, não da gravidade
+        g.jump.f += JUMP_ANIM_SPEED;
+        if (g.jump.f >= PULAR_FRAMES) { g.jump = null; p.y = 0; p.vy = 0; }
+        else { p.y = jumpArc(g.jump.f); p.vy = 0; }
+      }
+      if (!g.jump) {
+        if (g.flying) p.vy += FLY_THRUST;
+        p.vy -= GRAV;
+        p.vy = Math.max(-VY_FALL, Math.min(VY_MAX, p.vy));
+        p.y += p.vy;
+        if (p.y <= 0) { p.y = 0; if (p.vy < 0) p.vy = 0; }
+        if (p.y >= ALT_MAX) { p.y = ALT_MAX; if (p.vy > 0) p.vy = 0; }
+      }
 
       // ===== ANIMAÇÃO =====
       const vAbs = Math.abs(p.vx);
+      const emPulo = !!(g.jump && pular);
       let modo;
-      if (p.y > 3) modo = 'ar';
+      if (emPulo) modo = 'pular';
+      else if (p.y > 3) modo = 'ar';
       else if (vAbs < 0.25) modo = 'parado';
       else if (correndo && vAbs > VEL_ANDAR * 0.7) modo = 'correr';
       else modo = 'andar';
       p.modo = modo;
 
       let sprite, calib, nFrames, frameAtual;
-      if (modo === 'correr' && correr) {
+      if (emPulo) {
+        // a folha do pulo é uma grade; o desenho é tratado em bloco próprio abaixo
+      } else if (modo === 'correr' && correr) {
         sprite = correr; calib = calibCorrer; nFrames = FRAMES_CORRER;
         p.animT += vAbs * 0.07; frameAtual = Math.floor(p.animT) % nFrames;
       } else if (modo === 'andar') {
@@ -561,20 +596,36 @@ export default function ProjetoArmor({ onVoltar }) {
       }
 
       // PROJETO ARMOR
-      const fw = sprite.width / nFrames, fh = sprite.height;
-      let escala, gapPes = 0, offX = 0;
-      if (calib) {
-        escala = ALTURA_ARMOR / (calib.corpoR * fh);
-        const f = calib.frames[frameAtual];
-        gapPes = (1 - f.botR) * fh * escala; offX = (0.5 - f.cxR) * fw * escala;
-      } else escala = ALTURA_ARMOR / fh;
-      const destW = fw * escala, destH = fh * escala;
-      ctx.save();
-      ctx.translate(p.x, corpoY);
       const flip = (p.face === 1) !== (SPRITE_OLHA_PARA === 'direita');
-      if (flip) ctx.scale(-1, 1);
-      ctx.drawImage(sprite, Math.round(frameAtual * fw), 0, Math.round(fw), fh, -destW / 2 + offX, -destH + gapPes, destW, destH);
-      ctx.restore();
+      if (emPulo) {
+        // grade do pulo: índice em zigue-zague (col = resto, linha = quociente)
+        const jFrame = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
+        const cw = pular.width / PULAR_COLS, ch = pular.height / PULAR_ROWS;
+        const col = jFrame % PULAR_COLS, row = Math.floor(jFrame / PULAR_COLS);
+        // escala FIXA (não recalibra por frame, senão o arco do pulo achataria)
+        const esc = ALTURA_ARMOR / (PULAR_BODY_R * ch);
+        const dW = cw * esc, dH = ch * esc, footGap = PULAR_FOOT_R * ch * esc;
+        ctx.save();
+        ctx.translate(p.x, corpoY);
+        if (flip) ctx.scale(-1, 1);
+        // base da célula fica footGap ABAIXO de corpoY → pés plantam no solo nos frames de chão
+        ctx.drawImage(pular, Math.round(col * cw), Math.round(row * ch), Math.round(cw), Math.round(ch), -dW / 2, -dH + footGap, dW, dH);
+        ctx.restore();
+      } else {
+        const fw = sprite.width / nFrames, fh = sprite.height;
+        let escala, gapPes = 0, offX = 0;
+        if (calib) {
+          escala = ALTURA_ARMOR / (calib.corpoR * fh);
+          const f = calib.frames[frameAtual];
+          gapPes = (1 - f.botR) * fh * escala; offX = (0.5 - f.cxR) * fw * escala;
+        } else escala = ALTURA_ARMOR / fh;
+        const destW = fw * escala, destH = fh * escala;
+        ctx.save();
+        ctx.translate(p.x, corpoY);
+        if (flip) ctx.scale(-1, 1);
+        ctx.drawImage(sprite, Math.round(frameAtual * fw), 0, Math.round(fw), fh, -destW / 2 + offX, -destH + gapPes, destW, destH);
+        ctx.restore();
+      }
 
       // ===== MIRA (origem nas mãos) =====
       const ox = p.x + p.face * 4, oy = corpoY - ALTURA_ARMOR * 0.55;
