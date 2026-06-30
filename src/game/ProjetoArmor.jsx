@@ -6,7 +6,9 @@ import { createPortal } from 'react-dom';
 // HUD dupla: joystick mover (esq) + mirar (dir) · tiro · míssil · voar
 // ============================================================
 
-const SPRITE_ANDAR = '/armor-andar.png';
+// ?v=N força o navegador/CDN a baixar a imagem nova quando ela muda (cache-busting).
+// Incremente o número sempre que trocar o conteúdo de armor-andar.png.
+const SPRITE_ANDAR = '/armor-andar.png?v=2';
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
 const IMG_CHAO = 'https://i.ibb.co/KzVkz7dS/11-20260612-202236-0000.png';
 
