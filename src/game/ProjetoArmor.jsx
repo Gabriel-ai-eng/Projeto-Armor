@@ -451,7 +451,9 @@ export default function ProjetoArmor({ onVoltar }) {
         p.animT += vAbs * 0.07; frameAtual = Math.floor(p.animT) % nFrames;
       } else if (modo === 'andar') {
         sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
-        p.animT += vAbs * 0.15; frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
+        // 0.33 = cadência sincronizada com o passo do GIF: a perna avança no mesmo
+        // ritmo que o chão anda, então os pés "agarram" o solo (sem patinar/moonwalk).
+        p.animT += vAbs * 0.33; frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
       } else { sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; }
 
       // ===== CÂMERA (segue também na vertical ao voar) =====
