@@ -21,7 +21,7 @@ const ZOOM_PERTO = 1.7;
 const ALTURA_IMG_CHAO = 230;
 const LINHA_PES = 0.18;
 
-const FRAMES_ANDAR = 39;   // frame 0 = parado; frames 1..38 = ciclo de caminhada
+const FRAMES_ANDAR = 36;   // frame 0 = parado; frames 1..35 = ciclo de caminhada (sequencial)
 const FRAMES_CORRER = 15;
 const FRAME_PARADO = 0;
 
@@ -451,7 +451,7 @@ export default function ProjetoArmor({ onVoltar }) {
         p.animT += vAbs * 0.07; frameAtual = Math.floor(p.animT) % nFrames;
       } else if (modo === 'andar') {
         sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
-        p.animT += vAbs * 0.085; frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
+        p.animT += vAbs * 0.15; frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
       } else { sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; }
 
       // ===== CÂMERA (segue também na vertical ao voar) =====
