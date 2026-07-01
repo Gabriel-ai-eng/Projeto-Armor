@@ -106,6 +106,14 @@ function calcHUD(VW) {
   };
 }
 
+// Botões "Jogar" e "Sair" desenhados sobre o vídeo da tela inicial: invisíveis
+// em repouso, saltam (~1,3x) e acendem ao serem pressionados. Posições/tamanhos
+// em % do vídeo, iguais à tela inicial original.
+const BOTOES_INICIO = [
+  { id: 'jogar', src: '/btn-jogar.png', cx: 13.26, cy: 37.82, w: 20.4, aspect: 4.07 },
+  { id: 'sair',  src: '/btn-sair.png',  cx: 12.98, cy: 91.18, w: 17.1, aspect: 4.84 },
+];
+
 const IconeRelogio = ({ size = 13 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
        stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -118,6 +126,7 @@ export default function ProjetoArmor({ onVoltar }) {
   const [zoomPerto, setZoomPerto] = useState(false);
   const [relogioAtivo, setRelogioAtivo] = useState(false);
   const [horaTexto, setHoraTexto] = useState('--:--');
+  const [botaoPressionado, setBotaoPressionado] = useState(null); // 'jogar' | 'sair' | null
   const [paisagem, setPaisagem] = useState(
     typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : true
   );
@@ -129,6 +138,8 @@ export default function ProjetoArmor({ onVoltar }) {
   const solRef = useRef({ sr: 6.5, ss: 18.5 });
   const latRef = useRef(null);
   const imgsRef = useRef({ andar: null, correr: null, chao: null, pular: null, calibAndar: null, calibCorrer: null, chaoCalib: null });
+  const videoIntroRef = useRef(null);
+  const introTocadaRef = useRef(false); // true depois que a intro tocou uma vez
 
   // ---------- CARREGAMENTO + AUTOCALIBRAÇÃO ----------
   useEffect(() => {
@@ -743,11 +754,21 @@ export default function ProjetoArmor({ onVoltar }) {
     };
   }, [fase]);
 
+  // Entrar de fato no jogo (botão "Jogar").
   const entrar = async () => {
     try { await document.documentElement.requestFullscreen(); } catch (e) {}
     try { await window.screen.orientation.lock('landscape'); } catch (e) {}
     setFase('jogando');
   };
+  // Toque no fundo do vídeo: só entra em tela cheia, sem iniciar o jogo.
+  const entrarTelaCheia = async () => {
+    if (document.fullscreenElement) return;
+    try { await document.documentElement.requestFullscreen(); } catch (e) {}
+    try { await window.screen.orientation.lock('landscape'); } catch (e) {}
+  };
+  // Botão "Sair" da tela inicial: volta para de onde o jogador veio (o card do
+  // Alps OS, aberto na mesma aba). Se o jogo estiver embutido (onVoltar), usa-o.
+  const sair = () => { if (onVoltar) onVoltar(); else window.history.back(); };
   const alternarZoom = () => {
     const novo = !zoomPerto; setZoomPerto(novo);
     zoomAlvoRef.current = novo ? ZOOM_PERTO : 1;
@@ -802,27 +823,88 @@ export default function ProjetoArmor({ onVoltar }) {
         </div>
       )}
       {fase === 'pronto' && paisagem && (
-        <div style={{ ...es.overlay, backgroundColor: 'transparent', backdropFilter: 'none' }}>
+        // Tela inicial = só o vídeo. Um toque em qualquer lugar entra em tela
+        // cheia; os botões "Jogar" (inicia) e "Sair" (volta) ficam sobre o vídeo.
+        <div style={es.overlayVideo} onClick={entrarTelaCheia} onContextMenu={(e) => e.preventDefault()}>
+          {/* Vídeo do personagem: toca uma vez ao acessar e congela no último
+              quadro (personagem encarando a câmera). Ao voltar do jogo não
+              reinicia — mostra direto o último quadro. */}
           <video
+            ref={videoIntroRef}
             style={es.videoIntro}
             src="/armor-intro.mp4"
-            autoPlay
             muted
             playsInline
             preload="auto"
-            onEnded={(e) => {
-              // Trava no último frame: personagem encarando a câmera de frente.
+            onLoadedMetadata={(e) => {
               const v = e.currentTarget;
-              v.pause();
-              if (isFinite(v.duration)) v.currentTime = v.duration;
+              if (introTocadaRef.current) {
+                try {
+                  if (isFinite(v.duration)) v.currentTime = Math.max(0, v.duration - 0.05);
+                  v.pause();
+                } catch (err) {}
+              } else {
+                v.play().catch(() => {});
+              }
+            }}
+            onEnded={(e) => {
+              const v = e.currentTarget;
+              introTocadaRef.current = true;
+              try {
+                v.pause();
+                if (isFinite(v.duration)) v.currentTime = Math.max(0, v.duration - 0.05);
+              } catch (err) {}
             }}
           />
-          <div style={es.videoGradiente} />
-          <div style={es.inicioConteudo}>
-            <p style={es.titulo}>PROJETO ARMOR</p>
-            <p style={{ ...es.txtPeq, marginBottom: 8 }}>Capítulo 1 — O Despertar</p>
-            <p style={{ ...es.txtPeq, fontSize: 10, marginBottom: 26, opacity: 0.7 }}>Esquerda move · Direita mira · Tiro · Míssil · Voar</p>
-            <button onClick={entrar} style={es.botaoEntrar}>▶ ENTRAR NO MUNDO</button>
+          {/* Botões Jogar/Sair sobre o vídeo: invisíveis em repouso; ao segurar,
+              acendem e saltam ~1,3x a partir do centro. */}
+          {BOTOES_INICIO.map((b) => (
+            <div
+              key={b.id}
+              role="button"
+              aria-label={b.id}
+              onPointerDown={() => setBotaoPressionado(b.id)}
+              onPointerUp={() => setBotaoPressionado(null)}
+              onPointerLeave={() => setBotaoPressionado((p) => (p === b.id ? null : p))}
+              onPointerCancel={() => setBotaoPressionado(null)}
+              onContextMenu={(e) => e.preventDefault()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (b.id === 'jogar') entrar();
+                else if (b.id === 'sair') sair();
+              }}
+              style={{
+                position: 'absolute',
+                left: `${b.cx}%`,
+                top: `${b.cy}%`,
+                width: `${b.w}%`,
+                aspectRatio: `${b.aspect}`,
+                backgroundImage: `url(${b.src})`,
+                backgroundSize: 'contain',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                transformOrigin: 'center',
+                transform: `translate(-50%, -50%) scale(${botaoPressionado === b.id ? 1.3 : 1})`,
+                opacity: botaoPressionado === b.id ? 1 : 0,
+                transition: 'transform 0.12s ease, opacity 0.12s ease',
+                zIndex: 3,
+                cursor: 'pointer',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                WebkitTouchCallout: 'none',
+                touchAction: 'none',
+              }}
+            />
+          ))}
+          {/* Perfil do usuário no canto superior direito do vídeo: silhueta
+              branca (asset) + nome e nível em texto (Rajdhani). Não captura
+              toque, então tocar aqui ainda entra em tela cheia. */}
+          <div style={es.perfilBox}>
+            <img src="/silhueta-usuario.png" alt="" style={es.perfilFoto} draggable={false} />
+            <div style={es.perfilTxt}>
+              <span style={es.perfilNome}>Seu nome</span>
+              <span style={es.perfilNivel}>Nível 0</span>
+            </div>
           </div>
         </div>
       )}
@@ -857,11 +939,16 @@ const es = {
   voltar: { position: 'absolute', top: 30, left: 16, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, color: '#8E8E93', fontSize: 13, padding: '6px 13px', cursor: 'pointer', zIndex: 30 },
   overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, backdropFilter: 'blur(4px)', fontFamily: 'monospace' },
   txtRodar: { color: '#7dd3fc', fontSize: 'clamp(20px,6vw,30px)', fontWeight: 700, letterSpacing: '2px', textShadow: '2px 2px 0 #0a3d62', margin: 0 },
-  titulo: { color: '#F0C040', fontSize: 'clamp(26px,7vw,42px)', fontWeight: 800, letterSpacing: '0.18em', margin: 0, textAlign: 'center', textShadow: '0 0 24px rgba(240,192,64,0.5)' },
   txtGrande: { color: '#F0C040', fontSize: 19, fontWeight: 700, letterSpacing: '0.18em', margin: '0 0 8px' },
   txtPeq: { color: '#8E8E93', fontSize: 12, letterSpacing: '0.1em', margin: 0 },
-  botaoEntrar: { background: '#F0C040', border: 'none', borderRadius: 14, color: '#16161C', fontWeight: 800, fontSize: 15, padding: '15px 32px', cursor: 'pointer', fontFamily: 'monospace', letterSpacing: '0.1em', boxShadow: '0 0 30px rgba(240,192,64,0.35)' },
   videoIntro: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, backgroundColor: '#000' },
-  videoGradiente: { position: 'absolute', inset: 0, zIndex: 1, background: 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.15) 32%, rgba(0,0,0,0.25) 60%, rgba(0,0,0,0.78) 100%)' },
-  inicioConteudo: { position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
+  // Tela inicial: só o vídeo (fundo transparente), com botões/perfil por cima.
+  overlayVideo: { position: 'absolute', inset: 0, zIndex: 20, overflow: 'hidden', cursor: 'pointer' },
+  // Perfil no canto superior direito do vídeo: silhueta à esquerda, nome em
+  // cima e nível logo abaixo.
+  perfilBox: { position: 'absolute', left: '72%', top: '3.6%', width: '20.5%', height: '17%', display: 'flex', alignItems: 'center', boxSizing: 'border-box', zIndex: 3, pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', fontFamily: "'Rajdhani', sans-serif" },
+  perfilFoto: { position: 'absolute', left: '16%', top: '50%', transform: 'translate(-50%, -50%)', height: '82%', aspectRatio: '1', objectFit: 'contain', filter: 'drop-shadow(0 0 5px rgba(0,0,0,0.55))' },
+  perfilTxt: { display: 'flex', flexDirection: 'column', justifyContent: 'center', lineHeight: 1.12, minWidth: 0, marginLeft: '40%' },
+  perfilNome: { color: '#FFFFFF', fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: 'clamp(12px,2.3vw,28px)', letterSpacing: '0.01em', whiteSpace: 'nowrap', textShadow: '0 1px 5px rgba(0,0,0,0.7)' },
+  perfilNivel: { color: '#FFFFFF', fontFamily: "'Rajdhani', sans-serif", fontWeight: 500, fontSize: 'clamp(11px,2.0vw,24px)', letterSpacing: '0.01em', whiteSpace: 'nowrap', textShadow: '0 1px 5px rgba(0,0,0,0.7)' },
 };
