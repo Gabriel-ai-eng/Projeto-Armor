@@ -450,11 +450,6 @@ export default function ProjetoArmor({ onVoltar }) {
       if (lum > 0.01) { ctx.fillStyle = rgbaStr([170, 200, 230], lum * 0.1); ctx.fillRect(leftW, dyImg, rightW - leftW, ghW + 300); }
 
       const corpoY = superficie - p.y;            // sobe ao pular/voar
-      const gy = corpoY - ALTURA_ARMOR * 0.62;
-      const glow = ctx.createRadialGradient(p.x, gy, 5, p.x, gy, 80);
-      glow.addColorStop(0, (correndo || g.flying) ? 'rgba(110,216,255,0.32)' : 'rgba(110,216,255,0.2)');
-      glow.addColorStop(1, 'rgba(110,216,255,0)');
-      ctx.fillStyle = glow; ctx.fillRect(p.x - 80, gy - 80, 160, 160);
 
       // jato ao voar (sob os pés)
       if (g.flying || p.y > 3) {
