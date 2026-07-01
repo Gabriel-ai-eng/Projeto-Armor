@@ -690,6 +690,26 @@ export default function ProjetoArmor({ onVoltar }) {
     } else aplicar(null);
   };
 
+  // ---------- REPRODUÇÃO DA INTRO ----------
+  // Toca do começo na 1ª vez que a tela inicial aparece em paisagem (personagem
+  // surge do escuro); depois fica parada no último quadro. NÃO recomeça em
+  // Jogar → Voltar, pois o vídeo permanece montado e introTocadaRef continua
+  // true. Só recomeça quando o componente é remontado (usuário foi para a Home
+  // e voltou), pois aí introTocadaRef zera.
+  useEffect(() => {
+    if (fase !== 'pronto' || !paisagem) return;
+    const v = videoIntroRef.current;
+    if (!v) return;
+    if (introTocadaRef.current) {
+      try {
+        if (isFinite(v.duration) && v.duration) v.currentTime = Math.max(0, v.duration - 0.05);
+        v.pause();
+      } catch (err) {}
+    } else {
+      v.play().catch(() => {});
+    }
+  }, [fase, paisagem]);
+
   return createPortal(
     <div style={es.fundo}>
       <canvas ref={canvasRef} className="armor-canvas" style={es.canvas} />
@@ -775,13 +795,20 @@ export default function ProjetoArmor({ onVoltar }) {
           <p style={es.txtRodar}>VIRE O CELULAR</p>
         </div>
       )}
-      {fase === 'pronto' && paisagem && (
-        // Tela inicial = só o vídeo. Um toque em qualquer lugar entra em tela
-        // cheia; os botões "Jogar" (inicia) e "Sair" (volta) ficam sobre o vídeo.
-        <div style={es.overlayVideo} onClick={entrarTelaCheia} onContextMenu={(e) => e.preventDefault()}>
-          {/* Vídeo do personagem: toca uma vez ao acessar e congela no último
-              quadro (personagem encarando a câmera). Ao voltar do jogo não
-              reinicia — mostra direto o último quadro. */}
+      {(fase === 'pronto' || fase === 'jogando') && (
+        // O vídeo da tela inicial fica sempre montado enquanto o jogo está
+        // aberto (pronto/jogando); só some (display:none) durante a partida.
+        // Assim, Jogar → Voltar retorna EXATAMENTE ao mesmo quadro pausado
+        // (personagem de frente), sem recarregar nem recomeçar. A intro só
+        // toca de novo quando o componente remonta (saiu para a Home e voltou).
+        <div
+          style={{ ...es.overlayVideo, display: fase === 'pronto' && paisagem ? 'block' : 'none' }}
+          onClick={fase === 'pronto' ? entrarTelaCheia : undefined}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          {/* Vídeo do personagem. A reprodução é controlada pelo useEffect da
+              intro: toca do começo na 1ª vez em paisagem e congela no último
+              quadro; onEnded marca que já tocou. */}
           <video
             ref={videoIntroRef}
             style={es.videoIntro}
@@ -789,17 +816,6 @@ export default function ProjetoArmor({ onVoltar }) {
             muted
             playsInline
             preload="auto"
-            onLoadedMetadata={(e) => {
-              const v = e.currentTarget;
-              if (introTocadaRef.current) {
-                try {
-                  if (isFinite(v.duration)) v.currentTime = Math.max(0, v.duration - 0.05);
-                  v.pause();
-                } catch (err) {}
-              } else {
-                v.play().catch(() => {});
-              }
-            }}
             onEnded={(e) => {
               const v = e.currentTarget;
               introTocadaRef.current = true;
@@ -809,6 +825,8 @@ export default function ProjetoArmor({ onVoltar }) {
               } catch (err) {}
             }}
           />
+          {fase === 'pronto' && (
+            <>
           {/* Botões Jogar/Sair sobre o vídeo: invisíveis em repouso; ao segurar,
               acendem e saltam ~1,3x a partir do centro. */}
           {BOTOES_INICIO.map((b) => (
@@ -864,6 +882,8 @@ export default function ProjetoArmor({ onVoltar }) {
               <span style={es.perfilNivel}>Nível 0</span>
             </div>
           </div>
+            </>
+          )}
         </div>
       )}
 
