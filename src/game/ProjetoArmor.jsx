@@ -61,7 +61,6 @@ const lerpArr = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
 const rgbStr = (a) => `rgb(${Math.round(a[0])},${Math.round(a[1])},${Math.round(a[2])})`;
 const rgbaStr = (a, al) => `rgba(${Math.round(a[0])},${Math.round(a[1])},${Math.round(a[2])},${al})`;
 const suave = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-const dist2 = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
 
 // Altura do pulo roteirizado em função do frame da animação: meia onda de seno
 // entre o frame de impulso e o de aterrissagem (0 antes/depois → pés no chão).
@@ -91,20 +90,6 @@ function faseDia(h, sr, ss) {
   return { lum, twi: Math.max(0, 1 - Math.abs(lum - 0.5) * 2) };
 }
 
-// posições da HUD (dependem da largura visível VW)
-function calcHUD(VW) {
-  const R = 38, m = 24;
-  return {
-    R,
-    moverBase: { x: m + R + 6, y: ALT - m - R },
-    mirarBase: { x: VW - (m + R + 6), y: ALT - m - R },
-    botoes: [
-      { id: 'tiro',   x: VW - 172, y: ALT - 92,  r: 24, cor: AZUL_RGB },
-      { id: 'missil', x: VW - 150, y: ALT - 148, r: 20, cor: OURO_RGB },
-      { id: 'voar',   x: VW - 96,  y: ALT - 162, r: 22, cor: FLY_RGB },
-    ],
-  };
-}
 
 // Botões "Jogar" e "Sair" desenhados sobre o vídeo da tela inicial: invisíveis
 // em repouso, saltam (~1,3x) e acendem ao serem pressionados. Posições/tamanhos
@@ -127,6 +112,9 @@ export default function ProjetoArmor({ onVoltar }) {
   const [relogioAtivo, setRelogioAtivo] = useState(false);
   const [horaTexto, setHoraTexto] = useState('--:--');
   const [botaoPressionado, setBotaoPressionado] = useState(null); // 'jogar' | 'sair' | null
+  const [knobOff, setKnobOff] = useState({ x: 0, y: 0 }); // knob do joystick de mover
+  const [miraOff, setMiraOff] = useState({ x: 0, y: 0 }); // knob do joystick de mirar
+  const [voarAtivo, setVoarAtivo] = useState(false);      // feedback visual do botão de voar
   const [paisagem, setPaisagem] = useState(
     typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : true
   );
@@ -140,6 +128,13 @@ export default function ProjetoArmor({ onVoltar }) {
   const imgsRef = useRef({ andar: null, correr: null, chao: null, pular: null, calibAndar: null, calibCorrer: null, chaoCalib: null });
   const videoIntroRef = useRef(null);
   const introTocadaRef = useRef(false); // true depois que a intro tocou uma vez
+  // Joysticks por imagem (leitura entregue ao loop do jogo via refs).
+  const moveRef = useRef({ x: 0, mag: 0 });   // mover: x = -1..1, mag = 0..1
+  const joyBaseRef = useRef(null);
+  const joyPointerRef = useRef(null);
+  const aimRef = useRef({ active: false, ang: 0 }); // mirar: direção + se dispara
+  const miraBaseRef = useRef(null);
+  const miraPointerRef = useRef(null);
 
   // ---------- CARREGAMENTO + AUTOCALIBRAÇÃO ----------
   useEffect(() => {
@@ -293,152 +288,9 @@ export default function ProjetoArmor({ onVoltar }) {
     const ctx = canvas.getContext('2d');
     let raf;
 
-    const mapa = (cx, cy) => {
-      const r = canvas.getBoundingClientRect(); const s = r.height / ALT;
-      return { x: (cx - r.left) / s, y: (cy - r.top) / s };
-    };
-
-    // ---- botão de voar: 1 toque = pulo · 2 toques + segurar = voar ----
-    const voarDown = () => {
-      const g = G.current, now = performance.now();
-      if (now - g.lastFlyDown < 320) { g.flying = true; g.jump = null; }  // 2º toque rápido → voa (cancela o pulo)
-      else if (g.p.y <= 2 && !g.jump) g.jump = { f: 0 };                  // toque único no chão → anima o pulo
-      g.lastFlyDown = now;
-    };
-    const voarUp = () => { G.current.flying = false; };        // soltar → cai
-
-    const onTS = (e) => {
-      e.preventDefault();
-      const g = G.current, VW = canvas.width / RENDER_SCALE, hud = calcHUD(VW);
-      for (const t of e.changedTouches) {
-        const p = mapa(t.clientX, t.clientY);
-        // 1) botões (prioridade)
-        let pego = false;
-        for (const b of hud.botoes) {
-          if (dist2(p.x, p.y, b.x, b.y) <= b.r + 8) {
-            g.toques[t.identifier] = { tipo: 'btn', botao: b.id };
-            if (b.id === 'tiro') g.tiroHeld = true;
-            else if (b.id === 'missil') g.missilQueued = true;
-            else if (b.id === 'voar') voarDown();
-            pego = true; break;
-          }
-        }
-        if (pego) continue;
-        // 2) sticks flutuantes por lado
-        if (p.x < VW / 2) g.toques[t.identifier] = { tipo: 'mover', bx: p.x, by: p.y, cx: p.x, cy: p.y };
-        else g.toques[t.identifier] = { tipo: 'mirar', bx: p.x, by: p.y, cx: p.x, cy: p.y };
-      }
-    };
-    const onTM = (e) => {
-      e.preventDefault();
-      const g = G.current;
-      for (const t of e.changedTouches) {
-        const tq = g.toques[t.identifier];
-        if (!tq || tq.tipo === 'btn') continue;
-        const p = mapa(t.clientX, t.clientY); tq.cx = p.x; tq.cy = p.y;
-      }
-    };
-    const endTouch = (e) => {
-      const g = G.current;
-      for (const t of e.changedTouches) {
-        const tq = g.toques[t.identifier];
-        if (tq && tq.tipo === 'btn') {
-          if (tq.botao === 'tiro') g.tiroHeld = false;
-          else if (tq.botao === 'voar') voarUp();
-        }
-        delete g.toques[t.identifier];
-      }
-    };
-    canvas.addEventListener('touchstart', onTS, { passive: false });
-    canvas.addEventListener('touchmove', onTM, { passive: false });
-    canvas.addEventListener('touchend', endTouch);
-    canvas.addEventListener('touchcancel', endTouch);
-
-    // ===== ÍCONES DESENHADOS À MÃO =====
-    const icone = (id, cx, cy, s, cor) => {
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.strokeStyle = cor; ctx.fillStyle = cor;
-      ctx.lineWidth = Math.max(1.6, s * 0.13);
-      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.shadowColor = cor; ctx.shadowBlur = 6;
-      if (id === 'tiro') {                          // mira
-        ctx.beginPath(); ctx.arc(0, 0, s * 0.52, 0, 7); ctx.stroke();
-        for (let k = 0; k < 4; k++) {
-          const a = k * Math.PI / 2;
-          ctx.beginPath();
-          ctx.moveTo(Math.cos(a) * s * 0.52, Math.sin(a) * s * 0.52);
-          ctx.lineTo(Math.cos(a) * s * 0.92, Math.sin(a) * s * 0.92);
-          ctx.stroke();
-        }
-        ctx.beginPath(); ctx.arc(0, 0, s * 0.12, 0, 7); ctx.fill();
-      } else if (id === 'missil') {                 // foguete
-        ctx.beginPath();
-        ctx.moveTo(0, -s * 0.85);                   // nariz
-        ctx.lineTo(s * 0.28, -s * 0.2);
-        ctx.lineTo(s * 0.28, s * 0.45);
-        ctx.lineTo(-s * 0.28, s * 0.45);
-        ctx.lineTo(-s * 0.28, -s * 0.2);
-        ctx.closePath(); ctx.fill();
-        ctx.beginPath();                            // aletas
-        ctx.moveTo(s * 0.28, s * 0.2); ctx.lineTo(s * 0.6, s * 0.55); ctx.lineTo(s * 0.28, s * 0.45);
-        ctx.moveTo(-s * 0.28, s * 0.2); ctx.lineTo(-s * 0.6, s * 0.55); ctx.lineTo(-s * 0.28, s * 0.45);
-        ctx.fill();
-        ctx.fillStyle = rgbaStr([255, 150, 60], 0.9); // chama
-        ctx.beginPath(); ctx.moveTo(0, s * 0.92); ctx.lineTo(s * 0.16, s * 0.5); ctx.lineTo(-s * 0.16, s * 0.5); ctx.closePath(); ctx.fill();
-      } else if (id === 'voar') {                   // impulso/asas (setas p/ cima)
-        for (let k = 0; k < 2; k++) {
-          const yo = -s * 0.12 + k * s * 0.42;
-          ctx.beginPath();
-          ctx.moveTo(-s * 0.6, yo + s * 0.3);
-          ctx.lineTo(0, yo - s * 0.25);
-          ctx.lineTo(s * 0.6, yo + s * 0.3);
-          ctx.stroke();
-        }
-      }
-      ctx.restore();
-    };
-
-    const desenharBotao = (b, pressed) => {
-      const g1 = ctx.createRadialGradient(b.x, b.y, 2, b.x, b.y, b.r);
-      g1.addColorStop(0, rgbaStr([28, 40, 64], pressed ? 0.5 : 0.26));
-      g1.addColorStop(1, rgbaStr([10, 16, 28], pressed ? 0.32 : 0.12));
-      ctx.fillStyle = g1;
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill();
-      ctx.lineWidth = 1.6;
-      ctx.strokeStyle = pressed ? rgbaStr(b.cor, 0.95) : 'rgba(255,255,255,0.2)';
-      ctx.shadowColor = pressed ? rgbaStr(b.cor, 0.9) : 'rgba(0,0,0,0)';
-      ctx.shadowBlur = pressed ? 12 : 0;
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.stroke();
-      ctx.shadowBlur = 0;
-      icone(b.id, b.x, b.y, b.r * 0.78, rgbaStr(b.cor, pressed ? 1 : 0.82));
-    };
-
-    const desenharStick = (cx, cy, R, kx, ky, ativo, cor) => {
-      // anel base
-      ctx.strokeStyle = rgbaStr([255, 255, 255], ativo ? 0.22 : 0.1);
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
-      // ticks discretos
-      ctx.strokeStyle = rgbaStr([255, 255, 255], ativo ? 0.14 : 0.07);
-      ctx.lineWidth = 1.4;
-      for (let k = 0; k < 4; k++) {
-        const a = k * Math.PI / 2;
-        ctx.beginPath();
-        ctx.moveTo(cx + Math.cos(a) * (R - 6), cy + Math.sin(a) * (R - 6));
-        ctx.lineTo(cx + Math.cos(a) * (R - 1), cy + Math.sin(a) * (R - 1));
-        ctx.stroke();
-      }
-      if (ativo) {
-        const g = ctx.createRadialGradient(kx, ky, 1, kx, ky, 16);
-        g.addColorStop(0, rgbaStr(cor, 0.55));
-        g.addColorStop(1, rgbaStr(cor, 0.12));
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(kx, ky, 15, 0, 7); ctx.fill();
-        ctx.strokeStyle = rgbaStr([255, 255, 255], 0.32); ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(kx, ky, 15, 0, 7); ctx.stroke();
-      }
-    };
+    // Controles (joysticks de mover/mirar e botão de voar) são elementos DOM
+    // por imagem — ver JSX/handlers no componente. O canvas não captura mais
+    // toques nem desenha HUD.
 
     const passo = () => {
       raf = requestAnimationFrame(passo);
@@ -450,26 +302,10 @@ export default function ProjetoArmor({ onVoltar }) {
       ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
       const VW = canvas.width / RENDER_SCALE; g.t++;
       if (window.innerWidth <= window.innerHeight) return;
-      const hud = calcHUD(VW);
-
-      // ===== INPUT (mover + mirar) =====
-      let mx = 0, intensidade = 0, aimActive = false, aimAng = 0;
-      let moverAtivo = null, mirarAtivo = null;
-      for (const id in g.toques) {
-        const tq = g.toques[id];
-        if (tq.tipo === 'mover') {
-          let dx = tq.cx - tq.bx;
-          const mag = Math.min(Math.abs(dx), hud.R);
-          if (Math.abs(dx) > hud.R) dx = Math.sign(dx) * hud.R;
-          mx = dx / hud.R; intensidade = Math.max(intensidade, mag / hud.R);
-          moverAtivo = { bx: tq.bx, by: tq.by, kx: tq.bx + dx, ky: clampKnob(tq.by, tq.cy, hud.R) };
-        } else if (tq.tipo === 'mirar') {
-          const dx = tq.cx - tq.bx, dy = tq.cy - tq.by, mag = Math.hypot(dx, dy);
-          if (mag > 7) { aimActive = true; aimAng = Math.atan2(dy, dx); }
-          const cl = Math.min(mag, hud.R) / (mag || 1);
-          mirarAtivo = { bx: tq.bx, by: tq.by, kx: tq.bx + dx * cl, ky: tq.by + dy * cl };
-        }
-      }
+      // ===== INPUT (mover + mirar) — vem dos joysticks DOM (por imagem) =====
+      const mv = moveRef.current, am = aimRef.current;
+      const mx = mv.x, intensidade = mv.mag;
+      const aimActive = am.active, aimAng = am.ang;
 
       // ===== FÍSICA HORIZONTAL =====
       const p = g.p;
@@ -679,17 +515,13 @@ export default function ProjetoArmor({ onVoltar }) {
       }
 
       // ===== ARMAS: disparar =====
+      // ===== ARMA: dispara sozinho enquanto a mira está ativa =====
       if (g.tiroCd > 0) g.tiroCd--;
-      if (g.missilCd > 0) g.missilCd--;
       const dir = aimActive ? { x: Math.cos(aimAng), y: Math.sin(aimAng) } : { x: p.face, y: 0 };
-      if (g.tiroHeld && g.tiroCd <= 0) {
+      if (aimActive && g.tiroCd <= 0) {
         g.projeteis.push({ tipo: 'tiro', x: ox + dir.x * 12, y: oy + dir.y * 12, vx: dir.x * VEL_TIRO, vy: dir.y * VEL_TIRO, vida: 90 });
         g.tiroCd = COOLDOWN_TIRO;
         if (g.projeteis.length > 90) g.projeteis.shift();
-      }
-      if (g.missilQueued && g.missilCd <= 0) {
-        g.projeteis.push({ tipo: 'missil', x: ox + dir.x * 14, y: oy + dir.y * 14, vx: dir.x * VEL_MISSIL, vy: dir.y * VEL_MISSIL, vida: 150 });
-        g.missilCd = COOLDOWN_MISSIL; g.missilQueued = false;
       }
 
       // atualizar + desenhar projéteis (espaço do mundo)
@@ -730,27 +562,13 @@ export default function ProjetoArmor({ onVoltar }) {
       vin.addColorStop(0, 'rgba(0,0,0,0)'); vin.addColorStop(1, `rgba(0,0,0,${0.42 * (1 - lum * 0.5)})`);
       ctx.fillStyle = vin; ctx.fillRect(0, 0, VW, ALT);
 
-      // ===== HUD (sticks + botões), translúcida e por cima =====
-      // home discreto dos sticks
-      if (!moverAtivo) desenharStick(hud.moverBase.x, hud.moverBase.y, hud.R, 0, 0, false, AZUL_RGB);
-      else desenharStick(moverAtivo.bx, moverAtivo.by, hud.R, moverAtivo.kx, moverAtivo.ky, true, correndo ? AZUL_RGB : [220, 230, 245]);
-      if (!mirarAtivo) desenharStick(hud.mirarBase.x, hud.mirarBase.y, hud.R, 0, 0, false, AZUL_RGB);
-      else desenharStick(mirarAtivo.bx, mirarAtivo.by, hud.R, mirarAtivo.kx, mirarAtivo.ky, true, AZUL_RGB);
-
-      const pressed = {};
-      for (const id in g.toques) { const tq = g.toques[id]; if (tq.tipo === 'btn') pressed[tq.botao] = true; }
-      for (const b of hud.botoes) desenharBotao(b, !!pressed[b.id] || (b.id === 'tiro' && g.tiroHeld) || (b.id === 'voar' && g.flying));
+      // ===== HUD: joysticks e botão de voar são DOM por imagem (ver JSX) =====
     };
 
-    const clampKnob = (by, cy, R) => { const d = cy - by; return by + Math.max(-R, Math.min(R, d)); };
 
     raf = requestAnimationFrame(passo);
     return () => {
       cancelAnimationFrame(raf);
-      canvas.removeEventListener('touchstart', onTS);
-      canvas.removeEventListener('touchmove', onTM);
-      canvas.removeEventListener('touchend', endTouch);
-      canvas.removeEventListener('touchcancel', endTouch);
     };
   }, [fase]);
 
@@ -769,6 +587,91 @@ export default function ProjetoArmor({ onVoltar }) {
   // Botão "Sair" da tela inicial: volta para de onde o jogador veio (o card do
   // Alps OS, aberto na mesma aba). Se o jogo estiver embutido (onVoltar), usa-o.
   const sair = () => { if (onVoltar) onVoltar(); else window.history.back(); };
+
+  // ---------- JOYSTICK DE MOVER (lado esquerdo) ----------
+  // Base fixa; o knob segue o dedo limitado ao raio. O componente x do
+  // deslocamento vira a velocidade horizontal do personagem.
+  const joyAtualizar = (clientX, clientY) => {
+    const el = joyBaseRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const maxR = (r.width / 2) * 0.58;
+    let dx = clientX - cx, dy = clientY - cy;
+    const d = Math.hypot(dx, dy);
+    if (d > maxR && d > 0) { dx = dx / d * maxR; dy = dy / d * maxR; }
+    setKnobOff({ x: dx, y: dy });
+    moveRef.current = { x: dx / maxR, mag: Math.min(Math.hypot(dx, dy) / maxR, 1) };
+  };
+  const joyInicio = (e) => {
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+    joyPointerRef.current = e.pointerId;
+    joyAtualizar(e.clientX, e.clientY);
+  };
+  const joyMover = (e) => {
+    if (joyPointerRef.current !== e.pointerId) return;
+    joyAtualizar(e.clientX, e.clientY);
+  };
+  const joyFim = (e) => {
+    if (joyPointerRef.current !== e.pointerId) return;
+    joyPointerRef.current = null;
+    setKnobOff({ x: 0, y: 0 });
+    moveRef.current = { x: 0, mag: 0 };
+  };
+
+  // ---------- BOTÃO DE VOAR (lado direito) ----------
+  // 1 toque no chão = pulo animado · 2 toques rápidos + segurar = voar.
+  const voarPress = (e) => {
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+    const g = G.current;
+    if (g) {
+      const now = performance.now();
+      if (now - g.lastFlyDown < 320) { g.flying = true; g.jump = null; } // 2º toque → voa
+      else if (g.p.y <= 2 && !g.jump) g.jump = { f: 0 };                 // no chão → pulo animado
+      g.lastFlyDown = now;
+    }
+    setVoarAtivo(true);
+  };
+  const voarRelease = () => {
+    const g = G.current;
+    if (g) g.flying = false; // soltar → cai
+    setVoarAtivo(false);
+  };
+
+  // ---------- JOYSTICK DE MIRAR (lado direito) ----------
+  // Direção da mira; empurrado além da zona-morta, dispara nessa direção.
+  const miraAtualizar = (clientX, clientY) => {
+    const el = miraBaseRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const maxR = (r.width / 2) * 0.58;
+    let dx = clientX - cx, dy = clientY - cy;
+    const d = Math.hypot(dx, dy);
+    let kx = dx, ky = dy;
+    if (d > maxR && d > 0) { kx = dx / d * maxR; ky = dy / d * maxR; }
+    setMiraOff({ x: kx, y: ky });
+    if (d > maxR * 0.28) aimRef.current = { active: true, ang: Math.atan2(dy, dx) };
+    else aimRef.current = { active: false, ang: 0 };
+  };
+  const miraInicio = (e) => {
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+    miraPointerRef.current = e.pointerId;
+    miraAtualizar(e.clientX, e.clientY);
+  };
+  const miraMover = (e) => {
+    if (miraPointerRef.current !== e.pointerId) return;
+    miraAtualizar(e.clientX, e.clientY);
+  };
+  const miraFim = (e) => {
+    if (miraPointerRef.current !== e.pointerId) return;
+    miraPointerRef.current = null;
+    setMiraOff({ x: 0, y: 0 });
+    aimRef.current = { active: false, ang: 0 };
+  };
   const alternarZoom = () => {
     const novo = !zoomPerto; setZoomPerto(novo);
     zoomAlvoRef.current = novo ? ZOOM_PERTO : 1;
@@ -805,10 +708,60 @@ export default function ProjetoArmor({ onVoltar }) {
               {relogioAtivo ? horaTexto : 'ATIVAR'}
             </span>
           </button>
+
+          {/* Voltar: retorna para a tela inicial do próprio jogo. */}
+          <button onClick={() => setFase('pronto')} style={es.voltar}>← Voltar</button>
+
+          {/* Joystick de MOVER (esquerda): zona transparente capta o toque;
+              base e knob (imagens) ficam por cima sem capturar. */}
+          <div
+            style={es.joyZona}
+            onPointerDown={joyInicio}
+            onPointerMove={joyMover}
+            onPointerUp={joyFim}
+            onPointerCancel={joyFim}
+            onContextMenu={(e) => e.preventDefault()}
+          />
+          <img ref={joyBaseRef} src="/joystick-base.png" alt="" draggable={false} style={es.joyBase} />
+          <img
+            src="/joystick-knob.png"
+            alt=""
+            draggable={false}
+            style={{ ...es.joyKnob, transform: `translate(calc(-50% + ${knobOff.x}px), calc(-50% + ${knobOff.y}px))` }}
+          />
+
+          {/* Botão de VOAR (direita) */}
+          <img
+            src="/botao-voar.png"
+            alt="Voar"
+            draggable={false}
+            onPointerDown={voarPress}
+            onPointerUp={voarRelease}
+            onPointerCancel={voarRelease}
+            onPointerLeave={voarRelease}
+            onContextMenu={(e) => e.preventDefault()}
+            style={{ ...es.botaoVoar, transform: `translate(-50%, -50%) scale(${voarAtivo ? 1.08 : 1})` }}
+          />
+
+          {/* Joystick de MIRAR (direita): zona transparente capta o toque;
+              base e knob (imagens) por cima. Enquanto mira, dispara sozinho. */}
+          <div
+            style={es.miraZona}
+            onPointerDown={miraInicio}
+            onPointerMove={miraMover}
+            onPointerUp={miraFim}
+            onPointerCancel={miraFim}
+            onContextMenu={(e) => e.preventDefault()}
+          />
+          <img ref={miraBaseRef} src="/mira-base.png" alt="" draggable={false} style={es.miraBase} />
+          <img
+            src="/mira-knob.png"
+            alt=""
+            draggable={false}
+            style={{ ...es.miraKnob, transform: `translate(calc(-50% + ${miraOff.x}px), calc(-50% + ${miraOff.y}px))` }}
+          />
         </>
       )}
-
-      {onVoltar && <button onClick={onVoltar} style={es.voltar}>← Sair</button>}
 
       {fase === 'erro' && (
         <div style={es.overlay}>
@@ -942,6 +895,14 @@ const es = {
   botaoZoom: { position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 42, height: 46, borderRadius: 14, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.14)', color: '#8E8E93', cursor: 'pointer', zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'monospace' },
   botaoRelogio: { position: 'absolute', top: 30, right: 16, display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 20, padding: '6px 12px', cursor: 'pointer', zIndex: 30, fontFamily: 'monospace' },
   voltar: { position: 'absolute', top: 30, left: 16, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, color: '#8E8E93', fontSize: 13, padding: '6px 13px', cursor: 'pointer', zIndex: 30 },
+  // ----- HUD por imagem: joysticks de mover/mirar + botão de voar -----
+  joyZona: { position: 'absolute', left: 0, bottom: 0, width: '50%', top: '22%', zIndex: 25, touchAction: 'none', background: 'transparent' },
+  joyBase: { position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1', transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 26 },
+  joyKnob: { position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(38px,5.6vw,62px)', aspectRatio: '1', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27, transition: 'transform 0.07s ease-out' },
+  botaoVoar: { position: 'absolute', left: '78.7%', top: '83.8%', width: 'clamp(54px,7.9vw,90px)', aspectRatio: '1', transformOrigin: 'center', transition: 'transform 0.1s ease', zIndex: 28, cursor: 'pointer', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' },
+  miraZona: { position: 'absolute', left: '50%', top: '22%', right: 0, bottom: 0, zIndex: 25, touchAction: 'none', background: 'transparent' },
+  miraBase: { position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1', transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 26 },
+  miraKnob: { position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(48px,7.1vw,80px)', aspectRatio: '1', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27, transition: 'transform 0.04s ease-out' },
   overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, backdropFilter: 'blur(4px)', fontFamily: 'monospace' },
   txtRodar: { color: '#7dd3fc', fontSize: 'clamp(20px,6vw,30px)', fontWeight: 700, letterSpacing: '2px', textShadow: '2px 2px 0 #0a3d62', margin: 0 },
   txtGrande: { color: '#F0C040', fontSize: 19, fontWeight: 700, letterSpacing: '0.18em', margin: '0 0 8px' },
