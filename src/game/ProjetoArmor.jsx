@@ -896,11 +896,16 @@ export default function ProjetoArmor({ onVoltar }) {
               }}
             />
           ))}
-          {/* Perfil do usuário no canto superior direito do vídeo: silhueta
-              branca (asset) + nome e nível em texto (Rajdhani). Não captura
-              toque, então tocar aqui ainda entra em tela cheia. */}
+          {/* Perfil do usuário no canto superior direito do vídeo. Tudo em
+              código: a silhueta é um SVG (avatar genérico) e nome/nível são
+              texto (Rajdhani). Não captura toque, então tocar aqui ainda
+              entra em tela cheia. */}
           <div style={es.perfilBox}>
-            <img src="/silhueta-usuario.png" alt="" style={es.perfilFoto} draggable={false} />
+            <svg viewBox="0 0 64 64" style={es.perfilFoto} aria-hidden="true" focusable="false">
+              {/* cabeça + ombros de um avatar genérico, branco */}
+              <circle cx="32" cy="23" r="13" fill="#FFFFFF" />
+              <path d="M8 57c0-13.3 10.7-20 24-20s24 6.7 24 20v3H8z" fill="#FFFFFF" />
+            </svg>
             <div style={es.perfilTxt}>
               <span style={es.perfilNome}>Seu nome</span>
               <span style={es.perfilNivel}>Nível 0</span>
