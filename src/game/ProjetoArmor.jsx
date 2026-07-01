@@ -212,18 +212,39 @@ export default function ProjetoArmor({ onVoltar }) {
 
   // ---------- ORIENTAÇÃO + CANVAS 2x ----------
   useEffect(() => {
+    // O matchMedia reflete a orientação real no exato instante da virada; o
+    // window.innerWidth costuma ficar defasado durante a rotação, o que atrasava
+    // a troca para a tela do vídeo. Por isso a orientação passa a ser decidida
+    // pelo matchMedia (com fallback para as dimensões da janela).
+    const mqLandscape = window.matchMedia('(orientation: landscape)');
     const redimensionar = () => {
       const ww = window.innerWidth, wh = window.innerHeight;
-      setPaisagem(ww > wh);
+      const landscape = mqLandscape.matches || ww > wh;
+      setPaisagem(landscape);
+      // Ao virar para horizontal, tenta entrar em tela cheia automaticamente.
+      // Obs.: a maioria dos navegadores só permite tela cheia a partir de um
+      // gesto do usuário; quando a rotação não conta como gesto, isto falha em
+      // silêncio e o toque na tela (entrarTelaCheia) continua valendo.
+      if (landscape && !document.fullscreenElement) {
+        try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (e) {}
+        try { window.screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
+      }
       const c = canvasRef.current;
       if (c) { c.height = ALT * RENDER_SCALE; c.width = Math.max(480, Math.round(ALT * ww / wh)) * RENDER_SCALE; }
     };
     redimensionar();
     window.addEventListener('resize', redimensionar);
     window.addEventListener('orientationchange', redimensionar);
+    // Estes disparam no momento exato da virada → vídeo aparece instantâneo.
+    if (mqLandscape.addEventListener) mqLandscape.addEventListener('change', redimensionar);
+    else if (mqLandscape.addListener) mqLandscape.addListener(redimensionar);
+    try { window.screen.orientation.addEventListener('change', redimensionar); } catch (e) {}
     return () => {
       window.removeEventListener('resize', redimensionar);
       window.removeEventListener('orientationchange', redimensionar);
+      if (mqLandscape.removeEventListener) mqLandscape.removeEventListener('change', redimensionar);
+      else if (mqLandscape.removeListener) mqLandscape.removeListener(redimensionar);
+      try { window.screen.orientation.removeEventListener('change', redimensionar); } catch (e) {}
     };
   }, []);
 
