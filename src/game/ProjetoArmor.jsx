@@ -451,15 +451,6 @@ export default function ProjetoArmor({ onVoltar }) {
 
       const corpoY = superficie - p.y;            // sobe ao pular/voar
 
-      // jato ao voar (sob os pés)
-      if (g.flying || p.y > 3) {
-        const jy = corpoY;
-        const jato = ctx.createRadialGradient(p.x, jy, 2, p.x, jy, 34);
-        jato.addColorStop(0, 'rgba(150,225,255,0.5)'); jato.addColorStop(1, 'rgba(150,225,255,0)');
-        ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = jato;
-        ctx.fillRect(p.x - 34, jy - 10, 68, 44); ctx.globalCompositeOperation = 'source-over';
-      }
-
       // PROJETO ARMOR
       const flip = (p.face === 1) !== (SPRITE_OLHA_PARA === 'direita');
       if (emPulo) {
