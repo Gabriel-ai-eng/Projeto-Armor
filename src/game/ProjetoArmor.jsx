@@ -127,7 +127,9 @@ export default function ProjetoArmor({ onVoltar }) {
   const latRef = useRef(null);
   const imgsRef = useRef({ andar: null, correr: null, chao: null, pular: null, calibAndar: null, calibCorrer: null, chaoCalib: null });
   const videoIntroRef = useRef(null);
-  const introTocadaRef = useRef(false); // true depois que a intro tocou uma vez
+  // Guarda a orientação anterior para detectar a transição retrato→paisagem
+  // (é o único gatilho que inicia o vídeo da intro).
+  const prevPaisagemRef = useRef(false);
   // Joysticks por imagem (leitura entregue ao loop do jogo via refs).
   const moveRef = useRef({ x: 0, mag: 0 });   // mover: x = -1..1, mag = 0..1
   const joyBaseRef = useRef(null);
@@ -691,23 +693,22 @@ export default function ProjetoArmor({ onVoltar }) {
   };
 
   // ---------- REPRODUÇÃO DA INTRO ----------
-  // Toca do começo na 1ª vez que a tela inicial aparece em paisagem (personagem
-  // surge do escuro); depois fica parada no último quadro. NÃO recomeça em
-  // Jogar → Voltar, pois o vídeo permanece montado e introTocadaRef continua
-  // true. Só recomeça quando o componente é remontado (usuário foi para a Home
-  // e voltou), pois aí introTocadaRef zera.
+  // A intro toca do começo (personagem surge do escuro) SOMENTE no momento em
+  // que o celular vira para paisagem estando na tela inicial (transição
+  // retrato→paisagem). Depois congela no último quadro (onEnded).
+  // - Jogar → Voltar: não há virada, então NÃO recomeça (o vídeo fica montado
+  //   e parado no mesmo quadro).
+  // - Sair para a Home e voltar: o componente remonta (prevPaisagemRef zera) e,
+  //   ao virar o celular de novo, o vídeo toca outra vez.
   useEffect(() => {
-    if (fase !== 'pronto' || !paisagem) return;
+    if (fase !== 'pronto') return;         // só conta na tela inicial
+    const was = prevPaisagemRef.current;
+    prevPaisagemRef.current = paisagem;
+    if (!paisagem || was) return;          // precisa ser a transição p/ paisagem
     const v = videoIntroRef.current;
     if (!v) return;
-    if (introTocadaRef.current) {
-      try {
-        if (isFinite(v.duration) && v.duration) v.currentTime = Math.max(0, v.duration - 0.05);
-        v.pause();
-      } catch (err) {}
-    } else {
-      v.play().catch(() => {});
-    }
+    try { v.currentTime = 0; } catch (err) {}
+    v.play().catch(() => {});
   }, [fase, paisagem]);
 
   return createPortal(
@@ -806,9 +807,9 @@ export default function ProjetoArmor({ onVoltar }) {
           onClick={fase === 'pronto' ? entrarTelaCheia : undefined}
           onContextMenu={(e) => e.preventDefault()}
         >
-          {/* Vídeo do personagem. A reprodução é controlada pelo useEffect da
-              intro: toca do começo na 1ª vez em paisagem e congela no último
-              quadro; onEnded marca que já tocou. */}
+          {/* Vídeo do personagem. A reprodução é iniciada pelo useEffect da
+              intro (só na virada para paisagem); aqui apenas congelamos no
+              último quadro quando o vídeo termina. */}
           <video
             ref={videoIntroRef}
             style={es.videoIntro}
@@ -818,7 +819,6 @@ export default function ProjetoArmor({ onVoltar }) {
             preload="auto"
             onEnded={(e) => {
               const v = e.currentTarget;
-              introTocadaRef.current = true;
               try {
                 v.pause();
                 if (isFinite(v.duration)) v.currentTime = Math.max(0, v.duration - 0.05);
