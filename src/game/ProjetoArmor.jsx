@@ -146,6 +146,10 @@ export default function ProjetoArmor({ onVoltar }) {
   const latRef = useRef(null);
   const imgsRef = useRef({ andar: null, correr: null, chao: null, pular: null, calibAndar: null, calibCorrer: null, chaoCalib: null });
   const videoIntroRef = useRef(null);
+  // Vídeo da intro baixado inteiro para a memória (blob) assim que o app abre:
+  // quando o celular vira para paisagem, toca na hora, sem buffering de rede.
+  const [videoIntroSrc, setVideoIntroSrc] = useState(null);
+  const introTocouRef = useRef(false);
   // Guarda a orientação anterior para detectar a transição retrato→paisagem
   // (é o único gatilho que inicia o vídeo da intro).
   const prevPaisagemRef = useRef(false);
@@ -801,9 +805,28 @@ export default function ProjetoArmor({ onVoltar }) {
     if (!paisagem || was) return;          // precisa ser a transição p/ paisagem
     const v = videoIntroRef.current;
     if (!v) return;
+    introTocouRef.current = true;
     try { v.currentTime = 0; } catch (err) {}
     v.play().catch(() => {});
   }, [fase, paisagem]);
+
+  // Pré-baixa o vídeo da intro para a memória assim que o app abre (em
+  // paralelo com as sprites). Se o download terminar antes da intro tocar,
+  // o <video> passa a usar o blob local → reprodução instantânea na virada
+  // do celular, sem depender da rede. Se a intro já tocou, não troca o src
+  // (trocaria o quadro congelado por tela preta).
+  useEffect(() => {
+    let vivo = true, url = null;
+    fetch(asset('armor-intro.mp4'))
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('http'))))
+      .then((b) => {
+        if (!vivo || introTocouRef.current) return;
+        url = URL.createObjectURL(b);
+        setVideoIntroSrc(url);
+      })
+      .catch(() => {});   // sem blob, fica o src normal com preload="auto"
+    return () => { vivo = false; if (url) URL.revokeObjectURL(url); };
+  }, []);
 
   return createPortal(
     <div style={es.fundo}>
@@ -892,9 +915,10 @@ export default function ProjetoArmor({ onVoltar }) {
           <button onClick={sair} style={es.cancelarRodar}>Cancelar</button>
         </div>
       )}
-      {(fase === 'pronto' || fase === 'jogando') && (
-        // O vídeo da tela inicial fica sempre montado enquanto o jogo está
-        // aberto (pronto/jogando); só some (display:none) durante a partida.
+      {fase !== 'erro' && (
+        // O vídeo da tela inicial fica montado desde a abertura do app
+        // (inclusive durante o carregamento das sprites), já baixando em
+        // segundo plano; só aparece (display) na tela inicial em paisagem.
         // Assim, Jogar → Voltar retorna EXATAMENTE ao mesmo quadro pausado
         // (personagem de frente), sem recarregar nem recomeçar. A intro só
         // toca de novo quando o componente remonta (saiu para a Home e voltou).
@@ -909,7 +933,7 @@ export default function ProjetoArmor({ onVoltar }) {
           <video
             ref={videoIntroRef}
             style={es.videoIntro}
-            src={asset('armor-intro.mp4')}
+            src={videoIntroSrc || asset('armor-intro.mp4')}
             muted
             playsInline
             preload="auto"
