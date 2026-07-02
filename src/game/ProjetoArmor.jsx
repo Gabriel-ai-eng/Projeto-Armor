@@ -37,15 +37,18 @@ const FRAMES_ANDAR = 71;   // frame 0 = parado; frames 1..70 = ciclo de caminhad
 const FRAMES_CORRER = 15;
 const FRAME_PARADO = 0;
 
-// Ritmo da caminhada: 1 ciclo completo (70 frames) nesta duração. A animação
-// de andar roda SEMPRE nesse ritmo (por tempo, não por velocidade), para a
-// caminhada ficar suave e natural. 1,8 s = passo bem calmo e pausado.
-const ANDAR_CICLO_S = 1.8;
-const ANDAR_FRAMES_POR_TICK = (FRAMES_ANDAR - 1) / (ANDAR_CICLO_S * 60); // ≈ 0.65
+// ---- Speed matching (anti-patinação), medido da própria folha ----
+// Rastreando o pé de apoio frame a frame: os 70 frames contêm 4 passos
+// (2 ciclos de marcha) e o pé de apoio recua 169,7 px de folha no total.
+// Na escala do jogo (105 px de corpo ÷ 231 px na folha ≈ 0,4545), a folha
+// inteira corresponde a um deslocamento de ~77 px de mundo.
+const ANDAR_PASSADA_PX = 77;                                   // px de mundo por volta completa da folha
+const ANDAR_FRAMES_POR_PX = (FRAMES_ANDAR - 1) / ANDAR_PASSADA_PX; // ≈ 0.91: frames por px andado
 
-// Casada com o ritmo do ciclo: passada de ~0,8× a altura do corpo (105 px)
-// → 84 px por ciclo ÷ 1,8 s ÷ 60 ticks ≈ 0,78. Assim os pés agarram o chão.
-const VEL_ANDAR = 0.78;
+// Velocidade máxima da caminhada (bem devagar). A animação avança por px
+// percorrido, então qualquer velocidade ≤ esta mantém os pés grudados;
+// a 0,40 px/tick a folha fecha em ~3,2 s (passo calmo, ~0,8 s por passo).
+const VEL_ANDAR = 0.40;
 const VEL_CORRER = 6.4;
 const LIMIAR_CORRER = 0.75;
 
@@ -405,14 +408,14 @@ export default function ProjetoArmor({ onVoltar }) {
       // Andando, a velocidade terminal (mx·aceler/0,15) atinge VEL_ANDAR bem no
       // limiar de correr → inclinação parcial do joystick = andar proporcionalmente
       // mais devagar; passou do limiar, vira corrida.
-      const aceler = correndo ? 0.75 : 0.16;
+      const aceler = correndo ? 0.75 : 0.08;
       p.vx += mx * aceler; p.vx *= 0.85;
       if (Math.abs(p.vx) < 0.05) p.vx = 0;
       p.vx = Math.max(-velMax, Math.min(velMax, p.vx));
       p.x = Math.max(60, Math.min(WORLD_W - 60, p.x + p.vx));
       // direção: mira manda; senão, movimento
       if (aimActive && Math.abs(Math.cos(aimAng)) > 0.25) p.face = Math.cos(aimAng) >= 0 ? 1 : -1;
-      else if (Math.abs(p.vx) > 0.15) p.face = p.vx > 0 ? 1 : -1;
+      else if (Math.abs(p.vx) > 0.08) p.face = p.vx > 0 ? 1 : -1;
 
       // ===== FÍSICA VERTICAL (pulo roteirizado / voo) =====
       if (g.flying && g.jump) g.jump = null;            // voar cancela o pulo roteirizado
@@ -437,7 +440,7 @@ export default function ProjetoArmor({ onVoltar }) {
       let modo;
       if (emPulo) modo = 'pular';
       else if (p.y > 3) modo = 'ar';
-      else if (vAbs < 0.12) modo = 'parado';
+      else if (vAbs < 0.06) modo = 'parado';
       else if (correndo && vAbs > VEL_ANDAR * 0.7) modo = 'correr';
       else modo = 'andar';
       // Saindo do parado para andar, recomeça o ciclo do zero: o primeiro
@@ -456,11 +459,11 @@ export default function ProjetoArmor({ onVoltar }) {
         // Cadência sincronizada com o passo: um ciclo completo de caminhada corresponde
         // à distância percorrida no chão, então os pés "agarram" o solo (sem patinar).
         // Como o avanço é proporcional a vAbs, andar devagar = animação devagar e vice-versa.
-        // Cadência fixa por tempo: o ciclo fecha sempre em ~1,21 s (ritmo do GIF
-        // de referência), qualquer que seja a inclinação do joystick. Como a
-        // VEL_ANDAR máxima corresponde a essa passada, os pés agarram o chão na
-        // velocidade cheia e a caminhada permanece fluida durante acelera/freia.
-        p.animT += ANDAR_FRAMES_POR_TICK;
+        // Speed matching: a animação avança proporcional à DISTÂNCIA percorrida
+        // (frames por px medidos da folha), então cada passo desloca exatamente
+        // o tamanho visual do passo — pés grudados no chão em qualquer
+        // velocidade, inclusive acelerando ou freando.
+        p.animT += vAbs * ANDAR_FRAMES_POR_PX;
         frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
       } else { sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; }
 
