@@ -14,7 +14,7 @@ const asset = (p) => import.meta.env.BASE_URL + p;
 
 // ?v=N força o navegador/CDN a baixar a imagem nova quando ela muda (cache-busting).
 // Incremente o número sempre que trocar o conteúdo de armor-andar.png.
-const SPRITE_ANDAR = asset('armor-andar.png?v=3');
+const SPRITE_ANDAR = asset('armor-andar.png?v=4');
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
 // Pulo: folha em GRADE (10 colunas x 17 linhas = 170 frames), lida em zigue-zague
 // esquerda→direita, de cima→baixo. O ciclo completo: agacha (anticipação) →
@@ -33,7 +33,7 @@ const ZOOM_PERTO = 1.7;
 const ALTURA_IMG_CHAO = 230;
 const LINHA_PES = 0.18;
 
-const FRAMES_ANDAR = 39;   // frame 0 = parado; frames 1..38 = ciclo de caminhada (da folha, em ordem)
+const FRAMES_ANDAR = 41;   // frame 0 = parado; frames 1..40 = ciclo de caminhada (da folha, em ordem)
 const FRAMES_CORRER = 15;
 const FRAME_PARADO = 0;
 
@@ -439,11 +439,11 @@ export default function ProjetoArmor({ onVoltar }) {
         p.animT += vAbs * 0.07; frameAtual = Math.floor(p.animT) % nFrames;
       } else if (modo === 'andar') {
         sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
-        // 0.33 = cadência sincronizada com o passo: um ciclo de 35 frames corresponde
+        // Cadência sincronizada com o passo: um ciclo completo de caminhada corresponde
         // à distância percorrida no chão, então os pés "agarram" o solo (sem patinar).
         // Como o avanço é proporcional a vAbs, andar devagar = animação devagar e vice-versa.
-        // 0.358 = cadência para 38 frames de caminhada (1 ciclo = 1 passo no chão).
-        p.animT += vAbs * 0.358; frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
+        // 0.377 = cadência para 40 frames de caminhada (1 ciclo = 1 passo no chão).
+        p.animT += vAbs * 0.377; frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
       } else { sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; }
 
       // ===== CÂMERA (segue também na vertical ao voar) =====
