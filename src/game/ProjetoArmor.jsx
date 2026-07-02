@@ -37,6 +37,12 @@ const FRAMES_ANDAR = 71;   // frame 0 = parado; frames 1..70 = ciclo de caminhad
 const FRAMES_CORRER = 15;
 const FRAME_PARADO = 0;
 
+// Ritmo do GIF/vídeo de referência: 1 ciclo completo de caminhada em ~1,21 s.
+// A animação de andar roda SEMPRE nesse ritmo (por tempo, não por velocidade),
+// para a caminhada ficar suave e natural como a referência.
+const ANDAR_CICLO_S = 1.21;
+const ANDAR_FRAMES_POR_TICK = (FRAMES_ANDAR - 1) / (ANDAR_CICLO_S * 60); // ≈ 0.964
+
 // Calibrada pelo vídeo de referência: 1 ciclo completo de caminhada = 1,21 s,
 // passada de ~0,8× a altura do corpo (105 px) → 84 px por ciclo ÷ 1,21 s ÷ 60 ticks.
 const VEL_ANDAR = 1.16;
@@ -434,6 +440,9 @@ export default function ProjetoArmor({ onVoltar }) {
       else if (vAbs < 0.25) modo = 'parado';
       else if (correndo && vAbs > VEL_ANDAR * 0.7) modo = 'correr';
       else modo = 'andar';
+      // Saindo do parado para andar, recomeça o ciclo do zero: o primeiro
+      // passo nasce no início da passada, sem "pular" para o meio do ciclo.
+      if (modo === 'andar' && p.modo !== 'andar') p.animT = 0;
       p.modo = modo;
 
       let sprite, calib, nFrames, frameAtual;
@@ -447,9 +456,12 @@ export default function ProjetoArmor({ onVoltar }) {
         // Cadência sincronizada com o passo: um ciclo completo de caminhada corresponde
         // à distância percorrida no chão, então os pés "agarram" o solo (sem patinar).
         // Como o avanço é proporcional a vAbs, andar devagar = animação devagar e vice-versa.
-        // 0.833 = 70 frames ÷ 84 px de passada → na VEL_ANDAR máxima o ciclo fecha
-        // em ~1,21 s, o mesmo ritmo do vídeo de referência.
-        p.animT += vAbs * 0.833; frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
+        // Cadência fixa por tempo: o ciclo fecha sempre em ~1,21 s (ritmo do GIF
+        // de referência), qualquer que seja a inclinação do joystick. Como a
+        // VEL_ANDAR máxima corresponde a essa passada, os pés agarram o chão na
+        // velocidade cheia e a caminhada permanece fluida durante acelera/freia.
+        p.animT += ANDAR_FRAMES_POR_TICK;
+        frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
       } else { sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; }
 
       // ===== CÂMERA (segue também na vertical ao voar) =====
