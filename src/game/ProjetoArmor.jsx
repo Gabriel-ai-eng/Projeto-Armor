@@ -14,7 +14,7 @@ const asset = (p) => import.meta.env.BASE_URL + p;
 
 // ?v=N força o navegador/CDN a baixar a imagem nova quando ela muda (cache-busting).
 // Incremente o número sempre que trocar o conteúdo de armor-andar.png.
-const SPRITE_ANDAR = asset('armor-andar.png?v=6');
+const SPRITE_ANDAR = asset('armor-andar.png?v=7');
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
 // Pulo: folha em GRADE (10 colunas x 17 linhas = 170 frames), lida em zigue-zague
 // esquerda→direita, de cima→baixo. O ciclo completo: agacha (anticipação) →
