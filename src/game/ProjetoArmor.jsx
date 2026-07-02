@@ -37,15 +37,15 @@ const FRAMES_ANDAR = 71;   // frame 0 = parado; frames 1..70 = ciclo de caminhad
 const FRAMES_CORRER = 15;
 const FRAME_PARADO = 0;
 
-// Ritmo do GIF/vídeo de referência: 1 ciclo completo de caminhada em ~1,21 s.
-// A animação de andar roda SEMPRE nesse ritmo (por tempo, não por velocidade),
-// para a caminhada ficar suave e natural como a referência.
-const ANDAR_CICLO_S = 1.21;
-const ANDAR_FRAMES_POR_TICK = (FRAMES_ANDAR - 1) / (ANDAR_CICLO_S * 60); // ≈ 0.964
+// Ritmo da caminhada: 1 ciclo completo (70 frames) nesta duração. A animação
+// de andar roda SEMPRE nesse ritmo (por tempo, não por velocidade), para a
+// caminhada ficar suave e natural. 1,8 s = passo bem calmo e pausado.
+const ANDAR_CICLO_S = 1.8;
+const ANDAR_FRAMES_POR_TICK = (FRAMES_ANDAR - 1) / (ANDAR_CICLO_S * 60); // ≈ 0.65
 
-// Calibrada pelo vídeo de referência: 1 ciclo completo de caminhada = 1,21 s,
-// passada de ~0,8× a altura do corpo (105 px) → 84 px por ciclo ÷ 1,21 s ÷ 60 ticks.
-const VEL_ANDAR = 1.16;
+// Casada com o ritmo do ciclo: passada de ~0,8× a altura do corpo (105 px)
+// → 84 px por ciclo ÷ 1,8 s ÷ 60 ticks ≈ 0,78. Assim os pés agarram o chão.
+const VEL_ANDAR = 0.78;
 const VEL_CORRER = 6.4;
 const LIMIAR_CORRER = 0.75;
 
@@ -405,14 +405,14 @@ export default function ProjetoArmor({ onVoltar }) {
       // Andando, a velocidade terminal (mx·aceler/0,15) atinge VEL_ANDAR bem no
       // limiar de correr → inclinação parcial do joystick = andar proporcionalmente
       // mais devagar; passou do limiar, vira corrida.
-      const aceler = correndo ? 0.75 : 0.23;
+      const aceler = correndo ? 0.75 : 0.16;
       p.vx += mx * aceler; p.vx *= 0.85;
       if (Math.abs(p.vx) < 0.05) p.vx = 0;
       p.vx = Math.max(-velMax, Math.min(velMax, p.vx));
       p.x = Math.max(60, Math.min(WORLD_W - 60, p.x + p.vx));
       // direção: mira manda; senão, movimento
       if (aimActive && Math.abs(Math.cos(aimAng)) > 0.25) p.face = Math.cos(aimAng) >= 0 ? 1 : -1;
-      else if (Math.abs(p.vx) > 0.3) p.face = p.vx > 0 ? 1 : -1;
+      else if (Math.abs(p.vx) > 0.15) p.face = p.vx > 0 ? 1 : -1;
 
       // ===== FÍSICA VERTICAL (pulo roteirizado / voo) =====
       if (g.flying && g.jump) g.jump = null;            // voar cancela o pulo roteirizado
@@ -437,7 +437,7 @@ export default function ProjetoArmor({ onVoltar }) {
       let modo;
       if (emPulo) modo = 'pular';
       else if (p.y > 3) modo = 'ar';
-      else if (vAbs < 0.25) modo = 'parado';
+      else if (vAbs < 0.12) modo = 'parado';
       else if (correndo && vAbs > VEL_ANDAR * 0.7) modo = 'correr';
       else modo = 'andar';
       // Saindo do parado para andar, recomeça o ciclo do zero: o primeiro
