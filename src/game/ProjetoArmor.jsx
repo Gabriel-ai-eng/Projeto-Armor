@@ -14,7 +14,7 @@ const asset = (p) => import.meta.env.BASE_URL + p;
 
 // ?v=N força o navegador/CDN a baixar a imagem nova quando ela muda (cache-busting).
 // Incremente o número sempre que trocar o conteúdo de armor-andar.png.
-const SPRITE_ANDAR = asset('armor-andar.png?v=7');
+const SPRITE_ANDAR = asset('armor-andar.png?v=8');
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
 // Pulo: folha em GRADE (10 colunas x 17 linhas = 170 frames), lida em zigue-zague
 // esquerda→direita, de cima→baixo. O ciclo completo: agacha (anticipação) →
@@ -398,7 +398,9 @@ export default function ProjetoArmor({ onVoltar }) {
       if (!g || !andar || !chao) return;
 
       ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
-      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      // Nearest neighbor: sem anti-aliasing ao desenhar as sprites, para os
+      // pixels ficarem "crocantes" (pixel art nítida, sem borrão).
+      ctx.imageSmoothingEnabled = false;
       const VW = canvas.width / RENDER_SCALE; g.t++;
       if (window.innerWidth <= window.innerHeight) return;
       // ===== INPUT (mover + mirar) — vem dos joysticks DOM (por imagem) =====
