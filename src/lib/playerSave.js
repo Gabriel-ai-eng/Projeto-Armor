@@ -40,6 +40,9 @@ export function estadoInicial() {
     prefs: { zoomPerto: false, relogioAtivo: false },
     stats: { sessoes: 0, tempoJogadoSeg: 0, primeiraVez: null, ultimaVez: null },
     progresso: { nivel: 0, xp: 0 },
+    // Posição do personagem no mundo (para reabrir exatamente onde parou).
+    // null = nunca jogou → usa a posição inicial padrão do jogo.
+    pos: null,
   };
 }
 
@@ -51,6 +54,7 @@ export function mesclarEstado(s) {
     prefs: { ...base.prefs, ...(s.prefs || {}) },
     stats: { ...base.stats, ...(s.stats || {}) },
     progresso: { ...base.progresso, ...(s.progresso || {}) },
+    pos: s.pos && typeof s.pos === 'object' ? s.pos : base.pos,
   };
 }
 

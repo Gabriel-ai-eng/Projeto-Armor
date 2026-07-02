@@ -319,15 +319,16 @@ export default function ProjetoArmor({ onVoltar }) {
         est.progresso.xp = est.stats.tempoJogadoSeg;
         setNivel(nv);
       }
+      sincronizarPos();
       salvarEstado(est);
     }, 15000);
-    return () => { clearInterval(id); if (carregadoRef.current) salvarEstado(estadoRef.current); };
+    return () => { clearInterval(id); if (carregadoRef.current) { sincronizarPos(); salvarEstado(estadoRef.current); } };
   }, [fase]);
 
   // Garante a gravação quando o app é minimizado ou fechado.
   useEffect(() => {
     const salvarSaindo = () => {
-      if (carregadoRef.current && document.visibilityState === 'hidden') salvarEstado(estadoRef.current);
+      if (carregadoRef.current && document.visibilityState === 'hidden') { sincronizarPos(); salvarEstado(estadoRef.current); }
     };
     document.addEventListener('visibilitychange', salvarSaindo);
     window.addEventListener('pagehide', salvarSaindo);
@@ -338,14 +339,27 @@ export default function ProjetoArmor({ onVoltar }) {
   }, []);
 
   const initGame = () => {
+    // Retoma a posição salva (onde o jogador parou); na primeira vez usa o padrão.
+    const salvo = estadoRef.current && estadoRef.current.pos;
+    const px = salvo && typeof salvo.x === 'number' ? salvo.x : 260;
+    const py = salvo && typeof salvo.y === 'number' ? salvo.y : 0;
+    const face = salvo && salvo.face === -1 ? -1 : 1;
     G.current = {
-      p: { x: 260, y: 0, vx: 0, vy: 0, face: 1, animT: 0, modo: 'parado' },
-      fx: 260, fy: -(ALT * 0.22), zoom: zoomAlvoRef.current,
+      p: { x: px, y: py, vx: 0, vy: 0, face, animT: 0, modo: 'parado' },
+      fx: px, fy: -(ALT * 0.22), zoom: zoomAlvoRef.current,
       t: 0, toques: {},
       flying: false, lastFlyDown: 0, jump: null,
       tiroHeld: false, tiroCd: 0, missilQueued: false, missilCd: 0,
       projeteis: [], particulas: [],
     };
+  };
+
+  // Copia a posição atual do personagem (posição viva no loop) para o estado
+  // persistido, antes de gravar. Sem partida ativa, não faz nada.
+  const sincronizarPos = () => {
+    const g = G.current;
+    if (!g || !g.p || !estadoRef.current) return;
+    estadoRef.current.pos = { x: g.p.x, y: g.p.y, face: g.p.face };
   };
 
   // ---------- LOOP PRINCIPAL ----------
