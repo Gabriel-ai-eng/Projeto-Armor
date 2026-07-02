@@ -1,47 +1,36 @@
 import { supabase } from './supabase';
 
-// Chave do código único do jogador no aparelho. Gerado no PRIMEIRO acesso e
-// reutilizado sempre; é por ele que o Supabase identifica cada jogador, sem
-// precisar de login.
-const CODE_KEY = 'armor_player_code';
+// Persistência do progresso do jogador no Supabase, atrelada à MESMA conta com
+// que o usuário entrou na plataforma AlpsPrime (Supabase Auth). Não há mais
+// login/código próprio do jogo: quando o jogo é servido dentro do domínio da
+// plataforma (ex.: alpsprime.com.br/jogo), ele compartilha a sessão já iniciada
+// e identifica o jogador pelo `auth.uid()`. A tabela `armor_game_state`
+// (user_id → state) já é protegida por RLS: cada usuário só lê/grava o seu.
 
-function novoCodigo() {
-  const bruto =
-    typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID().replace(/-/g, '')
-      : Math.random().toString(36).slice(2) + Date.now().toString(36);
-  return 'ARMOR-' + bruto.slice(0, 16).toUpperCase();
+// Cache do id do usuário logado, para não pedir a sessão a cada gravação.
+let cachedUserId = null;
+let sessionReady = null;
+
+async function resolveUserId() {
+  const { data } = await supabase.auth.getSession();
+  cachedUserId = data?.session?.user?.id || null;
+  return cachedUserId;
 }
 
-// Recupera o código do jogador; se ainda não existe (primeiro acesso), cria.
-export function getPlayerCode() {
-  let code = null;
-  try {
-    code = localStorage.getItem(CODE_KEY);
-  } catch (e) {
-    /* localStorage indisponível (modo privado etc.) */
-  }
-  if (!code) {
-    code = novoCodigo();
-    try {
-      localStorage.setItem(CODE_KEY, code);
-    } catch (e) {
-      /* ignora: usa o código só na sessão atual */
-    }
-  }
-  return code;
+// Mantém o cache em dia se a sessão mudar (login/logout na mesma aba).
+supabase.auth.onAuthStateChange((_event, session) => {
+  cachedUserId = session?.user?.id || null;
+});
+
+async function currentUserId() {
+  if (cachedUserId) return cachedUserId;
+  if (!sessionReady) sessionReady = resolveUserId();
+  return sessionReady;
 }
 
-// Define manualmente o código do jogador neste aparelho. Usado ao restaurar um
-// save em outro celular: o jogador digita o código e ele passa a valer aqui.
-export function setPlayerCode(code) {
-  const limpo = (code || '').trim().toUpperCase();
-  try {
-    localStorage.setItem(CODE_KEY, limpo);
-  } catch (e) {
-    /* ignora */
-  }
-  return limpo;
+// Indica se há um usuário logado (ex.: para a UI decidir se mostra progresso).
+export async function estaLogado() {
+  return Boolean(await currentUserId());
 }
 
 // Estrutura padrão do que é salvo. Extensível: basta adicionar campos aqui e
@@ -65,38 +54,36 @@ export function mesclarEstado(s) {
   };
 }
 
-// Carrega o estado do jogador atual do Supabase (ou padrão, se falhar/vazio).
+// Carrega o estado do jogador logado do Supabase (ou padrão, se não logado/vazio).
 export async function carregarEstado() {
-  const code = getPlayerCode();
+  const uid = await currentUserId();
+  if (!uid) return estadoInicial();
   try {
-    const { data, error } = await supabase.rpc('armor_load', { p_code: code });
+    const { data, error } = await supabase
+      .from('armor_game_state')
+      .select('state')
+      .eq('user_id', uid)
+      .maybeSingle();
     if (error) throw error;
-    return mesclarEstado(data);
+    return mesclarEstado(data?.state);
   } catch (e) {
     console.warn('[armor] falha ao carregar estado:', e && e.message);
     return estadoInicial();
   }
 }
 
-// Busca o estado de um código específico (para restaurar em outro aparelho).
-// Retorna { encontrado, estado }: encontrado=false quando o código não tem save.
-export async function buscarEstado(code) {
-  const limpo = (code || '').trim().toUpperCase();
-  try {
-    const { data, error } = await supabase.rpc('armor_load', { p_code: limpo });
-    if (error) throw error;
-    return { encontrado: data != null, estado: mesclarEstado(data) };
-  } catch (e) {
-    console.warn('[armor] falha ao buscar estado:', e && e.message);
-    return { encontrado: false, estado: estadoInicial(), erro: true };
-  }
-}
-
-// Salva (upsert) o estado do jogador atual no Supabase. Fire-and-forget.
+// Salva (upsert) o estado do jogador logado no Supabase. Fire-and-forget.
+// Sem sessão (jogo aberto fora da plataforma), simplesmente não grava.
 export async function salvarEstado(state) {
-  const code = getPlayerCode();
+  const uid = await currentUserId();
+  if (!uid) return false;
   try {
-    const { error } = await supabase.rpc('armor_save', { p_code: code, p_state: state });
+    const { error } = await supabase
+      .from('armor_game_state')
+      .upsert(
+        { user_id: uid, state, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      );
     if (error) throw error;
     return true;
   } catch (e) {

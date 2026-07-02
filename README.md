@@ -27,6 +27,25 @@ npm run preview  # pré-visualiza o build
 
 O jogo é em paisagem: em retrato aparece a animação "VIRE O CELULAR".
 
+## Publicação sob o domínio da plataforma (`alpsprime.com.br/jogo`)
+
+Este repositório/deploy continua **separado**, mas o jogo é servido **sob o
+caminho `/jogo` do domínio da plataforma** (`alpsprime.com.br/jogo`), via
+rewrite/proxy configurado no `vercel.json` do AlpsPrime-OS. Por isso:
+
+- `vite.config.js` usa `base: '/jogo/'` — todos os assets são referenciados com
+  esse prefixo (o proxy da plataforma remove o `/jogo` ao repassar para este
+  deploy). Assets da pasta `public/` devem ser referenciados via
+  `import.meta.env.BASE_URL` (helper `asset()` em `ProjetoArmor.jsx`).
+- Como fica na **mesma origem** da plataforma, o jogo **reaproveita a sessão de
+  login** já feita nela (mesmo `localStorage`, mesmo projeto Supabase). O
+  jogador **não faz login/cadastro de novo** e o progresso é salvo na tabela
+  `armor_game_state` pela conta do usuário (`auth.uid()`), protegida por RLS —
+  ver `src/lib/playerSave.js`.
+- Abrir este deploy **diretamente** (fora do domínio da plataforma) não é o
+  fluxo suportado: sem sessão o progresso não é salvo, e os assets esperam o
+  prefixo `/jogo`.
+
 ## Notas
 
 - Os sprites do personagem e do chão são carregados de URLs externas (i.ibb.co),

@@ -1,20 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { carregarEstado, salvarEstado, estadoInicial, getPlayerCode, setPlayerCode, buscarEstado } from '../lib/playerSave';
+import { carregarEstado, salvarEstado, estadoInicial } from '../lib/playerSave';
 
 // ============================================================
 // PROJETO ARMOR — Capítulo 1: O Despertar
 // HUD dupla: joystick mover (esq) + mirar (dir) · tiro · míssil · voar
 // ============================================================
 
+// Caminho base do deploy (definido pelo Vite: '/jogo/' em produção sob o domínio
+// da plataforma, '/' no dev/standalone). Todos os assets da pasta public precisam
+// deste prefixo para resolverem corretamente através do proxy do domínio.
+const asset = (p) => import.meta.env.BASE_URL + p;
+
 // ?v=N força o navegador/CDN a baixar a imagem nova quando ela muda (cache-busting).
 // Incremente o número sempre que trocar o conteúdo de armor-andar.png.
-const SPRITE_ANDAR = '/armor-andar.png?v=3';
+const SPRITE_ANDAR = asset('armor-andar.png?v=3');
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
 // Pulo: folha em GRADE (10 colunas x 17 linhas = 170 frames), lida em zigue-zague
 // esquerda→direita, de cima→baixo. O ciclo completo: agacha (anticipação) →
 // impulso a jato → voo → aterrissagem com poeira → recupera e fica de pé.
-const SPRITE_PULAR = '/armor-pular.png?v=1';
+const SPRITE_PULAR = asset('armor-pular.png?v=1');
 const IMG_CHAO = 'https://i.ibb.co/KzVkz7dS/11-20260612-202236-0000.png';
 
 const SPRITE_OLHA_PARA = 'direita';
@@ -96,8 +101,8 @@ function faseDia(h, sr, ss) {
 // em repouso, saltam (~1,3x) e acendem ao serem pressionados. Posições/tamanhos
 // em % do vídeo, iguais à tela inicial original.
 const BOTOES_INICIO = [
-  { id: 'jogar', src: '/btn-jogar.png', cx: 13.26, cy: 37.82, w: 20.4, aspect: 4.07 },
-  { id: 'sair',  src: '/btn-sair.png',  cx: 12.98, cy: 91.18, w: 17.1, aspect: 4.84 },
+  { id: 'jogar', src: asset('btn-jogar.png'), cx: 13.26, cy: 37.82, w: 20.4, aspect: 4.07 },
+  { id: 'sair',  src: asset('btn-sair.png'),  cx: 12.98, cy: 91.18, w: 17.1, aspect: 4.84 },
 ];
 
 const IconeRelogio = ({ size = 13 }) => (
@@ -117,12 +122,6 @@ export default function ProjetoArmor({ onVoltar }) {
   const [miraOff, setMiraOff] = useState({ x: 0, y: 0 }); // knob do joystick de mirar
   const [voarAtivo, setVoarAtivo] = useState(false);      // feedback visual do botão de voar
   const [nivel, setNivel] = useState(0);                  // nível do jogador (salvo no Supabase)
-  const [codigo, setCodigo] = useState('');               // código único deste jogador
-  const [painelCodigo, setPainelCodigo] = useState(false);// modal do código aberto?
-  const [codigoInput, setCodigoInput] = useState('');     // código digitado para restaurar
-  const [copiado, setCopiado] = useState(false);          // feedback do botão copiar
-  const [restaurando, setRestaurando] = useState(false);  // carregando ao restaurar
-  const [avisoCodigo, setAvisoCodigo] = useState('');     // mensagem de erro/sucesso do modal
   const [paisagem, setPaisagem] = useState(
     typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : true
   );
@@ -287,7 +286,6 @@ export default function ProjetoArmor({ onVoltar }) {
   // preferências, conta mais uma sessão e regrava.
   useEffect(() => {
     let vivo = true;
-    setCodigo(getPlayerCode()); // mostra o código já no primeiro render
     (async () => {
       const est = await carregarEstado();
       if (!vivo) return;
@@ -751,47 +749,6 @@ export default function ProjetoArmor({ onVoltar }) {
     } else aplicar(null);
   };
 
-  // Copia o código do jogador para a área de transferência (com fallback).
-  const copiarCodigo = async () => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(codigo);
-      } else {
-        const ta = document.createElement('textarea');
-        ta.value = codigo; ta.style.position = 'fixed'; ta.style.opacity = '0';
-        document.body.appendChild(ta); ta.select();
-        document.execCommand('copy'); document.body.removeChild(ta);
-      }
-      setCopiado(true); setTimeout(() => setCopiado(false), 1600);
-    } catch (e) { /* ignora */ }
-  };
-
-  // Restaura o save de outro aparelho: valida o código digitado, aponta este
-  // aparelho para ele e recarrega o estado do Supabase.
-  const restaurarCodigo = async () => {
-    const code = (codigoInput || '').trim().toUpperCase();
-    if (code.length < 8) { setAvisoCodigo('Código muito curto.'); return; }
-    if (code === codigo) { setAvisoCodigo('Esse já é o seu código atual.'); return; }
-    setRestaurando(true); setAvisoCodigo('');
-    const { encontrado, estado, erro } = await buscarEstado(code);
-    if (erro) { setRestaurando(false); setAvisoCodigo('Sem conexão. Tente de novo.'); return; }
-    if (!encontrado) { setRestaurando(false); setAvisoCodigo('Código não encontrado.'); return; }
-    setPlayerCode(code);
-    // aplica o estado restaurado
-    if (estado.prefs.zoomPerto) { setZoomPerto(true); zoomAlvoRef.current = ZOOM_PERTO; }
-    else { setZoomPerto(false); zoomAlvoRef.current = 1; }
-    if (estado.prefs.relogioAtivo) { relogioAtivoRef.current = true; setRelogioAtivo(true); }
-    setNivel(estado.progresso.nivel || 0);
-    estado.stats.ultimaVez = new Date().toISOString();
-    estadoRef.current = estado;
-    carregadoRef.current = true;
-    salvarEstado(estado);
-    setCodigo(code);
-    setRestaurando(false);
-    setCodigoInput('');
-    setAvisoCodigo('Progresso restaurado! ✓');
-    setTimeout(() => { setPainelCodigo(false); setAvisoCodigo(''); }, 1200);
-  };
 
   // ---------- REPRODUÇÃO DA INTRO ----------
   // A intro toca do começo (personagem surge do escuro) SOMENTE no momento em
@@ -844,9 +801,9 @@ export default function ProjetoArmor({ onVoltar }) {
             onPointerCancel={joyFim}
             onContextMenu={(e) => e.preventDefault()}
           />
-          <img ref={joyBaseRef} src="/joystick-base.png" alt="" draggable={false} style={es.joyBase} />
+          <img ref={joyBaseRef} src={asset('joystick-base.png')} alt="" draggable={false} style={es.joyBase} />
           <img
-            src="/joystick-knob.png"
+            src={asset('joystick-knob.png')}
             alt=""
             draggable={false}
             style={{ ...es.joyKnob, transform: `translate(calc(-50% + ${knobOff.x}px), calc(-50% + ${knobOff.y}px))` }}
@@ -854,7 +811,7 @@ export default function ProjetoArmor({ onVoltar }) {
 
           {/* Botão de VOAR (direita) */}
           <img
-            src="/botao-voar.png"
+            src={asset('botao-voar.png')}
             alt="Voar"
             draggable={false}
             onPointerDown={voarPress}
@@ -875,9 +832,9 @@ export default function ProjetoArmor({ onVoltar }) {
             onPointerCancel={miraFim}
             onContextMenu={(e) => e.preventDefault()}
           />
-          <img ref={miraBaseRef} src="/mira-base.png" alt="" draggable={false} style={es.miraBase} />
+          <img ref={miraBaseRef} src={asset('mira-base.png')} alt="" draggable={false} style={es.miraBase} />
           <img
-            src="/mira-knob.png"
+            src={asset('mira-knob.png')}
             alt=""
             draggable={false}
             style={{ ...es.miraKnob, transform: `translate(calc(-50% + ${miraOff.x}px), calc(-50% + ${miraOff.y}px))` }}
@@ -916,7 +873,7 @@ export default function ProjetoArmor({ onVoltar }) {
           <video
             ref={videoIntroRef}
             style={es.videoIntro}
-            src="/armor-intro.mp4"
+            src={asset('armor-intro.mp4')}
             muted
             playsInline
             preload="auto"
@@ -986,55 +943,8 @@ export default function ProjetoArmor({ onVoltar }) {
             </div>
           </div>
 
-          {/* Chip do código do jogador (canto inferior esquerdo): abre o modal
-              para ver/copiar o código ou restaurar o save de outro aparelho. */}
-          <button
-            style={es.codigoChip}
-            onClick={(e) => { e.stopPropagation(); setAvisoCodigo(''); setCodigoInput(''); setPainelCodigo(true); }}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            🔑 Meu código
-          </button>
             </>
           )}
-        </div>
-      )}
-
-      {/* MODAL DO CÓDIGO: ver/copiar o código e restaurar save de outro celular. */}
-      {painelCodigo && (
-        <div style={es.codigoModalFundo} onClick={() => setPainelCodigo(false)}>
-          <div style={es.codigoModal} onClick={(e) => e.stopPropagation()}>
-            <p style={es.codigoTitulo}>Seu código de jogador</p>
-            <p style={es.codigoAjuda}>
-              Guarde este código. Em outro celular, toque em “Meu código”, digite-o e restaure seu progresso.
-            </p>
-            <div style={es.codigoValorLinha}>
-              <span style={es.codigoValor}>{codigo || '—'}</span>
-              <button style={es.codigoBtnCopiar} onClick={copiarCodigo}>
-                {copiado ? 'Copiado ✓' : 'Copiar'}
-              </button>
-            </div>
-
-            <div style={es.codigoDivisor} />
-
-            <p style={es.codigoSubtitulo}>Tenho um código de outro aparelho</p>
-            <input
-              value={codigoInput}
-              onChange={(e) => setCodigoInput(e.target.value)}
-              placeholder="ARMOR-XXXXXXXXXXXXXXXX"
-              autoCapitalize="characters"
-              autoCorrect="off"
-              spellCheck={false}
-              style={es.codigoInput}
-            />
-            {avisoCodigo && <p style={es.codigoAviso}>{avisoCodigo}</p>}
-            <div style={es.codigoAcoes}>
-              <button style={es.codigoBtnSec} onClick={() => setPainelCodigo(false)}>Fechar</button>
-              <button style={es.codigoBtnPri} onClick={restaurarCodigo} disabled={restaurando}>
-                {restaurando ? 'Restaurando…' : 'Restaurar'}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -1066,21 +976,6 @@ const es = {
   botaoZoom: { position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 42, height: 46, borderRadius: 14, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.14)', color: '#8E8E93', cursor: 'pointer', zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'monospace' },
   botaoRelogio: { position: 'absolute', top: 30, right: 16, display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 20, padding: '6px 12px', cursor: 'pointer', zIndex: 30, fontFamily: 'monospace' },
   voltar: { position: 'absolute', top: 30, left: 16, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, color: '#8E8E93', fontSize: 13, padding: '6px 13px', cursor: 'pointer', zIndex: 30 },
-  codigoChip: { position: 'absolute', left: 16, bottom: 18, zIndex: 4, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 20, color: '#DCE8FF', fontSize: 12, fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, letterSpacing: '0.03em', padding: '6px 12px', cursor: 'pointer' },
-  codigoModalFundo: { position: 'absolute', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 },
-  codigoModal: { width: 'min(460px, 92vw)', background: '#0E141F', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 18, padding: '20px 22px', fontFamily: "'Rajdhani', sans-serif", color: '#FFFFFF', boxShadow: '0 12px 40px rgba(0,0,0,0.5)' },
-  codigoTitulo: { margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: '0.02em' },
-  codigoAjuda: { margin: '6px 0 14px', fontSize: 13, lineHeight: 1.5, color: '#9FB0C8' },
-  codigoValorLinha: { display: 'flex', alignItems: 'center', gap: 8 },
-  codigoValor: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 15, fontWeight: 700, letterSpacing: '0.04em', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '9px 12px', color: '#6ED8FF' },
-  codigoBtnCopiar: { flexShrink: 0, background: 'rgba(110,216,255,0.14)', border: '1px solid rgba(110,216,255,0.4)', borderRadius: 10, color: '#6ED8FF', fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 13, padding: '9px 14px', cursor: 'pointer' },
-  codigoDivisor: { height: 1, background: 'rgba(255,255,255,0.1)', margin: '18px 0 14px' },
-  codigoSubtitulo: { margin: '0 0 8px', fontSize: 14, fontWeight: 600, color: '#DCE8FF' },
-  codigoInput: { width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 10, color: '#FFFFFF', fontFamily: 'monospace', fontSize: 14, letterSpacing: '0.04em', padding: '10px 12px', outline: 'none' },
-  codigoAviso: { margin: '10px 0 0', fontSize: 13, color: '#F0C040' },
-  codigoAcoes: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 },
-  codigoBtnSec: { background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 10, color: '#9FB0C8', fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: 14, padding: '9px 16px', cursor: 'pointer' },
-  codigoBtnPri: { background: '#6ED8FF', border: 'none', borderRadius: 10, color: '#06121C', fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: 14, padding: '9px 18px', cursor: 'pointer' },
   // ----- HUD por imagem: joysticks de mover/mirar + botão de voar -----
   joyZona: { position: 'absolute', left: 0, bottom: 0, width: '50%', top: '22%', zIndex: 25, touchAction: 'none', background: 'transparent' },
   joyBase: { position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1', transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 26 },
