@@ -32,6 +32,18 @@ export function getPlayerCode() {
   return code;
 }
 
+// Define manualmente o código do jogador neste aparelho. Usado ao restaurar um
+// save em outro celular: o jogador digita o código e ele passa a valer aqui.
+export function setPlayerCode(code) {
+  const limpo = (code || '').trim().toUpperCase();
+  try {
+    localStorage.setItem(CODE_KEY, limpo);
+  } catch (e) {
+    /* ignora */
+  }
+  return limpo;
+}
+
 // Estrutura padrão do que é salvo. Extensível: basta adicionar campos aqui e
 // gravá-los que eles passam a ser persistidos.
 export function estadoInicial() {
@@ -63,6 +75,20 @@ export async function carregarEstado() {
   } catch (e) {
     console.warn('[armor] falha ao carregar estado:', e && e.message);
     return estadoInicial();
+  }
+}
+
+// Busca o estado de um código específico (para restaurar em outro aparelho).
+// Retorna { encontrado, estado }: encontrado=false quando o código não tem save.
+export async function buscarEstado(code) {
+  const limpo = (code || '').trim().toUpperCase();
+  try {
+    const { data, error } = await supabase.rpc('armor_load', { p_code: limpo });
+    if (error) throw error;
+    return { encontrado: data != null, estado: mesclarEstado(data) };
+  } catch (e) {
+    console.warn('[armor] falha ao buscar estado:', e && e.message);
+    return { encontrado: false, estado: estadoInicial(), erro: true };
   }
 }
 
