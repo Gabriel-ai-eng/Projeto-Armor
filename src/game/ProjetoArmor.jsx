@@ -895,6 +895,8 @@ export default function ProjetoArmor({ onVoltar }) {
         <div style={es.overlay}>
           <div className="armor-rotate-phone" />
           <p style={es.txtRodar}>VIRE O CELULAR</p>
+          {/* Cancelar: volta para a Home (seção que abriu o jogo). */}
+          <button onClick={sair} style={es.cancelarRodar}>Cancelar</button>
         </div>
       )}
       {(fase === 'pronto' || fase === 'jogando') && (
@@ -1089,6 +1091,7 @@ const es = {
   miraKnob: { position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(48px,7.1vw,80px)', aspectRatio: '1', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27, transition: 'transform 0.04s ease-out' },
   overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, backdropFilter: 'blur(4px)', fontFamily: 'monospace' },
   txtRodar: { color: '#7dd3fc', fontSize: 'clamp(20px,6vw,30px)', fontWeight: 700, letterSpacing: '2px', textShadow: '2px 2px 0 #0a3d62', margin: 0 },
+  cancelarRodar: { marginTop: 28, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(125,211,252,0.4)', borderRadius: 22, color: '#7dd3fc', fontFamily: 'monospace', fontSize: 15, fontWeight: 700, letterSpacing: '1px', padding: '9px 26px', cursor: 'pointer' },
   txtGrande: { color: '#F0C040', fontSize: 19, fontWeight: 700, letterSpacing: '0.18em', margin: '0 0 8px' },
   txtPeq: { color: '#8E8E93', fontSize: 12, letterSpacing: '0.1em', margin: 0 },
   videoIntro: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, backgroundColor: '#000' },
