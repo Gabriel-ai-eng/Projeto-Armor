@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { carregarEstado, salvarEstado, estadoInicial } from '../lib/playerSave';
 
 // ============================================================
 // PROJETO ARMOR — Capítulo 1: O Despertar
@@ -115,6 +116,7 @@ export default function ProjetoArmor({ onVoltar }) {
   const [knobOff, setKnobOff] = useState({ x: 0, y: 0 }); // knob do joystick de mover
   const [miraOff, setMiraOff] = useState({ x: 0, y: 0 }); // knob do joystick de mirar
   const [voarAtivo, setVoarAtivo] = useState(false);      // feedback visual do botão de voar
+  const [nivel, setNivel] = useState(0);                  // nível do jogador (salvo no Supabase)
   const [paisagem, setPaisagem] = useState(
     typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : true
   );
@@ -136,6 +138,9 @@ export default function ProjetoArmor({ onVoltar }) {
   const joyPointerRef = useRef(null);
   const aimRef = useRef({ active: false, ang: 0 }); // mirar: direção + se dispara
   const miraBaseRef = useRef(null);
+  // Estado persistido no Supabase (prefs + estatísticas + progresso).
+  const estadoRef = useRef(estadoInicial());
+  const carregadoRef = useRef(false); // só salva depois que carregou (evita apagar)
   const miraPointerRef = useRef(null);
 
   // ---------- CARREGAMENTO + AUTOCALIBRAÇÃO ----------
@@ -269,6 +274,63 @@ export default function ProjetoArmor({ onVoltar }) {
     const id = setInterval(atualizar, 1000);
     return () => clearInterval(id);
   }, [relogioAtivo]);
+
+  // ---------- SAVE NA NUVEM (Supabase) ----------
+  // No primeiro acesso é gerado um código único (localStorage); é por ele que o
+  // Supabase identifica o jogador. Ao abrir: carrega o estado salvo, reaplica as
+  // preferências, conta mais uma sessão e regrava.
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      const est = await carregarEstado();
+      if (!vivo) return;
+      // reaplica preferências salvas
+      if (est.prefs.zoomPerto) { setZoomPerto(true); zoomAlvoRef.current = ZOOM_PERTO; }
+      if (est.prefs.relogioAtivo) { relogioAtivoRef.current = true; setRelogioAtivo(true); }
+      setNivel(est.progresso.nivel || 0);
+      // registra a sessão atual
+      const agora = new Date().toISOString();
+      est.stats.sessoes = (est.stats.sessoes || 0) + 1;
+      est.stats.primeiraVez = est.stats.primeiraVez || agora;
+      est.stats.ultimaVez = agora;
+      estadoRef.current = est;
+      carregadoRef.current = true;
+      salvarEstado(est);
+    })();
+    return () => { vivo = false; };
+  }, []);
+
+  // Enquanto joga, acumula tempo jogado, sobe de nível (1 nível a cada 2 min) e
+  // grava periodicamente. Também grava ao sair do modo "jogando".
+  useEffect(() => {
+    if (fase !== 'jogando' || !carregadoRef.current) return;
+    const id = setInterval(() => {
+      const est = estadoRef.current;
+      est.stats.tempoJogadoSeg = (est.stats.tempoJogadoSeg || 0) + 15;
+      est.stats.ultimaVez = new Date().toISOString();
+      const nv = Math.floor(est.stats.tempoJogadoSeg / 120);
+      if (nv !== est.progresso.nivel) {
+        est.progresso.nivel = nv;
+        est.progresso.xp = est.stats.tempoJogadoSeg;
+        setNivel(nv);
+      }
+      salvarEstado(est);
+    }, 15000);
+    return () => { clearInterval(id); if (carregadoRef.current) salvarEstado(estadoRef.current); };
+  }, [fase]);
+
+  // Garante a gravação quando o app é minimizado ou fechado.
+  useEffect(() => {
+    const salvarSaindo = () => {
+      if (carregadoRef.current && document.visibilityState === 'hidden') salvarEstado(estadoRef.current);
+    };
+    document.addEventListener('visibilitychange', salvarSaindo);
+    window.addEventListener('pagehide', salvarSaindo);
+    return () => {
+      document.removeEventListener('visibilitychange', salvarSaindo);
+      window.removeEventListener('pagehide', salvarSaindo);
+    };
+  }, []);
 
   const initGame = () => {
     G.current = {
@@ -663,12 +725,16 @@ export default function ProjetoArmor({ onVoltar }) {
   const alternarZoom = () => {
     const novo = !zoomPerto; setZoomPerto(novo);
     zoomAlvoRef.current = novo ? ZOOM_PERTO : 1;
+    estadoRef.current.prefs.zoomPerto = novo;
+    if (carregadoRef.current) salvarEstado(estadoRef.current);
   };
   const ativarRelogio = () => {
     if (relogioAtivo) return;
     const aplicar = (lat) => {
       latRef.current = (typeof lat === 'number' && isFinite(lat)) ? lat : null;
       relogioAtivoRef.current = true; setRelogioAtivo(true);
+      estadoRef.current.prefs.relogioAtivo = true;
+      if (carregadoRef.current) salvarEstado(estadoRef.current);
     };
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -865,7 +931,7 @@ export default function ProjetoArmor({ onVoltar }) {
             </svg>
             <div style={es.perfilTxt}>
               <span style={es.perfilNome}>Seu nome</span>
-              <span style={es.perfilNivel}>Nível 0</span>
+              <span style={es.perfilNivel}>Nível {nivel}</span>
             </div>
           </div>
             </>
