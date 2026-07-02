@@ -37,7 +37,9 @@ const FRAMES_ANDAR = 71;   // frame 0 = parado; frames 1..70 = ciclo de caminhad
 const FRAMES_CORRER = 15;
 const FRAME_PARADO = 0;
 
-const VEL_ANDAR = 3.4;
+// Calibrada pelo vídeo de referência: 1 ciclo completo de caminhada = 1,21 s,
+// passada de ~0,8× a altura do corpo (105 px) → 84 px por ciclo ÷ 1,21 s ÷ 60 ticks.
+const VEL_ANDAR = 1.16;
 const VEL_CORRER = 6.4;
 const LIMIAR_CORRER = 0.75;
 
@@ -394,7 +396,10 @@ export default function ProjetoArmor({ onVoltar }) {
       const p = g.p;
       const correndo = intensidade > LIMIAR_CORRER;
       const velMax = correndo ? VEL_CORRER : VEL_ANDAR;
-      const aceler = correndo ? 0.75 : 0.55;
+      // Andando, a velocidade terminal (mx·aceler/0,15) atinge VEL_ANDAR bem no
+      // limiar de correr → inclinação parcial do joystick = andar proporcionalmente
+      // mais devagar; passou do limiar, vira corrida.
+      const aceler = correndo ? 0.75 : 0.23;
       p.vx += mx * aceler; p.vx *= 0.85;
       if (Math.abs(p.vx) < 0.05) p.vx = 0;
       p.vx = Math.max(-velMax, Math.min(velMax, p.vx));
@@ -442,8 +447,9 @@ export default function ProjetoArmor({ onVoltar }) {
         // Cadência sincronizada com o passo: um ciclo completo de caminhada corresponde
         // à distância percorrida no chão, então os pés "agarram" o solo (sem patinar).
         // Como o avanço é proporcional a vAbs, andar devagar = animação devagar e vice-versa.
-        // 0.66 = cadência para 70 frames de caminhada (1 ciclo = 1 passo no chão).
-        p.animT += vAbs * 0.66; frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
+        // 0.833 = 70 frames ÷ 84 px de passada → na VEL_ANDAR máxima o ciclo fecha
+        // em ~1,21 s, o mesmo ritmo do vídeo de referência.
+        p.animT += vAbs * 0.833; frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
       } else { sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; }
 
       // ===== CÂMERA (segue também na vertical ao voar) =====
