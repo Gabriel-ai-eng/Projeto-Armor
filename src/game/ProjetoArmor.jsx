@@ -45,10 +45,10 @@ const FRAME_PARADO = 0;
 const ANDAR_PASSADA_PX = 77;                                   // px de mundo por volta completa da folha
 const ANDAR_FRAMES_POR_PX = (FRAMES_ANDAR - 1) / ANDAR_PASSADA_PX; // ≈ 0.91: frames por px andado
 
-// Velocidade máxima da caminhada (bem devagar). A animação avança por px
-// percorrido, então qualquer velocidade ≤ esta mantém os pés grudados;
-// a 0,40 px/tick a folha fecha em ~3,2 s (passo calmo, ~0,8 s por passo).
-const VEL_ANDAR = 0.40;
+// Velocidade máxima da caminhada. A animação avança por px percorrido,
+// então qualquer velocidade ≤ esta mantém os pés grudados; a 0,55 px/tick
+// a folha fecha em ~2,3 s (~0,6 s por passo — calmo, sem ser arrastado).
+const VEL_ANDAR = 0.55;
 const VEL_CORRER = 6.4;
 const LIMIAR_CORRER = 0.75;
 
@@ -408,7 +408,7 @@ export default function ProjetoArmor({ onVoltar }) {
       // Andando, a velocidade terminal (mx·aceler/0,15) atinge VEL_ANDAR bem no
       // limiar de correr → inclinação parcial do joystick = andar proporcionalmente
       // mais devagar; passou do limiar, vira corrida.
-      const aceler = correndo ? 0.75 : 0.08;
+      const aceler = correndo ? 0.75 : 0.11;
       p.vx += mx * aceler; p.vx *= 0.85;
       if (Math.abs(p.vx) < 0.05) p.vx = 0;
       p.vx = Math.max(-velMax, Math.min(velMax, p.vx));
