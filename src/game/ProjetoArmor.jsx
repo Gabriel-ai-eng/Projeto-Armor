@@ -777,6 +777,14 @@ export default function ProjetoArmor({ onVoltar }) {
   };
   const miraInicio = (e) => {
     e.preventDefault();
+    // Só ativa se o toque COMEÇAR sobre o joystick de mira (com ~35% de
+    // folga ao redor da base). Toques em outros pontos da tela são
+    // ignorados — nada de atirar por encostar em qualquer lugar.
+    const el = miraBaseRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    if (Math.hypot(e.clientX - cx, e.clientY - cy) > (r.width / 2) * 1.35) return;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
     miraPointerRef.current = e.pointerId;
     miraAtualizar(e.clientX, e.clientY);
