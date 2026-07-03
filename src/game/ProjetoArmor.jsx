@@ -16,7 +16,7 @@ const asset = (p) => import.meta.env.BASE_URL + p;
 // Incremente o número sempre que trocar o conteúdo de armor-andar.png.
 const SPRITE_ANDAR = asset('armor-andar.png?v=9');
 // Idle: personagem respirando/olhando em volta quando parado (loop contínuo).
-const SPRITE_PARADO_ANIM = asset('armor-parado.png?v=1');
+const SPRITE_PARADO_ANIM = asset('armor-parado.png?v=2');
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
 // Pulo: folha em GRADE (10 colunas x 17 linhas = 170 frames), lida em zigue-zague
 // esquerda→direita, de cima→baixo. O ciclo completo: agacha (anticipação) →
@@ -235,6 +235,14 @@ export default function ProjetoArmor({ onVoltar }) {
       carregarSprite(SPRITE_PARADO_ANIM, (im) => calibrar(im, FRAMES_PARADO_ANIM)).catch(() => null),
     ]).then(([a, r, solo, pl, idle]) => {
       if (!vivos) return;
+      // A folha do idle já vem com os pés ancorados no mesmo ponto de cada
+      // célula. Usamos a leitura do frame 0 para TODOS os frames: offset de
+      // desenho constante → pés fixos no chão (a autocalibração por frame
+      // compensaria o balanço do corpo e faria os pés tremerem).
+      if (idle && idle.leitura && idle.leitura.frames.length) {
+        const base = idle.leitura.frames[0];
+        idle.leitura = { ...idle.leitura, frames: idle.leitura.frames.map(() => base) };
+      }
       imgsRef.current = {
         andar: a.img, calibAndar: a.leitura, correr: r.img, calibCorrer: r.leitura,
         chao: solo.img, chaoCalib: solo.leitura, pular: pl.img,
