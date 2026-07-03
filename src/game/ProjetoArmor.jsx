@@ -14,7 +14,7 @@ const asset = (p) => import.meta.env.BASE_URL + p;
 
 // ?v=N força o navegador/CDN a baixar a imagem nova quando ela muda (cache-busting).
 // Incremente o número sempre que trocar o conteúdo de armor-andar.png.
-const SPRITE_ANDAR = asset('armor-andar.png?v=8');
+const SPRITE_ANDAR = asset('armor-andar.png?v=9');
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
 // Pulo: folha em GRADE (10 colunas x 17 linhas = 170 frames), lida em zigue-zague
 // esquerda→direita, de cima→baixo. O ciclo completo: agacha (anticipação) →
@@ -46,10 +46,9 @@ const ANDAR_PASSADA_PX = 77;                                   // px de mundo po
 const ANDAR_FRAMES_POR_PX = (FRAMES_ANDAR - 1) / ANDAR_PASSADA_PX; // ≈ 0.91: frames por px andado
 
 // Velocidade máxima da caminhada. A animação avança por px percorrido,
-// então qualquer velocidade ≤ esta mantém os pés grudados; a 0,68 px/tick
-// a folha fecha em ~1,9 s (~0,47 s por passo — andar natural, próximo do
-// ritmo do vídeo de referência).
-const VEL_ANDAR = 0.68;
+// então qualquer velocidade ≤ esta mantém os pés grudados; a 0,85 px/tick
+// a folha fecha em ~1,5 s (~0,38 s por passo — andar firme, sem exagero).
+const VEL_ANDAR = 0.85;
 const VEL_CORRER = 6.4;
 const LIMIAR_CORRER = 0.75;
 
@@ -415,7 +414,7 @@ export default function ProjetoArmor({ onVoltar }) {
       // Andando, a velocidade terminal (mx·aceler/0,15) atinge VEL_ANDAR bem no
       // limiar de correr → inclinação parcial do joystick = andar proporcionalmente
       // mais devagar; passou do limiar, vira corrida.
-      const aceler = correndo ? 0.75 : 0.14;
+      const aceler = correndo ? 0.75 : 0.17;
       p.vx += mx * aceler; p.vx *= 0.85;
       if (Math.abs(p.vx) < 0.05) p.vx = 0;
       p.vx = Math.max(-velMax, Math.min(velMax, p.vx));
