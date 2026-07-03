@@ -15,6 +15,8 @@ const asset = (p) => import.meta.env.BASE_URL + p;
 // ?v=N força o navegador/CDN a baixar a imagem nova quando ela muda (cache-busting).
 // Incremente o número sempre que trocar o conteúdo de armor-andar.png.
 const SPRITE_ANDAR = asset('armor-andar.png?v=9');
+// Idle: personagem respirando/olhando em volta quando parado (loop contínuo).
+const SPRITE_PARADO_ANIM = asset('armor-parado.png?v=1');
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
 // Pulo: folha em GRADE (10 colunas x 17 linhas = 170 frames), lida em zigue-zague
 // esquerda→direita, de cima→baixo. O ciclo completo: agacha (anticipação) →
@@ -35,7 +37,9 @@ const LINHA_PES = 0.18;
 
 const FRAMES_ANDAR = 71;   // frame 0 = parado; frames 1..70 = ciclo de caminhada (da folha, em ordem)
 const FRAMES_CORRER = 15;
-const FRAME_PARADO = 0;
+const FRAME_PARADO = 0;          // frame da folha de andar usado se o idle não carregar
+const FRAMES_PARADO_ANIM = 100;  // folha do idle (1 de cada 3 frames do original)
+const PARADO_FPS = 10;           // 100 frames a 10 fps = loop de ~10 s, ritmo original
 
 // ---- Speed matching (anti-patinação), medido da própria folha ----
 // Rastreando o pé de apoio frame a frame: os 70 frames contêm 4 passos
@@ -143,7 +147,7 @@ export default function ProjetoArmor({ onVoltar }) {
   const relogioAtivoRef = useRef(false);
   const solRef = useRef({ sr: 6.5, ss: 18.5 });
   const latRef = useRef(null);
-  const imgsRef = useRef({ andar: null, correr: null, chao: null, pular: null, calibAndar: null, calibCorrer: null, chaoCalib: null });
+  const imgsRef = useRef({ andar: null, correr: null, chao: null, pular: null, parado: null, calibAndar: null, calibCorrer: null, calibParado: null, chaoCalib: null });
   const videoIntroRef = useRef(null);
   // Vídeo da intro baixado inteiro para a memória (blob) assim que o app abre:
   // quando o celular vira para paisagem, toca na hora, sem buffering de rede.
@@ -227,11 +231,14 @@ export default function ProjetoArmor({ onVoltar }) {
       carregarSprite(SPRITE_CORRER, (im) => calibrar(im, FRAMES_CORRER)),
       carregarSprite(IMG_CHAO, calibrarChao),
       carregarSprite(SPRITE_PULAR, () => null),   // grade fixa: não precisa de autocalibração
-    ]).then(([a, r, solo, pl]) => {
+      // Idle é opcional: se falhar, cai no frame parado da folha de andar.
+      carregarSprite(SPRITE_PARADO_ANIM, (im) => calibrar(im, FRAMES_PARADO_ANIM)).catch(() => null),
+    ]).then(([a, r, solo, pl, idle]) => {
       if (!vivos) return;
       imgsRef.current = {
         andar: a.img, calibAndar: a.leitura, correr: r.img, calibCorrer: r.leitura,
         chao: solo.img, chaoCalib: solo.leitura, pular: pl.img,
+        parado: idle ? idle.img : null, calibParado: idle ? idle.leitura : null,
       };
       setFase('pronto');
     }).catch(() => vivos && setFase('erro'));
@@ -393,7 +400,7 @@ export default function ProjetoArmor({ onVoltar }) {
     const passo = () => {
       raf = requestAnimationFrame(passo);
       const g = G.current;
-      const { andar, correr, chao, pular, calibAndar, calibCorrer, chaoCalib } = imgsRef.current;
+      const { andar, correr, chao, pular, parado, calibAndar, calibCorrer, calibParado, chaoCalib } = imgsRef.current;
       if (!g || !andar || !chao) return;
 
       ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
@@ -471,6 +478,11 @@ export default function ProjetoArmor({ onVoltar }) {
         // velocidade, inclusive acelerando ou freando.
         p.animT += vAbs * ANDAR_FRAMES_POR_PX;
         frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
+      } else if (parado) {
+        // Idle animado: respiração/movimento sutil em loop, por tempo.
+        sprite = parado; calib = calibParado; nFrames = FRAMES_PARADO_ANIM;
+        p.idleT = (p.idleT || 0) + PARADO_FPS / 60;
+        frameAtual = Math.floor(p.idleT) % FRAMES_PARADO_ANIM;
       } else { sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; }
 
       // ===== CÂMERA (segue também na vertical ao voar) =====
