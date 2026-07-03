@@ -591,12 +591,18 @@ export default function ProjetoArmor({ onVoltar }) {
         const col = jFrame % PULAR_COLS, row = Math.floor(jFrame / PULAR_COLS);
         // escala FIXA (não recalibra por frame, senão o arco do pulo achataria)
         const esc = ALTURA_ARMOR / (PULAR_BODY_R * ch);
-        const dW = cw * esc, dH = ch * esc, footGap = PULAR_FOOT_R * ch * esc;
+        const destW = cw * esc, destH = ch * esc, footGap = PULAR_FOOT_R * ch * esc;
+        // Pixel snapping: âncora arredondada em px físicos (ver bloco andar/idle)
+        const mt = ctx.getTransform();
+        const ax = Math.round(mt.a * p.x + mt.c * corpoY + mt.e);
+        const ay = Math.round(mt.b * p.x + mt.d * corpoY + mt.f);
+        const sEff = Z * RENDER_SCALE;
+        const dW = Math.round(destW * sEff), dH = Math.round(destH * sEff);
+        const dGap = Math.round(footGap * sEff);
         ctx.save();
-        ctx.translate(p.x, corpoY);
-        if (flip) ctx.scale(-1, 1);
+        ctx.setTransform(flip ? -1 : 1, 0, 0, 1, ax, ay);
         // base da célula fica footGap ABAIXO de corpoY → pés plantam no solo nos frames de chão
-        ctx.drawImage(pular, Math.round(col * cw), Math.round(row * ch), Math.round(cw), Math.round(ch), -dW / 2, -dH + footGap, dW, dH);
+        ctx.drawImage(pular, Math.round(col * cw), Math.round(row * ch), Math.round(cw), Math.round(ch), -Math.round(dW / 2), -dH + dGap, dW, dH);
         ctx.restore();
       } else {
         const fw = sprite.width / nFrames, fh = sprite.height;
@@ -607,10 +613,22 @@ export default function ProjetoArmor({ onVoltar }) {
           gapPes = (1 - f.botR) * fh * escala; offX = (0.5 - f.cxR) * fw * escala;
         } else escala = ALTURA_ARMOR / fh;
         const destW = fw * escala, destH = fh * escala;
+        // ---- Pixel snapping (pixel perfect) ----
+        // A âncora (p.x, corpoY) passa por câmera/zoom fracionários; desenhar
+        // direto deixaria o sprite em posição quebrada e o nearest neighbor
+        // faria as bordas "dançarem" (tremor). Convertemos a âncora para
+        // PIXELS FÍSICOS do canvas, arredondamos para inteiro e desenhamos
+        // nesse espaço com dimensões também inteiras: bordas sempre alinhadas
+        // à grade de pixels → imagem estável e nítida.
+        const mt = ctx.getTransform();
+        const ax = Math.round(mt.a * p.x + mt.c * corpoY + mt.e);
+        const ay = Math.round(mt.b * p.x + mt.d * corpoY + mt.f);
+        const sEff = Z * RENDER_SCALE;                 // escala mundo → px físico
+        const dW = Math.round(destW * sEff), dH = Math.round(destH * sEff);
+        const dOffX = Math.round(offX * sEff), dGap = Math.round(gapPes * sEff);
         ctx.save();
-        ctx.translate(p.x, corpoY);
-        if (flip) ctx.scale(-1, 1);
-        ctx.drawImage(sprite, Math.round(frameAtual * fw), 0, Math.round(fw), fh, -destW / 2 + offX, -destH + gapPes, destW, destH);
+        ctx.setTransform(flip ? -1 : 1, 0, 0, 1, ax, ay);
+        ctx.drawImage(sprite, Math.round(frameAtual * fw), 0, Math.round(fw), fh, -Math.round(dW / 2) + dOffX, -dH + dGap, dW, dH);
         ctx.restore();
       }
 
