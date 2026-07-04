@@ -119,13 +119,13 @@ function faseDia(h, sr, ss) {
 // em repouso, saltam (~1,3x) e acendem ao serem pressionados. Posições/tamanhos
 // em % do vídeo, iguais à tela inicial original.
 const BOTOES_INICIO = [
-  { id: 'jogar',         src: asset('btn-jogar.png'),         cx: 13.26, cy: 37.82, w: 20.4, aspect: 4.07 },
-  { id: 'armadura',      src: asset('btn-armadura.png'),      cx: 11.30, cy: 47.90, w: 16.9, aspect: 4.93 },
-  { id: 'missoes',       src: asset('btn-missoes.png'),       cx: 11.30, cy: 56.60, w: 16.8, aspect: 5.06 },
-  { id: 'loja',          src: asset('btn-loja.png'),          cx: 11.30, cy: 65.56, w: 16.9, aspect: 5.22 },
-  { id: 'ranking',       src: asset('btn-ranking.png'),       cx: 11.30, cy: 74.10, w: 16.8, aspect: 5.25 },
-  { id: 'configuracoes', src: asset('btn-configuracoes.png'), cx: 11.30, cy: 83.13, w: 16.9, aspect: 5.33 },
-  { id: 'sair',          src: asset('btn-sair.png'),          cx: 11.30, cy: 91.18, w: 17.1, aspect: 4.84 },
+  { id: 'jogar',         src: asset('btn-jogar.png'),         cx: 11.10, cy: 37.82, w: 20.4, aspect: 4.07 },
+  { id: 'armadura',      src: asset('btn-armadura.png'),      cx: 11.10, cy: 47.90, w: 16.9, aspect: 4.93 },
+  { id: 'missoes',       src: asset('btn-missoes.png'),       cx: 11.10, cy: 56.60, w: 16.8, aspect: 5.06 },
+  { id: 'loja',          src: asset('btn-loja.png'),          cx: 11.10, cy: 65.56, w: 16.9, aspect: 5.22 },
+  { id: 'ranking',       src: asset('btn-ranking.png'),       cx: 11.10, cy: 74.10, w: 16.8, aspect: 5.25 },
+  { id: 'configuracoes', src: asset('btn-configuracoes.png'), cx: 11.10, cy: 83.13, w: 16.9, aspect: 5.33 },
+  { id: 'sair',          src: asset('btn-sair.png'),          cx: 11.10, cy: 91.18, w: 17.1, aspect: 4.84 },
 ];
 
 const IconeRelogio = ({ size = 13 }) => (
