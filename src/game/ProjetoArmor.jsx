@@ -17,9 +17,9 @@ const asset = (p) => import.meta.env.BASE_URL + p;
 // As folhas de andar/idle são pré-redimensionadas (offline, Lanczos) para o
 // corpo medir exatamente 105·RENDER_SCALE px: o canvas copia 1:1, sem
 // reamostragem por frame → nítido e sem tremor (pixel crawl) no nearest.
-const SPRITE_ANDAR = asset('armor-andar.png?v=10');
+const SPRITE_ANDAR = asset('armor-andar.png?v=11');
 // Idle: personagem respirando/olhando em volta quando parado (loop contínuo).
-const SPRITE_PARADO_ANIM = asset('armor-parado.png?v=4');
+const SPRITE_PARADO_ANIM = asset('armor-parado.png?v=5');
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
 // Pulo: folha em GRADE (10 colunas x 17 linhas = 170 frames), lida em zigue-zague
 // esquerda→direita, de cima→baixo. O ciclo completo: agacha (anticipação) →
