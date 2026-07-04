@@ -121,6 +121,7 @@ function faseDia(h, sr, ss) {
 const BOTOES_INICIO = [
   { id: 'jogar',         src: asset('btn-jogar.png'),         cx: 13.26, cy: 37.82, w: 20.4, aspect: 4.07 },
   { id: 'armadura',      src: asset('btn-armadura.png'),      cx: 14.54, cy: 47.90, w: 16.9, aspect: 4.93 },
+  { id: 'loja',          src: asset('btn-loja.png'),          cx: 14.54, cy: 65.56, w: 16.9, aspect: 5.22 },
   { id: 'ranking',       src: asset('btn-ranking.png'),       cx: 14.51, cy: 74.10, w: 16.8, aspect: 5.25 },
   { id: 'configuracoes', src: asset('btn-configuracoes.png'), cx: 14.54, cy: 83.13, w: 16.9, aspect: 5.33 },
   { id: 'sair',          src: asset('btn-sair.png'),          cx: 12.98, cy: 91.18, w: 17.1, aspect: 4.84 },
