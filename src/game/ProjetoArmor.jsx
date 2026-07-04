@@ -119,8 +119,9 @@ function faseDia(h, sr, ss) {
 // em repouso, saltam (~1,3x) e acendem ao serem pressionados. Posições/tamanhos
 // em % do vídeo, iguais à tela inicial original.
 const BOTOES_INICIO = [
-  { id: 'jogar', src: asset('btn-jogar.png'), cx: 13.26, cy: 37.82, w: 20.4, aspect: 4.07 },
-  { id: 'sair',  src: asset('btn-sair.png'),  cx: 12.98, cy: 91.18, w: 17.1, aspect: 4.84 },
+  { id: 'jogar',    src: asset('btn-jogar.png'),    cx: 13.26, cy: 37.82, w: 20.4, aspect: 4.07 },
+  { id: 'armadura', src: asset('btn-armadura.png'), cx: 14.54, cy: 47.90, w: 16.9, aspect: 4.93 },
+  { id: 'sair',     src: asset('btn-sair.png'),     cx: 12.98, cy: 91.18, w: 17.1, aspect: 4.84 },
 ];
 
 const IconeRelogio = ({ size = 13 }) => (
