@@ -1104,7 +1104,10 @@ const es = {
   cancelarRodar: { marginTop: 28, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(125,211,252,0.4)', borderRadius: 22, color: '#7dd3fc', fontFamily: 'monospace', fontSize: 15, fontWeight: 700, letterSpacing: '1px', padding: '9px 26px', cursor: 'pointer' },
   txtGrande: { color: '#F0C040', fontSize: 19, fontWeight: 700, letterSpacing: '0.18em', margin: '0 0 8px' },
   txtPeq: { color: '#8E8E93', fontSize: 12, letterSpacing: '0.1em', margin: 0 },
-  videoIntro: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, backgroundColor: '#000' },
+  // imageRendering pixelated: desativa a filtragem bilinear que o navegador
+  // aplica ao esticar o vídeo (1086x476) para a tela inteira — pixels
+  // "crocantes", coerentes com o resto do jogo.
+  videoIntro: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, backgroundColor: '#000', imageRendering: 'pixelated' },
   // Tela inicial: só o vídeo (fundo transparente), com botões/perfil por cima.
   overlayVideo: { position: 'absolute', inset: 0, zIndex: 20, overflow: 'hidden', cursor: 'pointer' },
   // Perfil no canto superior direito do vídeo: silhueta à esquerda, nome em
