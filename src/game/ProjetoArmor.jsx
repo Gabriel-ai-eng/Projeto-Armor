@@ -872,7 +872,7 @@ export default function ProjetoArmor({ onVoltar }) {
   // (trocaria o quadro congelado por tela preta).
   useEffect(() => {
     let vivo = true, url = null;
-    fetch(asset('armor-intro.mp4?v=4'))
+    fetch(asset('armor-intro.mp4?v=5'))
       .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('http'))))
       .then((b) => {
         if (!vivo || introTocouRef.current) return;
@@ -988,7 +988,7 @@ export default function ProjetoArmor({ onVoltar }) {
           <video
             ref={videoIntroRef}
             style={es.videoIntro}
-            src={videoIntroSrc || asset('armor-intro.mp4?v=4')}
+            src={videoIntroSrc || asset('armor-intro.mp4?v=5')}
             muted
             playsInline
             preload="auto"
