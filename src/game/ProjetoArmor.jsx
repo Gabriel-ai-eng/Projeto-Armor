@@ -140,7 +140,10 @@ export default function ProjetoArmor({ onVoltar }) {
   const [zoomPerto, setZoomPerto] = useState(false);
   const [relogioAtivo, setRelogioAtivo] = useState(false);
   const [horaTexto, setHoraTexto] = useState('--:--');
-  const [botaoPressionado, setBotaoPressionado] = useState(null); // 'jogar' | 'sair' | null
+  const btnRefs = useRef({});   // id do botão do menu → elemento (para acender/animar)
+  // Estado do arrasto que gera a onda: botão inicial, botão atual sob o dedo e
+  // se o dedo já "vagou" para outro botão (aí é gesto de onda, não um toque).
+  const arrastoMenuRef = useRef({ ativo: false, atual: null, inicio: null, vagou: false });
   const [knobOff, setKnobOff] = useState({ x: 0, y: 0 }); // knob do joystick de mover
   const [miraOff, setMiraOff] = useState({ x: 0, y: 0 }); // knob do joystick de mirar
   const [voarAtivo, setVoarAtivo] = useState(false);      // feedback visual do botão de voar
@@ -730,6 +733,59 @@ export default function ProjetoArmor({ onVoltar }) {
   // Alps OS, aberto na mesma aba). Se o jogo estiver embutido (onVoltar), usa-o.
   const sair = () => { if (onVoltar) onVoltar(); else window.history.back(); };
 
+  // ---------- ONDA / EFEITO PIANO DOS BOTÕES DA TELA INICIAL ----------
+  // Segurar e deslizar pelos botões faz cada um acender, saltar e desvanecer em
+  // sequência, formando uma onda (tipo teclas de piano). Só dispara ao arrastar;
+  // um toque simples continua acionando o botão normalmente.
+  const acenderBotao = (id) => {
+    const el = btnRefs.current[id];
+    if (!el) return;
+    el.classList.remove('is-onda');
+    el.classList.add('is-ativo');
+  };
+  const soltarComOnda = (id) => {
+    const el = btnRefs.current[id];
+    if (!el) return;
+    el.classList.remove('is-ativo');
+    el.classList.remove('is-onda');
+    void el.offsetWidth;          // reinicia a animação mesmo em passagens rápidas
+    el.classList.add('is-onda');
+  };
+  const botaoSobPonto = (x, y) => {
+    const alvo = document.elementFromPoint(x, y);
+    const btn = alvo && alvo.closest ? alvo.closest('[data-armor-btn]') : null;
+    return btn ? btn.dataset.armorBtn : null;
+  };
+  const menuDown = (e, id) => {
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    arrastoMenuRef.current = { ativo: true, atual: id, inicio: id, vagou: false };
+    acenderBotao(id);
+  };
+  const menuMove = (e) => {
+    const d = arrastoMenuRef.current;
+    if (!d.ativo) return;
+    const id = botaoSobPonto(e.clientX, e.clientY);
+    if (!id || id === d.atual) return;    // ainda no mesmo botão (ou num vão): mantém
+    if (d.atual) soltarComOnda(d.atual);  // deixa o rastro da onda no botão anterior
+    acenderBotao(id);
+    d.atual = id;
+    d.vagou = true;                        // deslizou para outro botão → gesto de onda
+  };
+  const menuUp = () => {
+    const d = arrastoMenuRef.current;
+    if (!d.ativo) return;
+    if (d.atual) soltarComOnda(d.atual);
+    // Só navega num toque limpo (sem deslizar por outros botões).
+    if (!d.vagou && d.inicio === d.atual) {
+      if (d.inicio === 'jogar') entrar();
+      else if (d.inicio === 'sair') sair();
+    }
+    arrastoMenuRef.current = { ativo: false, atual: null, inicio: null, vagou: false };
+  };
+  const menuFimAnim = (e) => {
+    if (e.animationName === 'armorOnda') e.currentTarget.classList.remove('is-onda');
+  };
+
   // ---------- JOYSTICK DE MOVER (lado esquerdo) ----------
   // Base fixa; o knob segue o dedo limitado ao raio. O componente x do
   // deslocamento vira a velocidade horizontal do personagem.
@@ -1002,43 +1058,30 @@ export default function ProjetoArmor({ onVoltar }) {
           />
           {fase === 'pronto' && (
             <>
-          {/* Botões Jogar/Sair sobre o vídeo: invisíveis em repouso; ao segurar,
-              acendem e saltam ~1,3x a partir do centro. */}
+          {/* Botões sobre o vídeo: invisíveis em repouso. Segurar e deslizar por
+              eles gera uma onda (efeito piano) — cada botão acende, salta e
+              desvanece em sequência. Um toque limpo aciona Jogar/Sair. */}
           {BOTOES_INICIO.map((b) => (
             <div
               key={b.id}
+              ref={(el) => { if (el) btnRefs.current[b.id] = el; }}
+              data-armor-btn={b.id}
+              className="armor-menu-btn"
               role="button"
               aria-label={b.id}
-              onPointerDown={() => setBotaoPressionado(b.id)}
-              onPointerUp={() => setBotaoPressionado(null)}
-              onPointerLeave={() => setBotaoPressionado((p) => (p === b.id ? null : p))}
-              onPointerCancel={() => setBotaoPressionado(null)}
+              onPointerDown={(e) => menuDown(e, b.id)}
+              onPointerMove={menuMove}
+              onPointerUp={menuUp}
+              onPointerCancel={menuUp}
+              onAnimationEnd={menuFimAnim}
               onContextMenu={(e) => e.preventDefault()}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (b.id === 'jogar') entrar();
-                else if (b.id === 'sair') sair();
-              }}
+              onClick={(e) => e.stopPropagation()}
               style={{
-                position: 'absolute',
                 left: `${b.cx}%`,
                 top: `${b.cy}%`,
                 width: `${b.w}%`,
                 aspectRatio: `${b.aspect}`,
                 backgroundImage: `url(${b.src})`,
-                backgroundSize: 'contain',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-                transformOrigin: 'center',
-                transform: `translate(-50%, -50%) scale(${botaoPressionado === b.id ? 1.3 : 1})`,
-                opacity: botaoPressionado === b.id ? 1 : 0,
-                transition: 'transform 0.12s ease, opacity 0.12s ease',
-                zIndex: 3,
-                cursor: 'pointer',
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-                WebkitTouchCallout: 'none',
-                touchAction: 'none',
               }}
             />
           ))}
@@ -1077,6 +1120,32 @@ export default function ProjetoArmor({ onVoltar }) {
           0%,16%   { transform:rotate(0deg); }
           46%,72%  { transform:rotate(-90deg); }
           96%,100% { transform:rotate(0deg); }
+        }
+        /* --- Botões do menu inicial: onda / efeito piano ao deslizar --- */
+        .armor-menu-btn {
+          position:absolute;
+          background-size:contain; background-position:center; background-repeat:no-repeat;
+          transform-origin:center; transform:translate(-50%,-50%) scale(1);
+          opacity:0; z-index:3; cursor:pointer;
+          user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+          touch-action:none; will-change:transform,opacity,filter;
+          transition:transform .12s ease, opacity .12s ease, filter .12s ease;
+        }
+        /* Botão sob o dedo agora: aceso, ampliado e com brilho neon (segura a "nota"). */
+        .armor-menu-btn.is-ativo {
+          opacity:1; transform:translate(-50%,-50%) scale(1.28);
+          filter:drop-shadow(0 0 9px rgba(96,199,255,.95)) drop-shadow(0 0 20px rgba(56,150,255,.55));
+          transition:transform .08s ease-out, opacity .08s ease-out, filter .08s ease-out;
+        }
+        /* Rastro da onda: ao sair do botão, ele dá um salto extra e desvanece. */
+        .armor-menu-btn.is-onda { animation:armorOnda .5s cubic-bezier(.2,.9,.25,1) forwards; }
+        @keyframes armorOnda {
+          0%   { opacity:1; transform:translate(-50%,-50%) scale(1.28);
+                 filter:drop-shadow(0 0 9px rgba(96,199,255,.95)) drop-shadow(0 0 20px rgba(56,150,255,.55)); }
+          30%  { opacity:1; transform:translate(-50%,-50%) scale(1.44);
+                 filter:drop-shadow(0 0 16px rgba(130,220,255,1)) drop-shadow(0 0 30px rgba(56,150,255,.75)); }
+          100% { opacity:0; transform:translate(-50%,-50%) scale(1.05);
+                 filter:drop-shadow(0 0 0 rgba(96,199,255,0)) drop-shadow(0 0 0 rgba(56,150,255,0)); }
         }
       `}</style>
     </div>,
