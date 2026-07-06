@@ -17,7 +17,7 @@ const asset = (p) => import.meta.env.BASE_URL + p;
 // As folhas de andar/idle são pré-redimensionadas (offline, Lanczos) para o
 // corpo medir exatamente 105·RENDER_SCALE px: o canvas copia 1:1, sem
 // reamostragem por frame → nítido e sem tremor (pixel crawl) no nearest.
-const SPRITE_ANDAR = asset('armor-andar.png?v=11');
+const SPRITE_ANDAR = asset('armor-andar.png?v=12');
 // Idle: personagem respirando/olhando em volta quando parado (loop contínuo).
 const SPRITE_PARADO_ANIM = asset('armor-parado.png?v=5');
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
@@ -38,23 +38,22 @@ const ZOOM_PERTO = 1.7;
 const ALTURA_IMG_CHAO = 230;
 const LINHA_PES = 0.18;
 
-const FRAMES_ANDAR = 71;   // frame 0 = parado; frames 1..70 = ciclo de caminhada (da folha, em ordem)
+const FRAMES_ANDAR = 79;   // frame 0 = parado; frames 1..78 = ciclo de caminhada (da folha, em ordem)
 const FRAMES_CORRER = 15;
 const FRAME_PARADO = 0;          // frame da folha de andar usado se o idle não carregar
 const FRAMES_PARADO_ANIM = 100;  // folha do idle (1 de cada 3 frames do original)
 const PARADO_FPS = 10;           // 100 frames a 10 fps = loop de ~10 s, ritmo original
 
-// ---- Speed matching (anti-patinação), medido da própria folha ----
-// Rastreando o pé de apoio frame a frame: os 70 frames contêm 4 passos
-// (2 ciclos de marcha) e o pé de apoio recua 169,7 px de folha no total.
-// Na escala do jogo (105 px de corpo ÷ 231 px na folha ≈ 0,4545), a folha
-// inteira corresponde a um deslocamento de ~77 px de mundo.
-const ANDAR_PASSADA_PX = 77;                                   // px de mundo por volta completa da folha
-const ANDAR_FRAMES_POR_PX = (FRAMES_ANDAR - 1) / ANDAR_PASSADA_PX; // ≈ 0.91: frames por px andado
+// ---- Cadência FIXA da caminhada (medida do vídeo de referência) ----
+// O vídeo do personagem andando fecha um ciclo completo da marcha em 71
+// quadros a 60 fps (~1,18 s). A animação avança SEMPRE nesse ritmo — a
+// velocidade do personagem NÃO muda o FPS do andar (inclinar mais o joystick
+// não acelera a passada): passou do teto da caminhada, troca para a CORRIDA.
+const ANDAR_CICLO_TICKS = 71;                                         // ticks (60/s) por volta completa da folha
+const ANDAR_FRAMES_POR_TICK = (FRAMES_ANDAR - 1) / ANDAR_CICLO_TICKS; // ≈ 1.10: frames de sprite por tick
 
-// Velocidade máxima da caminhada. A animação avança por px percorrido,
-// então qualquer velocidade ≤ esta mantém os pés grudados; a 0,85 px/tick
-// a folha fecha em ~1,5 s (~0,38 s por passo — andar firme, sem exagero).
+// Velocidade máxima da caminhada — é também o LIMITE DE CORRIDA: acima dela
+// o personagem está correndo e a animação de corrida assume.
 const VEL_ANDAR = 0.85;
 const VEL_CORRER = 6.4;
 const LIMIAR_CORRER = 0.75;
@@ -473,7 +472,10 @@ export default function ProjetoArmor({ onVoltar }) {
       if (emPulo) modo = 'pular';
       else if (p.y > 3) modo = 'ar';
       else if (vAbs < 0.06) modo = 'parado';
-      else if (correndo && vAbs > VEL_ANDAR * 0.7) modo = 'correr';
+      // Troca para a CORRIDA quando a VELOCIDADE atinge o limite de corrida
+      // (o teto da caminhada) — puramente pela velocidade, não pelo joystick:
+      // abaixo do teto o andar mantém sua cadência fixa; acima, corre.
+      else if (vAbs > VEL_ANDAR) modo = 'correr';
       else modo = 'andar';
       // Saindo do parado para andar, recomeça o ciclo do zero: o primeiro
       // passo nasce no início da passada, sem "pular" para o meio do ciclo.
@@ -488,14 +490,11 @@ export default function ProjetoArmor({ onVoltar }) {
         p.animT += vAbs * 0.07; frameAtual = Math.floor(p.animT) % nFrames;
       } else if (modo === 'andar') {
         sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
-        // Cadência sincronizada com o passo: um ciclo completo de caminhada corresponde
-        // à distância percorrida no chão, então os pés "agarram" o solo (sem patinar).
-        // Como o avanço é proporcional a vAbs, andar devagar = animação devagar e vice-versa.
-        // Speed matching: a animação avança proporcional à DISTÂNCIA percorrida
-        // (frames por px medidos da folha), então cada passo desloca exatamente
-        // o tamanho visual do passo — pés grudados no chão em qualquer
-        // velocidade, inclusive acelerando ou freando.
-        p.animT += vAbs * ANDAR_FRAMES_POR_PX;
+        // Cadência FIXA (do vídeo de referência): o ciclo fecha sempre em
+        // ~1,18 s, andando devagar ou no teto — a velocidade do personagem
+        // NÃO altera o FPS da animação de andar. Acima do teto (VEL_ANDAR)
+        // o modo já trocou para 'correr' lá em cima.
+        p.animT += ANDAR_FRAMES_POR_TICK;
         frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
       } else if (parado) {
         // Idle animado: respiração/movimento sutil em loop, por tempo.
