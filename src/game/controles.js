@@ -2,14 +2,6 @@
 // PROJETO ARMOR · CONTROLES (input do jogador)
 // Os handlers de toque dos DOIS joysticks (mover à esquerda, mirar à direita),
 // do botão de VOAR e da "onda"/efeito piano dos botões da tela inicial.
-//
-// Tudo lê/escreve por refs (moveRef, aimRef, G…) e alguns setters de feedback
-// visual (posição dos knobs, brilho do voar) — por isso mora fora do componente
-// sem depender do ciclo de render do React. O motor (motor.js) consome moveRef
-// e aimRef a cada frame.
-//
-// Recebe (deps) os refs/setters e os callbacks entrar()/sair(), e devolve os
-// handlers prontos para os elementos DOM no JSX.
 // ============================================================
 
 export function criarControles(deps) {
@@ -20,9 +12,6 @@ export function criarControles(deps) {
   } = deps;
 
   // ---------- ONDA / EFEITO PIANO DOS BOTÕES DA TELA INICIAL ----------
-  // Segurar e deslizar pelos botões faz cada um acender, saltar e desvanecer em
-  // sequência, formando uma onda (tipo teclas de piano). Só dispara ao arrastar;
-  // um toque simples continua acionando o botão normalmente.
   const acenderBotao = (id) => {
     const el = btnRefs.current[id];
     if (!el) return;
@@ -34,7 +23,7 @@ export function criarControles(deps) {
     if (!el) return;
     el.classList.remove('is-ativo');
     el.classList.remove('is-onda');
-    void el.offsetWidth;          // reinicia a animação mesmo em passagens rápidas
+    void el.offsetWidth;         
     el.classList.add('is-onda');
   };
   const botaoSobPonto = (x, y) => {
@@ -51,17 +40,16 @@ export function criarControles(deps) {
     const d = arrastoMenuRef.current;
     if (!d.ativo) return;
     const id = botaoSobPonto(e.clientX, e.clientY);
-    if (!id || id === d.atual) return;    // ainda no mesmo botão (ou num vão): mantém
-    if (d.atual) soltarComOnda(d.atual);  // deixa o rastro da onda no botão anterior
+    if (!id || id === d.atual) return;    
+    if (d.atual) soltarComOnda(d.atual);  
     acenderBotao(id);
     d.atual = id;
-    d.vagou = true;                        // deslizou para outro botão → gesto de onda
+    d.vagou = true;                        
   };
   const menuUp = () => {
     const d = arrastoMenuRef.current;
     if (!d.ativo) return;
     if (d.atual) soltarComOnda(d.atual);
-    // Só navega num toque limpo (sem deslizar por outros botões).
     if (!d.vagou && d.inicio === d.atual) {
       if (d.inicio === 'jogar') entrar();
       else if (d.inicio === 'sair') sair();
@@ -73,8 +61,6 @@ export function criarControles(deps) {
   };
 
   // ---------- JOYSTICK DE MOVER (lado esquerdo) ----------
-  // Base fixa; o knob segue o dedo limitado ao raio. O componente x do
-  // deslocamento vira a velocidade horizontal do personagem.
   const joyAtualizar = (clientX, clientY) => {
     const el = joyBaseRef.current;
     if (!el) return;
@@ -87,12 +73,24 @@ export function criarControles(deps) {
     setKnobOff({ x: dx, y: dy });
     moveRef.current = { x: dx / maxR, mag: Math.min(Math.hypot(dx, dy) / maxR, 1) };
   };
+  
   const joyInicio = (e) => {
     e.preventDefault();
+    
+    // REESCRITO: Cancela a ação se o jogador encostar o dedo FORA do limite circular do joystick de mover. 
+    // Isso impede a ativação ao tocar no meio ou em cima da tela esquerda.
+    const el = joyBaseRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    // Multiplicado por 1.1 para dar uma margem microscópica pro dedo do jogador
+    if (Math.hypot(e.clientX - cx, e.clientY - cy) > (r.width / 2) * 1.1) return; 
+
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
     joyPointerRef.current = e.pointerId;
     joyAtualizar(e.clientX, e.clientY);
   };
+  
   const joyMover = (e) => {
     if (joyPointerRef.current !== e.pointerId) return;
     joyAtualizar(e.clientX, e.clientY);
@@ -105,27 +103,25 @@ export function criarControles(deps) {
   };
 
   // ---------- BOTÃO DE VOAR (lado direito) ----------
-  // 1 toque no chão = pulo animado · 2 toques rápidos + segurar = voar.
   const voarPress = (e) => {
     e.preventDefault();
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
     const g = G.current;
     if (g) {
       const now = performance.now();
-      if (now - g.lastFlyDown < 320) { g.flying = true; g.jump = null; } // 2º toque → voa
-      else if (g.p.y <= 2 && !g.jump) g.jump = { f: 0 };                 // no chão → pulo animado
+      if (now - g.lastFlyDown < 320) { g.flying = true; g.jump = null; } 
+      else if (g.p.y <= 2 && !g.jump) g.jump = { f: 0 };                 
       g.lastFlyDown = now;
     }
     setVoarAtivo(true);
   };
   const voarRelease = () => {
     const g = G.current;
-    if (g) g.flying = false; // soltar → cai
+    if (g) g.flying = false; 
     setVoarAtivo(false);
   };
 
   // ---------- JOYSTICK DE MIRAR (lado direito) ----------
-  // Direção da mira; empurrado além da zona-morta, dispara nessa direção.
   const miraAtualizar = (clientX, clientY) => {
     const el = miraBaseRef.current;
     if (!el) return;
@@ -140,20 +136,23 @@ export function criarControles(deps) {
     if (d > maxR * 0.28) aimRef.current = { active: true, ang: Math.atan2(dy, dx) };
     else aimRef.current = { active: false, ang: 0 };
   };
+  
   const miraInicio = (e) => {
     e.preventDefault();
-    // Só ativa se o toque COMEÇAR sobre o joystick de mira (com ~35% de
-    // folga ao redor da base). Toques em outros pontos da tela são
-    // ignorados — nada de atirar por encostar em qualquer lugar.
     const el = miraBaseRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    if (Math.hypot(e.clientX - cx, e.clientY - cy) > (r.width / 2) * 1.35) return;
+    
+    // REESCRITO: A mira já tinha esse bloqueio, mas eu reduzi o raio de 1.35 para 1.1,
+    // garantindo que fique contido restritamente no espaço do círculo.
+    if (Math.hypot(e.clientX - cx, e.clientY - cy) > (r.width / 2) * 1.1) return;
+    
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
     miraPointerRef.current = e.pointerId;
     miraAtualizar(e.clientX, e.clientY);
   };
+  
   const miraMover = (e) => {
     if (miraPointerRef.current !== e.pointerId) return;
     miraAtualizar(e.clientX, e.clientY);
