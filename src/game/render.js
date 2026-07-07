@@ -48,22 +48,17 @@ export function criarLoop(deps) {
     const p = g.p;
     const correndo = intensidade > LIMIAR_CORRER;
     const velMax = correndo ? VEL_CORRER : VEL_ANDAR;
-    // Andando, a velocidade terminal (mx·aceler/0,15) atinge VEL_ANDAR bem no
-    // limiar de correr → inclinação parcial do joystick = andar proporcionalmente
-    // mais devagar; passou do limiar, vira corrida.
     const aceler = correndo ? 0.75 : 0.17;
     p.vx += mx * aceler; p.vx *= 0.85;
     if (Math.abs(p.vx) < 0.05) p.vx = 0;
     p.vx = Math.max(-velMax, Math.min(velMax, p.vx));
     p.x = Math.max(60, Math.min(WORLD_W - 60, p.x + p.vx));
-    // direção: mira manda; senão, movimento
     if (aimActive && Math.abs(Math.cos(aimAng)) > 0.25) p.face = Math.cos(aimAng) >= 0 ? 1 : -1;
     else if (Math.abs(p.vx) > 0.08) p.face = p.vx > 0 ? 1 : -1;
 
     // ===== FÍSICA VERTICAL (pulo roteirizado / voo) =====
-    if (g.flying && g.jump) g.jump = null;            // voar cancela o pulo roteirizado
+    if (g.flying && g.jump) g.jump = null;            
     if (g.jump) {
-      // o pulo segue a animação: a altura vem do arco, não da gravidade
       g.jump.f += JUMP_ANIM_SPEED;
       if (g.jump.f >= PULAR_FRAMES) { g.jump = null; p.y = 0; p.vy = 0; }
       else { p.y = jumpArc(g.jump.f); p.vy = 0; }
@@ -84,38 +79,38 @@ export function criarLoop(deps) {
     if (emPulo) modo = 'pular';
     else if (p.y > 3) modo = 'ar';
     else if (vAbs < 0.06) modo = 'parado';
-    // Troca para a CORRIDA quando a VELOCIDADE atinge o limite de corrida
-    // (o teto da caminhada) — puramente pela velocidade, não pelo joystick:
-    // abaixo do teto o andar mantém sua cadência fixa; acima, corre.
     else if (vAbs > VEL_ANDAR) modo = 'correr';
     else modo = 'andar';
-    // Saindo do parado para andar, recomeça o ciclo do zero: o primeiro
-    // passo nasce no início da passada, sem "pular" para o meio do ciclo.
+    
     if (modo === 'andar' && p.modo !== 'andar') p.animT = 0;
     p.modo = modo;
 
     let sprite, calib, nFrames, frameAtual;
     if (emPulo) {
-      // a folha do pulo é uma grade; o desenho é tratado em bloco próprio abaixo
+      // Pulo desenhado abaixo
     } else if (modo === 'correr' && correr) {
       sprite = correr; calib = calibCorrer; nFrames = FRAMES_CORRER;
-      p.animT += vAbs * 0.07; frameAtual = Math.floor(p.animT) % nFrames;
+      // FIX DE VELOCIDADE: Reduzido o multiplicador de 0.07 para 0.035 para dar peso à corrida
+      p.animT += vAbs * 0.035; 
+      frameAtual = Math.floor(p.animT) % nFrames;
     } else if (modo === 'andar') {
       sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
-      // Cadência FIXA (do vídeo de referência): o ciclo fecha sempre em
-      // ~1,18 s, andando devagar ou no teto — a velocidade do personagem
-      // NÃO altera o FPS da animação de andar. Acima do teto (VEL_ANDAR)
-      // o modo já trocou para 'correr' lá em cima.
-      p.animT += ANDAR_FRAMES_POR_TICK;
+      
+      // FIX DE VELOCIDADE: Multiplicamos o avanço do frame por 0.45.
+      // Isso reduz a velocidade da animação em mais da metade, removendo 
+      // o efeito "patinação" e dando um passo mais robótico e natural.
+      p.animT += (ANDAR_FRAMES_POR_TICK * 0.45);
+      
       frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
     } else if (parado) {
-      // Idle animado: respiração/movimento sutil em loop, por tempo.
       sprite = parado; calib = calibParado; nFrames = FRAMES_PARADO_ANIM;
       p.idleT = (p.idleT || 0) + PARADO_FPS / 60;
       frameAtual = Math.floor(p.idleT) % FRAMES_PARADO_ANIM;
-    } else { sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; }
+    } else { 
+      sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; 
+    }
 
-    // ===== CÂMERA (segue também na vertical ao voar) =====
+    // ===== CÂMERA =====
     const zAlvo = zoomAlvoRef.current;
     const perto = zAlvo > 1.001;
     const fyAlvo = (perto ? -(ALTURA_ARMOR * 0.5) : -(ALT * 0.22)) - p.y;
@@ -199,19 +194,16 @@ export function criarLoop(deps) {
     for (let x = x0; x < rightW; x += gwW) ctx.drawImage(chao, x, dyImg, gwW, ghW);
     if (lum > 0.01) { ctx.fillStyle = rgbaStr([170, 200, 230], lum * 0.1); ctx.fillRect(leftW, dyImg, rightW - leftW, ghW + 300); }
 
-    const corpoY = superficie - p.y;            // sobe ao pular/voar
+    const corpoY = superficie - p.y;            
 
     // PROJETO ARMOR
     const flip = (p.face === 1) !== (SPRITE_OLHA_PARA === 'direita');
     if (emPulo) {
-      // grade do pulo: índice em zigue-zague (col = resto, linha = quociente)
       const jFrame = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
       const cw = pular.width / PULAR_COLS, ch = pular.height / PULAR_ROWS;
       const col = jFrame % PULAR_COLS, row = Math.floor(jFrame / PULAR_COLS);
-      // escala FIXA (não recalibra por frame, senão o arco do pulo achataria)
       const esc = ALTURA_ARMOR / (PULAR_BODY_R * ch);
       const destW = cw * esc, destH = ch * esc, footGap = PULAR_FOOT_R * ch * esc;
-      // Pixel snapping: âncora arredondada em px físicos (ver bloco andar/idle)
       const mt = ctx.getTransform();
       const ax = Math.round(mt.a * p.x + mt.c * corpoY + mt.e);
       const ay = Math.round(mt.b * p.x + mt.d * corpoY + mt.f);
@@ -220,7 +212,6 @@ export function criarLoop(deps) {
       const dGap = Math.round(footGap * sEff);
       ctx.save();
       ctx.setTransform(flip ? -1 : 1, 0, 0, 1, ax, ay);
-      // base da célula fica footGap ABAIXO de corpoY → pés plantam no solo nos frames de chão
       ctx.drawImage(pular, Math.round(col * cw), Math.round(row * ch), Math.round(cw), Math.round(ch), -Math.round(dW / 2), -dH + dGap, dW, dH);
       ctx.restore();
     } else {
@@ -232,17 +223,10 @@ export function criarLoop(deps) {
         gapPes = (1 - f.botR) * fh * escala; offX = (0.5 - f.cxR) * fw * escala;
       } else escala = ALTURA_ARMOR / fh;
       const destW = fw * escala, destH = fh * escala;
-      // ---- Pixel snapping (pixel perfect) ----
-      // A âncora (p.x, corpoY) passa por câmera/zoom fracionários; desenhar
-      // direto deixaria o sprite em posição quebrada e o nearest neighbor
-      // faria as bordas "dançarem" (tremor). Convertemos a âncora para
-      // PIXELS FÍSICOS do canvas, arredondamos para inteiro e desenhamos
-      // nesse espaço com dimensões também inteiras: bordas sempre alinhadas
-      // à grade de pixels → imagem estável e nítida.
       const mt = ctx.getTransform();
       const ax = Math.round(mt.a * p.x + mt.c * corpoY + mt.e);
       const ay = Math.round(mt.b * p.x + mt.d * corpoY + mt.f);
-      const sEff = Z * RENDER_SCALE;                 // escala mundo → px físico
+      const sEff = Z * RENDER_SCALE;                 
       const dW = Math.round(destW * sEff), dH = Math.round(destH * sEff);
       const dOffX = Math.round(offX * sEff), dGap = Math.round(gapPes * sEff);
       ctx.save();
@@ -251,7 +235,7 @@ export function criarLoop(deps) {
       ctx.restore();
     }
 
-    // ===== MIRA (origem nas mãos) =====
+    // ===== MIRA =====
     const ox = p.x + p.face * 4, oy = corpoY - ALTURA_ARMOR * 0.55;
     if (aimActive) {
       const ex = ox + Math.cos(aimAng) * 120, ey = oy + Math.sin(aimAng) * 120;
@@ -263,14 +247,13 @@ export function criarLoop(deps) {
       ctx.strokeStyle = rgbaStr(AZUL_RGB, 0.8); ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.arc(ex, ey, 7, 0, 7); ctx.stroke();
       ctx.beginPath(); ctx.arc(ex, ey, 1.6, 0, 7); ctx.stroke();
-      // brilho de carga nas mãos
       const ch = ctx.createRadialGradient(ox, oy, 1, ox, oy, 12);
       ch.addColorStop(0, rgbaStr(AZUL_RGB, 0.6)); ch.addColorStop(1, rgbaStr(AZUL_RGB, 0));
       ctx.fillStyle = ch; ctx.fillRect(ox - 12, oy - 12, 24, 24);
       ctx.globalCompositeOperation = 'source-over';
     }
 
-    // ===== ARMA: dispara sozinho enquanto a mira está ativa =====
+    // ===== ARMA =====
     if (g.tiroCd > 0) g.tiroCd--;
     const dir = aimActive ? { x: Math.cos(aimAng), y: Math.sin(aimAng) } : { x: p.face, y: 0 };
     if (aimActive && g.tiroCd <= 0) {
@@ -279,7 +262,6 @@ export function criarLoop(deps) {
       if (g.projeteis.length > 90) g.projeteis.shift();
     }
 
-    // atualizar + desenhar projéteis (espaço do mundo)
     ctx.globalCompositeOperation = 'lighter';
     for (let i = g.projeteis.length - 1; i >= 0; i--) {
       const pr = g.projeteis[i];
@@ -301,7 +283,7 @@ export function criarLoop(deps) {
       }
       if (pr.vida <= 0 || Math.abs(pr.x - p.x) > 1700) g.projeteis.splice(i, 1);
     }
-    // partículas (rasto)
+    
     for (let i = g.particulas.length - 1; i >= 0; i--) {
       const q = g.particulas[i]; q.vida -= 0.06;
       if (q.vida <= 0) { g.particulas.splice(i, 1); continue; }
@@ -310,14 +292,12 @@ export function criarLoop(deps) {
     }
     ctx.globalCompositeOperation = 'source-over';
 
-    ctx.restore(); // fim da câmera
+    ctx.restore(); 
 
     // ===== VINHETA =====
     const vin = ctx.createRadialGradient(VW / 2, ALT / 2, ALT * 0.45, VW / 2, ALT / 2, ALT * 0.95);
     vin.addColorStop(0, 'rgba(0,0,0,0)'); vin.addColorStop(1, `rgba(0,0,0,${0.42 * (1 - lum * 0.5)})`);
     ctx.fillStyle = vin; ctx.fillRect(0, 0, VW, ALT);
-
-    // ===== HUD: joysticks e botão de voar são DOM por imagem (ver ProjetoArmor.jsx) =====
   };
 
   return {
