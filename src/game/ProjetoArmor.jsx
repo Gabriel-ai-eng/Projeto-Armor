@@ -1,131 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { carregarEstado, salvarEstado, estadoInicial } from '../lib/playerSave';
+import { ALT, RENDER_SCALE, ZOOM_PERTO, AZUL } from './ajustes';
+import { asset, BOTOES_INICIO } from './sprites';
+import { calcularSol } from './mundo';
+import { carregarSprites } from './carregarSprites';
+import { criarLoop } from './motor';
+import { criarControles } from './controles';
+import { es, CSS_ARMOR } from './estilos';
 
 // ============================================================
 // PROJETO ARMOR — Capítulo 1: O Despertar
-// HUD dupla: joystick mover (esq) + mirar (dir) · tiro · míssil · voar
+// Componente/telas do jogo: carrega as sprites, controla as fases
+// (carregando → tela inicial → jogando), monta o MOTOR (motor.js) e os
+// CONTROLES (controles.js), e desenha a UI (vídeo da intro, botões, HUD).
+// A física/desenho fica no motor; os ajustes em ajustes.js; as folhas de
+// sprite em sprites.js. Guia completo em ESTRUTURA.md.
 // ============================================================
-
-// Caminho base do deploy (definido pelo Vite: '/jogo/' em produção sob o domínio
-// da plataforma, '/' no dev/standalone). Todos os assets da pasta public precisam
-// deste prefixo para resolverem corretamente através do proxy do domínio.
-const asset = (p) => import.meta.env.BASE_URL + p;
-
-// ?v=N força o navegador/CDN a baixar a imagem nova quando ela muda (cache-busting).
-// Incremente o número sempre que trocar o conteúdo de armor-andar.webp.
-// As folhas de andar/idle são pré-redimensionadas (offline, Lanczos) para o
-// corpo medir exatamente 105·RENDER_SCALE px: o canvas copia 1:1, sem
-// reamostragem por frame → nítido e sem tremor (pixel crawl) no nearest.
-const SPRITE_ANDAR = asset('armor-andar.webp?v=12');
-// Idle: personagem respirando/olhando em volta quando parado (loop contínuo).
-const SPRITE_PARADO_ANIM = asset('armor-parado.webp?v=5');
-const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
-// Pulo: folha em GRADE (10 colunas x 17 linhas = 170 frames), lida em zigue-zague
-// esquerda→direita, de cima→baixo. O ciclo completo: agacha (anticipação) →
-// impulso a jato → voo → aterrissagem com poeira → recupera e fica de pé.
-const SPRITE_PULAR = asset('armor-pular.webp?v=1');
-const IMG_CHAO = 'https://i.ibb.co/KzVkz7dS/11-20260612-202236-0000.png';
-
-const SPRITE_OLHA_PARA = 'direita';
-
-// ---------- Ajustes finos ----------
-const ALT = 360;
-const RENDER_SCALE = 2;
-const WORLD_W = 1700;
-const ALTURA_ARMOR = 105;
-const ZOOM_PERTO = 1.7;
-const ALTURA_IMG_CHAO = 230;
-const LINHA_PES = 0.18;
-
-const FRAMES_ANDAR = 79;   // frame 0 = parado; frames 1..78 = ciclo de caminhada (da folha, em ordem)
-const FRAMES_CORRER = 15;
-const FRAME_PARADO = 0;          // frame da folha de andar usado se o idle não carregar
-const FRAMES_PARADO_ANIM = 100;  // folha do idle (1 de cada 3 frames do original)
-const PARADO_FPS = 10;           // 100 frames a 10 fps = loop de ~10 s, ritmo original
-
-// ---- Cadência FIXA da caminhada (medida do vídeo de referência) ----
-// O vídeo do personagem andando fecha um ciclo completo da marcha em 71
-// quadros a 60 fps (~1,18 s). A animação avança SEMPRE nesse ritmo — a
-// velocidade do personagem NÃO muda o FPS do andar (inclinar mais o joystick
-// não acelera a passada): passou do teto da caminhada, troca para a CORRIDA.
-const ANDAR_CICLO_TICKS = 71;                                         // ticks (60/s) por volta completa da folha
-const ANDAR_FRAMES_POR_TICK = (FRAMES_ANDAR - 1) / ANDAR_CICLO_TICKS; // ≈ 1.10: frames de sprite por tick
-
-// Velocidade máxima da caminhada — é também o LIMITE DE CORRIDA: acima dela
-// o personagem está correndo e a animação de corrida assume.
-const VEL_ANDAR = 0.85;
-const VEL_CORRER = 6.4;
-const LIMIAR_CORRER = 0.75;
-
-// física vertical (pulo / voo)
-const GRAV = 0.5, JUMP_V = 10, FLY_THRUST = 0.92, VY_MAX = 4.4, VY_FALL = 11, ALT_MAX = 210;
-
-// ---------- Pulo roteirizado (folha em grade) ----------
-const PULAR_COLS = 10, PULAR_ROWS = 17, PULAR_FRAMES = 170;
-const PULAR_BODY_R = 0.797;   // altura do corpo ÷ altura da célula (frame em pé) → escala fixa
-const PULAR_FOOT_R = 0.12;    // distância dos pés até a base da célula (frames no chão) → planta os pés no solo
-const JUMP_ANIM_SPEED = 1.6;  // frames de sprite por tick (~1.8 s para os 170 frames)
-const JUMP_LAUNCH_F = 30;     // frame em que sai do chão (fim da anticipação)
-const JUMP_LAND_F = 129;      // frame em que aterrissa (impacto/poeira)
-const JUMP_ARC_H = 100;       // altura do arco do pulo (px) — casada com o pulo físico antigo
-// armas
-const COOLDOWN_TIRO = 8, COOLDOWN_MISSIL = 26, VEL_TIRO = 15, VEL_MISSIL = 8.5;
-
-const AZUL = '#6ED8FF', OURO = '#F0C040';
-const AZUL_RGB = [110, 216, 255], OURO_RGB = [240, 192, 64], FLY_RGB = [175, 228, 255];
-
-// ---------- Cores do céu por fase do dia ----------
-const NOITE = [[7, 10, 22], [16, 26, 51], [28, 42, 71]];
-const DIA   = [[44, 111, 178], [92, 159, 214], [166, 203, 232]];
-const CREP  = [[36, 27, 58], [122, 63, 102], [224, 137, 79]];
-
-const lerpArr = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-const rgbStr = (a) => `rgb(${Math.round(a[0])},${Math.round(a[1])},${Math.round(a[2])})`;
-const rgbaStr = (a, al) => `rgba(${Math.round(a[0])},${Math.round(a[1])},${Math.round(a[2])},${al})`;
-const suave = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-
-// Altura do pulo roteirizado em função do frame da animação: meia onda de seno
-// entre o frame de impulso e o de aterrissagem (0 antes/depois → pés no chão).
-const jumpArc = (f) => {
-  if (f <= JUMP_LAUNCH_F || f >= JUMP_LAND_F) return 0;
-  const t = (f - JUMP_LAUNCH_F) / (JUMP_LAND_F - JUMP_LAUNCH_F);
-  return JUMP_ARC_H * Math.sin(Math.PI * t);
-};
-
-function calcularSol(lat, date) {
-  const inicio = new Date(date.getFullYear(), 0, 0);
-  const N = Math.floor((date - inicio) / 86400000);
-  const decl = 23.45 * Math.sin((2 * Math.PI / 365) * (284 + N));
-  const latR = lat * Math.PI / 180, declR = decl * Math.PI / 180;
-  let cosH = -Math.tan(latR) * Math.tan(declR);
-  cosH = Math.max(-1, Math.min(1, cosH));
-  const H = Math.acos(cosH) * 180 / Math.PI;
-  const meio = H / 15;
-  return { sr: 12 - meio, ss: 12 + meio };
-}
-function faseDia(h, sr, ss) {
-  const tw = 0.8; let lum;
-  if (h <= sr - tw || h >= ss + tw) lum = 0;
-  else if (h < sr + tw) lum = suave(sr - tw, sr + tw, h);
-  else if (h <= ss - tw) lum = 1;
-  else lum = 1 - suave(ss - tw, ss + tw, h);
-  return { lum, twi: Math.max(0, 1 - Math.abs(lum - 0.5) * 2) };
-}
-
-
-// Botões "Jogar" e "Sair" desenhados sobre o vídeo da tela inicial: invisíveis
-// em repouso, saltam (~1,3x) e acendem ao serem pressionados. Posições/tamanhos
-// em % do vídeo, iguais à tela inicial original.
-const BOTOES_INICIO = [
-  { id: 'jogar',         src: asset('btn-jogar.webp'),         cx: 11.10, cy: 37.82, w: 20.4, aspect: 4.07 },
-  { id: 'armadura',      src: asset('btn-armadura.webp'),      cx: 11.10, cy: 47.90, w: 16.9, aspect: 4.93 },
-  { id: 'missoes',       src: asset('btn-missoes.webp'),       cx: 11.10, cy: 56.60, w: 16.8, aspect: 5.06 },
-  { id: 'loja',          src: asset('btn-loja.webp'),          cx: 11.10, cy: 65.56, w: 16.9, aspect: 5.22 },
-  { id: 'ranking',       src: asset('btn-ranking.webp'),       cx: 11.10, cy: 74.10, w: 16.8, aspect: 5.25 },
-  { id: 'configuracoes', src: asset('btn-configuracoes.webp'), cx: 11.10, cy: 83.13, w: 16.9, aspect: 5.33 },
-  { id: 'sair',          src: asset('btn-sair.webp'),          cx: 11.10, cy: 91.18, w: 17.1, aspect: 4.84 },
-];
 
 const IconeRelogio = ({ size = 13 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
@@ -166,7 +57,7 @@ export default function ProjetoArmor({ onVoltar }) {
   // Guarda a orientação anterior para detectar a transição retrato→paisagem
   // (é o único gatilho que inicia o vídeo da intro).
   const prevPaisagemRef = useRef(false);
-  // Joysticks por imagem (leitura entregue ao loop do jogo via refs).
+  // Joysticks (leitura entregue ao loop do jogo via refs).
   const moveRef = useRef({ x: 0, mag: 0 });   // mover: x = -1..1, mag = 0..1
   const joyBaseRef = useRef(null);
   const joyPointerRef = useRef(null);
@@ -177,90 +68,13 @@ export default function ProjetoArmor({ onVoltar }) {
   const carregadoRef = useRef(false); // só salva depois que carregou (evita apagar)
   const miraPointerRef = useRef(null);
 
-  // ---------- CARREGAMENTO + AUTOCALIBRAÇÃO ----------
+  // ---------- CARREGAMENTO DAS SPRITES (ver carregarSprites.js) ----------
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     let vivos = true;
-    const carregar = (src, cors) =>
-      new Promise((res, rej) => {
-        const img = new Image();
-        if (cors) img.crossOrigin = 'anonymous';
-        img.onload = () => res(img); img.onerror = rej; img.src = src;
-      });
-
-    const calibrar = (img, nFrames) => {
-      try {
-        const CW = 200 * nFrames, CH = Math.max(1, Math.round(img.height * (CW / img.width)));
-        const c = document.createElement('canvas'); c.width = CW; c.height = CH;
-        const cx = c.getContext('2d'); cx.drawImage(img, 0, 0, CW, CH);
-        const fw = CW / nFrames; const frames = []; let maiorCorpo = 0;
-        for (let f = 0; f < nFrames; f++) {
-          const x0 = Math.round(f * fw), W = Math.round(fw);
-          const data = cx.getImageData(x0, 0, W, CH).data;
-          let top = CH, bot = -1, esq = W, dir = -1;
-          for (let y = 0; y < CH; y++) for (let x = 0; x < W; x++)
-            if (data[(y * W + x) * 4 + 3] > 12) {
-              if (y < top) top = y; if (y > bot) bot = y;
-              if (x < esq) esq = x; if (x > dir) dir = x;
-            }
-          if (bot < 0) { frames.push(null); continue; }
-          const corpo = bot - top + 1; if (corpo > maiorCorpo) maiorCorpo = corpo;
-          frames.push({ botR: bot / CH, cxR: (esq + dir) / 2 / W });
-        }
-        const valido = frames.find(f => f !== null);
-        if (!valido || maiorCorpo === 0) return null;
-        for (let f = 0; f < nFrames; f++) if (!frames[f]) frames[f] = valido;
-        return { frames, corpoR: maiorCorpo / CH };
-      } catch (e) { return null; }
-    };
-
-    const calibrarChao = (img) => {
-      try {
-        const CW = 400, CH = Math.max(1, Math.round(img.height * (CW / img.width)));
-        const c = document.createElement('canvas'); c.width = CW; c.height = CH;
-        const cx = c.getContext('2d'); cx.drawImage(img, 0, 0, CW, CH);
-        const data = cx.getImageData(0, 0, CW, CH).data;
-        let topRow = -1, botRow = -1;
-        for (let y = 0; y < CH && topRow < 0; y++) for (let x = 0; x < CW; x += 2)
-          if (data[(y * CW + x) * 4 + 3] > 12) { topRow = y; break; }
-        for (let y = CH - 1; y >= 0 && botRow < 0; y--) for (let x = 0; x < CW; x += 2)
-          if (data[(y * CW + x) * 4 + 3] > 12) { botRow = y; break; }
-        if (topRow < 0) return null;
-        const sy = Math.max(0, botRow - 2), si = (sy * CW + Math.floor(CW / 2)) * 4;
-        return { topR: topRow / CH, botR: (botRow + 1) / CH, cor: `rgb(${data[si]},${data[si + 1]},${data[si + 2]})` };
-      } catch (e) { return null; }
-    };
-
-    const carregarSprite = async (src, medir) => {
-      try { const img = await carregar(src, true); return { img, leitura: medir(img) }; }
-      catch (e) { const img = await carregar(src, false); return { img, leitura: null }; }
-    };
-
-    Promise.all([
-      carregarSprite(SPRITE_ANDAR, (im) => calibrar(im, FRAMES_ANDAR)),
-      carregarSprite(SPRITE_CORRER, (im) => calibrar(im, FRAMES_CORRER)),
-      carregarSprite(IMG_CHAO, calibrarChao),
-      carregarSprite(SPRITE_PULAR, () => null),   // grade fixa: não precisa de autocalibração
-      // Idle é opcional: se falhar, cai no frame parado da folha de andar.
-      carregarSprite(SPRITE_PARADO_ANIM, (im) => calibrar(im, FRAMES_PARADO_ANIM)).catch(() => null),
-    ]).then(([a, r, solo, pl, idle]) => {
-      if (!vivos) return;
-      // A folha do idle já vem com os pés ancorados no mesmo ponto de cada
-      // célula. Usamos a leitura do frame 0 para TODOS os frames: offset de
-      // desenho constante → pés fixos no chão (a autocalibração por frame
-      // compensaria o balanço do corpo e faria os pés tremerem).
-      if (idle && idle.leitura && idle.leitura.frames.length) {
-        const base = idle.leitura.frames[0];
-        idle.leitura = { ...idle.leitura, frames: idle.leitura.frames.map(() => base) };
-      }
-      imgsRef.current = {
-        andar: a.img, calibAndar: a.leitura, correr: r.img, calibCorrer: r.leitura,
-        chao: solo.img, chaoCalib: solo.leitura, pular: pl.img,
-        parado: idle ? idle.img : null, calibParado: idle ? idle.leitura : null,
-      };
-      setFase('pronto');
-    }).catch(() => vivos && setFase('erro'));
-
+    carregarSprites()
+      .then((imgs) => { if (!vivos) return; imgsRef.current = imgs; setFase('pronto'); })
+      .catch(() => vivos && setFase('erro'));
     return () => {
       vivos = false; document.body.style.overflow = 'auto';
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
@@ -321,9 +135,9 @@ export default function ProjetoArmor({ onVoltar }) {
   }, [relogioAtivo]);
 
   // ---------- SAVE NA NUVEM (Supabase) ----------
-  // No primeiro acesso é gerado um código único (localStorage); é por ele que o
-  // Supabase identifica o jogador. Ao abrir: carrega o estado salvo, reaplica as
-  // preferências, conta mais uma sessão e regrava.
+  // Ao abrir: carrega o estado salvo, reaplica as preferências, conta mais uma
+  // sessão e regrava. A identificação do jogador é a sessão do Supabase Auth
+  // compartilhada com a plataforma (ver lib/playerSave.js).
   useEffect(() => {
     let vivo = true;
     (async () => {
@@ -402,318 +216,18 @@ export default function ProjetoArmor({ onVoltar }) {
     estadoRef.current.pos = { x: g.p.x, y: g.p.y, face: g.p.face };
   };
 
-  // ---------- LOOP PRINCIPAL ----------
+  // ---------- LOOP PRINCIPAL (o motor: motor.js) ----------
   useEffect(() => {
     if (fase !== 'jogando') return;
     initGame();
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    let raf;
-
-    // Controles (joysticks de mover/mirar e botão de voar) são elementos DOM
-    // por imagem — ver JSX/handlers no componente. O canvas não captura mais
-    // toques nem desenha HUD.
-
-    const passo = () => {
-      raf = requestAnimationFrame(passo);
-      const g = G.current;
-      const { andar, correr, chao, pular, parado, calibAndar, calibCorrer, calibParado, chaoCalib } = imgsRef.current;
-      if (!g || !andar || !chao) return;
-
-      ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
-      // Nearest neighbor: sem anti-aliasing ao desenhar as sprites, para os
-      // pixels ficarem "crocantes" (pixel art nítida, sem borrão).
-      ctx.imageSmoothingEnabled = false;
-      const VW = canvas.width / RENDER_SCALE; g.t++;
-      if (window.innerWidth <= window.innerHeight) return;
-      // ===== INPUT (mover + mirar) — vem dos joysticks DOM (por imagem) =====
-      const mv = moveRef.current, am = aimRef.current;
-      const mx = mv.x, intensidade = mv.mag;
-      const aimActive = am.active, aimAng = am.ang;
-
-      // ===== FÍSICA HORIZONTAL =====
-      const p = g.p;
-      const correndo = intensidade > LIMIAR_CORRER;
-      const velMax = correndo ? VEL_CORRER : VEL_ANDAR;
-      // Andando, a velocidade terminal (mx·aceler/0,15) atinge VEL_ANDAR bem no
-      // limiar de correr → inclinação parcial do joystick = andar proporcionalmente
-      // mais devagar; passou do limiar, vira corrida.
-      const aceler = correndo ? 0.75 : 0.17;
-      p.vx += mx * aceler; p.vx *= 0.85;
-      if (Math.abs(p.vx) < 0.05) p.vx = 0;
-      p.vx = Math.max(-velMax, Math.min(velMax, p.vx));
-      p.x = Math.max(60, Math.min(WORLD_W - 60, p.x + p.vx));
-      // direção: mira manda; senão, movimento
-      if (aimActive && Math.abs(Math.cos(aimAng)) > 0.25) p.face = Math.cos(aimAng) >= 0 ? 1 : -1;
-      else if (Math.abs(p.vx) > 0.08) p.face = p.vx > 0 ? 1 : -1;
-
-      // ===== FÍSICA VERTICAL (pulo roteirizado / voo) =====
-      if (g.flying && g.jump) g.jump = null;            // voar cancela o pulo roteirizado
-      if (g.jump) {
-        // o pulo segue a animação: a altura vem do arco, não da gravidade
-        g.jump.f += JUMP_ANIM_SPEED;
-        if (g.jump.f >= PULAR_FRAMES) { g.jump = null; p.y = 0; p.vy = 0; }
-        else { p.y = jumpArc(g.jump.f); p.vy = 0; }
-      }
-      if (!g.jump) {
-        if (g.flying) p.vy += FLY_THRUST;
-        p.vy -= GRAV;
-        p.vy = Math.max(-VY_FALL, Math.min(VY_MAX, p.vy));
-        p.y += p.vy;
-        if (p.y <= 0) { p.y = 0; if (p.vy < 0) p.vy = 0; }
-        if (p.y >= ALT_MAX) { p.y = ALT_MAX; if (p.vy > 0) p.vy = 0; }
-      }
-
-      // ===== ANIMAÇÃO =====
-      const vAbs = Math.abs(p.vx);
-      const emPulo = !!(g.jump && pular);
-      let modo;
-      if (emPulo) modo = 'pular';
-      else if (p.y > 3) modo = 'ar';
-      else if (vAbs < 0.06) modo = 'parado';
-      // Troca para a CORRIDA quando a VELOCIDADE atinge o limite de corrida
-      // (o teto da caminhada) — puramente pela velocidade, não pelo joystick:
-      // abaixo do teto o andar mantém sua cadência fixa; acima, corre.
-      else if (vAbs > VEL_ANDAR) modo = 'correr';
-      else modo = 'andar';
-      // Saindo do parado para andar, recomeça o ciclo do zero: o primeiro
-      // passo nasce no início da passada, sem "pular" para o meio do ciclo.
-      if (modo === 'andar' && p.modo !== 'andar') p.animT = 0;
-      p.modo = modo;
-
-      let sprite, calib, nFrames, frameAtual;
-      if (emPulo) {
-        // a folha do pulo é uma grade; o desenho é tratado em bloco próprio abaixo
-      } else if (modo === 'correr' && correr) {
-        sprite = correr; calib = calibCorrer; nFrames = FRAMES_CORRER;
-        p.animT += vAbs * 0.07; frameAtual = Math.floor(p.animT) % nFrames;
-      } else if (modo === 'andar') {
-        sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
-        // Cadência FIXA (do vídeo de referência): o ciclo fecha sempre em
-        // ~1,18 s, andando devagar ou no teto — a velocidade do personagem
-        // NÃO altera o FPS da animação de andar. Acima do teto (VEL_ANDAR)
-        // o modo já trocou para 'correr' lá em cima.
-        p.animT += ANDAR_FRAMES_POR_TICK;
-        frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
-      } else if (parado) {
-        // Idle animado: respiração/movimento sutil em loop, por tempo.
-        sprite = parado; calib = calibParado; nFrames = FRAMES_PARADO_ANIM;
-        p.idleT = (p.idleT || 0) + PARADO_FPS / 60;
-        frameAtual = Math.floor(p.idleT) % FRAMES_PARADO_ANIM;
-      } else { sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; }
-
-      // ===== CÂMERA (segue também na vertical ao voar) =====
-      const zAlvo = zoomAlvoRef.current;
-      const perto = zAlvo > 1.001;
-      const fyAlvo = (perto ? -(ALTURA_ARMOR * 0.5) : -(ALT * 0.22)) - p.y;
-      const halfW = VW / (2 * g.zoom);
-      let fxAlvo = p.x;
-      const minFx = halfW, maxFx = WORLD_W - halfW;
-      fxAlvo = (maxFx > minFx) ? Math.max(minFx, Math.min(maxFx, fxAlvo)) : WORLD_W / 2;
-      g.zoom += (zAlvo - g.zoom) * 0.08;
-      g.fx += (fxAlvo - g.fx) * 0.2;
-      g.fy += (fyAlvo - g.fy) * 0.1;
-      const Z = g.zoom, fx = g.fx, fy = g.fy, halfWNow = VW / (2 * Z);
-
-      // ===== FASE DO DIA =====
-      let lum = 0, twi = 0, sunX = 0, sunY = 0, sunArc = 0;
-      if (relogioAtivoRef.current) {
-        const now = new Date();
-        const h = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
-        const { sr, ss } = solRef.current;
-        const ph = faseDia(h, sr, ss); lum = ph.lum; twi = ph.twi;
-        let pSun = (ss > sr) ? (h - sr) / (ss - sr) : 0.5;
-        pSun = Math.max(0, Math.min(1, pSun));
-        sunArc = Math.sin(pSun * Math.PI); sunX = VW * (0.12 + 0.76 * pSun); sunY = 190 - sunArc * 135;
-      }
-
-      // ===== CÉU =====
-      const top = lerpArr(lerpArr(NOITE[0], DIA[0], lum), CREP[0], twi * 0.5);
-      const mid = lerpArr(lerpArr(NOITE[1], DIA[1], lum), CREP[1], twi * 0.55);
-      const bot = lerpArr(lerpArr(NOITE[2], DIA[2], lum), CREP[2], twi * 0.6);
-      const ceu = ctx.createLinearGradient(0, 0, 0, ALT);
-      ceu.addColorStop(0, rgbStr(top)); ceu.addColorStop(0.55, rgbStr(mid)); ceu.addColorStop(1, rgbStr(bot));
-      ctx.fillStyle = ceu; ctx.fillRect(0, 0, VW, ALT);
-
-      for (let i = 0; i < 60; i++) {
-        const px = (((i * 137 + 53) - fx * 0.12) % (VW + 40) + VW + 40) % (VW + 40) - 20;
-        const py = (i * 71 + 23) % (ALT * 0.55);
-        ctx.globalAlpha = (0.25 + ((i + g.t * 0.02) % 3) * 0.2) * (1 - lum);
-        ctx.fillStyle = '#FFFFFF'; ctx.fillRect(px, py, i % 7 === 0 ? 2 : 1, i % 7 === 0 ? 2 : 1);
-      }
-      ctx.globalAlpha = 1;
-
-      if (lum > 0.01) {
-        const sunCol = lerpArr([255, 154, 77], [255, 243, 200], sunArc);
-        ctx.globalAlpha = lum;
-        const haloS = ctx.createRadialGradient(sunX, sunY, 3, sunX, sunY, 80);
-        haloS.addColorStop(0, rgbaStr(sunCol, 0.9)); haloS.addColorStop(1, rgbaStr([255, 180, 90], 0));
-        ctx.fillStyle = haloS; ctx.fillRect(sunX - 80, sunY - 80, 160, 160);
-        ctx.fillStyle = rgbStr(sunCol); ctx.beginPath(); ctx.arc(sunX, sunY, 15, 0, 7); ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-      const moonA = 1 - lum;
-      if (moonA > 0.01) {
-        const luaX = VW * 0.78 - fx * 0.05, luaY = 70;
-        ctx.globalAlpha = moonA;
-        const haloL = ctx.createRadialGradient(luaX, luaY, 4, luaX, luaY, 60);
-        haloL.addColorStop(0, 'rgba(190,215,255,0.55)'); haloL.addColorStop(1, 'rgba(190,215,255,0)');
-        ctx.fillStyle = haloL; ctx.fillRect(luaX - 60, luaY - 60, 120, 120);
-        ctx.fillStyle = '#DCE8FF'; ctx.beginPath(); ctx.arc(luaX, luaY, 13, 0, 7); ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-      const m1 = rgbStr(lerpArr([13, 20, 40], [42, 74, 110], lum * 0.7));
-      const m2 = rgbStr(lerpArr([20, 30, 56], [58, 90, 128], lum * 0.7));
-      ctx.fillStyle = m1; ctx.beginPath(); ctx.moveTo(0, ALT);
-      for (let x = 0; x <= VW; x += 14) { const wx = x + fx * 0.25; ctx.lineTo(x, 215 + 38 * Math.sin(wx * 0.011) + 14 * Math.sin(wx * 0.031)); }
-      ctx.lineTo(VW, ALT); ctx.fill();
-      ctx.fillStyle = m2; ctx.beginPath(); ctx.moveTo(0, ALT);
-      for (let x = 0; x <= VW; x += 12) { const wx = x + fx * 0.4; ctx.lineTo(x, 258 + 30 * Math.sin(wx * 0.014 + 2)); }
-      ctx.lineTo(VW, ALT); ctx.fill();
-
-      // ===== MUNDO sob a câmera =====
-      ctx.save();
-      ctx.translate(VW / 2, ALT / 2); ctx.scale(Z, Z); ctx.translate(-fx, -fy);
-
-      const ghW = ALTURA_IMG_CHAO, gwW = chao.width * (ghW / chao.height);
-      const topR = chaoCalib ? chaoCalib.topR : 0, botR = chaoCalib ? chaoCalib.botR : 1;
-      const dyImg = -topR * ghW, visH = (botR - topR) * ghW, superficie = visH * LINHA_PES;
-
-      const leftW = fx - halfWNow - 60, rightW = fx + halfWNow + 60;
-      ctx.fillStyle = (chaoCalib && chaoCalib.cor) ? chaoCalib.cor : '#0A0F1A';
-      ctx.fillRect(leftW, visH - 1, rightW - leftW, 800);
-      const x0 = Math.floor(leftW / gwW) * gwW;
-      for (let x = x0; x < rightW; x += gwW) ctx.drawImage(chao, x, dyImg, gwW, ghW);
-      if (lum > 0.01) { ctx.fillStyle = rgbaStr([170, 200, 230], lum * 0.1); ctx.fillRect(leftW, dyImg, rightW - leftW, ghW + 300); }
-
-      const corpoY = superficie - p.y;            // sobe ao pular/voar
-
-      // PROJETO ARMOR
-      const flip = (p.face === 1) !== (SPRITE_OLHA_PARA === 'direita');
-      if (emPulo) {
-        // grade do pulo: índice em zigue-zague (col = resto, linha = quociente)
-        const jFrame = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
-        const cw = pular.width / PULAR_COLS, ch = pular.height / PULAR_ROWS;
-        const col = jFrame % PULAR_COLS, row = Math.floor(jFrame / PULAR_COLS);
-        // escala FIXA (não recalibra por frame, senão o arco do pulo achataria)
-        const esc = ALTURA_ARMOR / (PULAR_BODY_R * ch);
-        const destW = cw * esc, destH = ch * esc, footGap = PULAR_FOOT_R * ch * esc;
-        // Pixel snapping: âncora arredondada em px físicos (ver bloco andar/idle)
-        const mt = ctx.getTransform();
-        const ax = Math.round(mt.a * p.x + mt.c * corpoY + mt.e);
-        const ay = Math.round(mt.b * p.x + mt.d * corpoY + mt.f);
-        const sEff = Z * RENDER_SCALE;
-        const dW = Math.round(destW * sEff), dH = Math.round(destH * sEff);
-        const dGap = Math.round(footGap * sEff);
-        ctx.save();
-        ctx.setTransform(flip ? -1 : 1, 0, 0, 1, ax, ay);
-        // base da célula fica footGap ABAIXO de corpoY → pés plantam no solo nos frames de chão
-        ctx.drawImage(pular, Math.round(col * cw), Math.round(row * ch), Math.round(cw), Math.round(ch), -Math.round(dW / 2), -dH + dGap, dW, dH);
-        ctx.restore();
-      } else {
-        const fw = sprite.width / nFrames, fh = sprite.height;
-        let escala, gapPes = 0, offX = 0;
-        if (calib) {
-          escala = ALTURA_ARMOR / (calib.corpoR * fh);
-          const f = calib.frames[frameAtual];
-          gapPes = (1 - f.botR) * fh * escala; offX = (0.5 - f.cxR) * fw * escala;
-        } else escala = ALTURA_ARMOR / fh;
-        const destW = fw * escala, destH = fh * escala;
-        // ---- Pixel snapping (pixel perfect) ----
-        // A âncora (p.x, corpoY) passa por câmera/zoom fracionários; desenhar
-        // direto deixaria o sprite em posição quebrada e o nearest neighbor
-        // faria as bordas "dançarem" (tremor). Convertemos a âncora para
-        // PIXELS FÍSICOS do canvas, arredondamos para inteiro e desenhamos
-        // nesse espaço com dimensões também inteiras: bordas sempre alinhadas
-        // à grade de pixels → imagem estável e nítida.
-        const mt = ctx.getTransform();
-        const ax = Math.round(mt.a * p.x + mt.c * corpoY + mt.e);
-        const ay = Math.round(mt.b * p.x + mt.d * corpoY + mt.f);
-        const sEff = Z * RENDER_SCALE;                 // escala mundo → px físico
-        const dW = Math.round(destW * sEff), dH = Math.round(destH * sEff);
-        const dOffX = Math.round(offX * sEff), dGap = Math.round(gapPes * sEff);
-        ctx.save();
-        ctx.setTransform(flip ? -1 : 1, 0, 0, 1, ax, ay);
-        ctx.drawImage(sprite, Math.round(frameAtual * fw), 0, Math.round(fw), fh, -Math.round(dW / 2) + dOffX, -dH + dGap, dW, dH);
-        ctx.restore();
-      }
-
-      // ===== MIRA (origem nas mãos) =====
-      const ox = p.x + p.face * 4, oy = corpoY - ALTURA_ARMOR * 0.55;
-      if (aimActive) {
-        const ex = ox + Math.cos(aimAng) * 120, ey = oy + Math.sin(aimAng) * 120;
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = rgbaStr(AZUL_RGB, 0.35); ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 5]);
-        ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ex, ey); ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.strokeStyle = rgbaStr(AZUL_RGB, 0.8); ctx.lineWidth = 1.6;
-        ctx.beginPath(); ctx.arc(ex, ey, 7, 0, 7); ctx.stroke();
-        ctx.beginPath(); ctx.arc(ex, ey, 1.6, 0, 7); ctx.stroke();
-        // brilho de carga nas mãos
-        const ch = ctx.createRadialGradient(ox, oy, 1, ox, oy, 12);
-        ch.addColorStop(0, rgbaStr(AZUL_RGB, 0.6)); ch.addColorStop(1, rgbaStr(AZUL_RGB, 0));
-        ctx.fillStyle = ch; ctx.fillRect(ox - 12, oy - 12, 24, 24);
-        ctx.globalCompositeOperation = 'source-over';
-      }
-
-      // ===== ARMAS: disparar =====
-      // ===== ARMA: dispara sozinho enquanto a mira está ativa =====
-      if (g.tiroCd > 0) g.tiroCd--;
-      const dir = aimActive ? { x: Math.cos(aimAng), y: Math.sin(aimAng) } : { x: p.face, y: 0 };
-      if (aimActive && g.tiroCd <= 0) {
-        g.projeteis.push({ tipo: 'tiro', x: ox + dir.x * 12, y: oy + dir.y * 12, vx: dir.x * VEL_TIRO, vy: dir.y * VEL_TIRO, vida: 90 });
-        g.tiroCd = COOLDOWN_TIRO;
-        if (g.projeteis.length > 90) g.projeteis.shift();
-      }
-
-      // atualizar + desenhar projéteis (espaço do mundo)
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = g.projeteis.length - 1; i >= 0; i--) {
-        const pr = g.projeteis[i];
-        pr.x += pr.vx; pr.y += pr.vy; pr.vida--;
-        if (pr.tipo === 'tiro') {
-          const gl = ctx.createRadialGradient(pr.x, pr.y, 0, pr.x, pr.y, 9);
-          gl.addColorStop(0, rgbaStr([220, 245, 255], 0.95)); gl.addColorStop(1, rgbaStr(AZUL_RGB, 0));
-          ctx.fillStyle = gl; ctx.fillRect(pr.x - 9, pr.y - 9, 18, 18);
-          ctx.strokeStyle = rgbaStr([235, 250, 255], 0.9); ctx.lineWidth = 2.4;
-          ctx.beginPath(); ctx.moveTo(pr.x, pr.y); ctx.lineTo(pr.x - pr.vx * 0.5, pr.y - pr.vy * 0.5); ctx.stroke();
-        } else {
-          g.particulas.push({ x: pr.x - pr.vx * 0.4, y: pr.y - pr.vy * 0.4, vida: 1, ouro: Math.random() < 0.6 });
-          const gl = ctx.createRadialGradient(pr.x, pr.y, 0, pr.x, pr.y, 13);
-          gl.addColorStop(0, rgbaStr([255, 220, 150], 0.95)); gl.addColorStop(1, rgbaStr(OURO_RGB, 0));
-          ctx.fillStyle = gl; ctx.fillRect(pr.x - 13, pr.y - 13, 26, 26);
-          ctx.save(); ctx.translate(pr.x, pr.y); ctx.rotate(Math.atan2(pr.vy, pr.vx));
-          ctx.fillStyle = rgbStr(OURO_RGB); ctx.fillRect(-6, -2.4, 12, 4.8);
-          ctx.restore();
-        }
-        if (pr.vida <= 0 || Math.abs(pr.x - p.x) > 1700) g.projeteis.splice(i, 1);
-      }
-      // partículas (rasto)
-      for (let i = g.particulas.length - 1; i >= 0; i--) {
-        const q = g.particulas[i]; q.vida -= 0.06;
-        if (q.vida <= 0) { g.particulas.splice(i, 1); continue; }
-        ctx.fillStyle = rgbaStr(q.ouro ? OURO_RGB : AZUL_RGB, q.vida * 0.7);
-        ctx.beginPath(); ctx.arc(q.x, q.y, 2 * q.vida + 0.5, 0, 7); ctx.fill();
-      }
-      ctx.globalCompositeOperation = 'source-over';
-
-      ctx.restore(); // fim da câmera
-
-      // ===== VINHETA =====
-      const vin = ctx.createRadialGradient(VW / 2, ALT / 2, ALT * 0.45, VW / 2, ALT / 2, ALT * 0.95);
-      vin.addColorStop(0, 'rgba(0,0,0,0)'); vin.addColorStop(1, `rgba(0,0,0,${0.42 * (1 - lum * 0.5)})`);
-      ctx.fillStyle = vin; ctx.fillRect(0, 0, VW, ALT);
-
-      // ===== HUD: joysticks e botão de voar são DOM por imagem (ver JSX) =====
-    };
-
-
-    raf = requestAnimationFrame(passo);
-    return () => {
-      cancelAnimationFrame(raf);
-    };
+    const loop = criarLoop({
+      ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef,
+    });
+    loop.start();
+    return () => loop.stop();
   }, [fase]);
 
   // Entrar de fato no jogo (botão "Jogar").
@@ -732,157 +246,14 @@ export default function ProjetoArmor({ onVoltar }) {
   // Alps OS, aberto na mesma aba). Se o jogo estiver embutido (onVoltar), usa-o.
   const sair = () => { if (onVoltar) onVoltar(); else window.history.back(); };
 
-  // ---------- ONDA / EFEITO PIANO DOS BOTÕES DA TELA INICIAL ----------
-  // Segurar e deslizar pelos botões faz cada um acender, saltar e desvanecer em
-  // sequência, formando uma onda (tipo teclas de piano). Só dispara ao arrastar;
-  // um toque simples continua acionando o botão normalmente.
-  const acenderBotao = (id) => {
-    const el = btnRefs.current[id];
-    if (!el) return;
-    el.classList.remove('is-onda');
-    el.classList.add('is-ativo');
-  };
-  const soltarComOnda = (id) => {
-    const el = btnRefs.current[id];
-    if (!el) return;
-    el.classList.remove('is-ativo');
-    el.classList.remove('is-onda');
-    void el.offsetWidth;          // reinicia a animação mesmo em passagens rápidas
-    el.classList.add('is-onda');
-  };
-  const botaoSobPonto = (x, y) => {
-    const alvo = document.elementFromPoint(x, y);
-    const btn = alvo && alvo.closest ? alvo.closest('[data-armor-btn]') : null;
-    return btn ? btn.dataset.armorBtn : null;
-  };
-  const menuDown = (e, id) => {
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    arrastoMenuRef.current = { ativo: true, atual: id, inicio: id, vagou: false };
-    acenderBotao(id);
-  };
-  const menuMove = (e) => {
-    const d = arrastoMenuRef.current;
-    if (!d.ativo) return;
-    const id = botaoSobPonto(e.clientX, e.clientY);
-    if (!id || id === d.atual) return;    // ainda no mesmo botão (ou num vão): mantém
-    if (d.atual) soltarComOnda(d.atual);  // deixa o rastro da onda no botão anterior
-    acenderBotao(id);
-    d.atual = id;
-    d.vagou = true;                        // deslizou para outro botão → gesto de onda
-  };
-  const menuUp = () => {
-    const d = arrastoMenuRef.current;
-    if (!d.ativo) return;
-    if (d.atual) soltarComOnda(d.atual);
-    // Só navega num toque limpo (sem deslizar por outros botões).
-    if (!d.vagou && d.inicio === d.atual) {
-      if (d.inicio === 'jogar') entrar();
-      else if (d.inicio === 'sair') sair();
-    }
-    arrastoMenuRef.current = { ativo: false, atual: null, inicio: null, vagou: false };
-  };
-  const menuFimAnim = (e) => {
-    if (e.animationName === 'armorOnda') e.currentTarget.classList.remove('is-onda');
-  };
-
-  // ---------- JOYSTICK DE MOVER (lado esquerdo) ----------
-  // Base fixa; o knob segue o dedo limitado ao raio. O componente x do
-  // deslocamento vira a velocidade horizontal do personagem.
-  const joyAtualizar = (clientX, clientY) => {
-    const el = joyBaseRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const maxR = (r.width / 2) * 0.58;
-    let dx = clientX - cx, dy = clientY - cy;
-    const d = Math.hypot(dx, dy);
-    if (d > maxR && d > 0) { dx = dx / d * maxR; dy = dy / d * maxR; }
-    setKnobOff({ x: dx, y: dy });
-    moveRef.current = { x: dx / maxR, mag: Math.min(Math.hypot(dx, dy) / maxR, 1) };
-  };
-  const joyInicio = (e) => {
-    e.preventDefault();
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
-    joyPointerRef.current = e.pointerId;
-    joyAtualizar(e.clientX, e.clientY);
-  };
-  const joyMover = (e) => {
-    if (joyPointerRef.current !== e.pointerId) return;
-    joyAtualizar(e.clientX, e.clientY);
-  };
-  const joyFim = (e) => {
-    if (joyPointerRef.current !== e.pointerId) return;
-    joyPointerRef.current = null;
-    setKnobOff({ x: 0, y: 0 });
-    moveRef.current = { x: 0, mag: 0 };
-  };
-
-  // ---------- BOTÃO DE VOAR (lado direito) ----------
-  // 1 toque no chão = pulo animado · 2 toques rápidos + segurar = voar.
-  const voarPress = (e) => {
-    e.preventDefault();
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
-    const g = G.current;
-    if (g) {
-      const now = performance.now();
-      if (now - g.lastFlyDown < 320) { g.flying = true; g.jump = null; } // 2º toque → voa
-      else if (g.p.y <= 2 && !g.jump) g.jump = { f: 0 };                 // no chão → pulo animado
-      g.lastFlyDown = now;
-    }
-    setVoarAtivo(true);
-  };
-  const voarRelease = () => {
-    const g = G.current;
-    if (g) g.flying = false; // soltar → cai
-    setVoarAtivo(false);
-  };
-
-  // ---------- JOYSTICK DE MIRAR (lado direito) ----------
-  // Direção da mira; empurrado além da zona-morta, dispara nessa direção.
-  const miraAtualizar = (clientX, clientY) => {
-    const el = miraBaseRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const maxR = (r.width / 2) * 0.58;
-    let dx = clientX - cx, dy = clientY - cy;
-    const d = Math.hypot(dx, dy);
-    let kx = dx, ky = dy;
-    if (d > maxR && d > 0) { kx = dx / d * maxR; ky = dy / d * maxR; }
-    setMiraOff({ x: kx, y: ky });
-    if (d > maxR * 0.28) aimRef.current = { active: true, ang: Math.atan2(dy, dx) };
-    else aimRef.current = { active: false, ang: 0 };
-  };
-  const miraInicio = (e) => {
-    e.preventDefault();
-    // Só ativa se o toque COMEÇAR sobre o joystick de mira (com ~35% de
-    // folga ao redor da base). Toques em outros pontos da tela são
-    // ignorados — nada de atirar por encostar em qualquer lugar.
-    const el = miraBaseRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    if (Math.hypot(e.clientX - cx, e.clientY - cy) > (r.width / 2) * 1.35) return;
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
-    miraPointerRef.current = e.pointerId;
-    miraAtualizar(e.clientX, e.clientY);
-  };
-  const miraMover = (e) => {
-    if (miraPointerRef.current !== e.pointerId) return;
-    miraAtualizar(e.clientX, e.clientY);
-  };
-  const miraFim = (e) => {
-    if (miraPointerRef.current !== e.pointerId) return;
-    miraPointerRef.current = null;
-    setMiraOff({ x: 0, y: 0 });
-    aimRef.current = { active: false, ang: 0 };
-  };
+  // Alterna o zoom da câmera (perto/longe) e salva a preferência.
   const alternarZoom = () => {
     const novo = !zoomPerto; setZoomPerto(novo);
     zoomAlvoRef.current = novo ? ZOOM_PERTO : 1;
     estadoRef.current.prefs.zoomPerto = novo;
     if (carregadoRef.current) salvarEstado(estadoRef.current);
   };
+  // Liga o relógio do mundo real (fase do dia no céu), pedindo a latitude.
   const ativarRelogio = () => {
     if (relogioAtivo) return;
     const aplicar = (lat) => {
@@ -899,15 +270,22 @@ export default function ProjetoArmor({ onVoltar }) {
     } else aplicar(null);
   };
 
+  // ---------- CONTROLES (joysticks + voar + onda do menu) ----------
+  const {
+    menuDown, menuMove, menuUp, menuFimAnim,
+    joyInicio, joyMover, joyFim,
+    voarPress, voarRelease,
+    miraInicio, miraMover, miraFim,
+  } = criarControles({
+    setKnobOff, setMiraOff, setVoarAtivo,
+    moveRef, aimRef, joyBaseRef, joyPointerRef, miraBaseRef, miraPointerRef,
+    G, btnRefs, arrastoMenuRef, entrar, sair,
+  });
 
   // ---------- REPRODUÇÃO DA INTRO ----------
   // A intro toca do começo (personagem surge do escuro) SOMENTE no momento em
   // que o celular vira para paisagem estando na tela inicial (transição
   // retrato→paisagem). Depois congela no último quadro (onEnded).
-  // - Jogar → Voltar: não há virada, então NÃO recomeça (o vídeo fica montado
-  //   e parado no mesmo quadro).
-  // - Sair para a Home e voltar: o componente remonta (prevPaisagemRef zera) e,
-  //   ao virar o celular de novo, o vídeo toca outra vez.
   useEffect(() => {
     if (fase !== 'pronto') return;         // só conta na tela inicial
     const was = prevPaisagemRef.current;
@@ -961,7 +339,7 @@ export default function ProjetoArmor({ onVoltar }) {
           <button onClick={() => setFase('pronto')} style={es.voltar}>← Voltar</button>
 
           {/* Joystick de MOVER (esquerda): zona transparente capta o toque;
-              base e knob (imagens) ficam por cima sem capturar. */}
+              base e knob ficam por cima sem capturar. */}
           <div
             style={es.joyZona}
             onPointerDown={joyInicio}
@@ -992,7 +370,7 @@ export default function ProjetoArmor({ onVoltar }) {
           />
 
           {/* Joystick de MIRAR (direita): zona transparente capta o toque;
-              base e knob (imagens) por cima. Enquanto mira, dispara sozinho. */}
+              base e knob por cima. Enquanto mira, dispara sozinho. */}
           <div
             style={es.miraZona}
             onPointerDown={miraInicio}
@@ -1014,7 +392,7 @@ export default function ProjetoArmor({ onVoltar }) {
       {fase === 'erro' && (
         <div style={es.overlay}>
           <p style={{ ...es.txtGrande, color: '#FF6B81' }}>FALHA AO CARREGAR</p>
-          <p style={{ ...es.txtPeq, maxWidth: 280, textAlign: 'center', lineHeight: 1.6 }}>Verifica os links das sprites e do chão no topo do ProjetoArmor.jsx</p>
+          <p style={{ ...es.txtPeq, maxWidth: 280, textAlign: 'center', lineHeight: 1.6 }}>Verifica os links das sprites e do chão em sprites.js</p>
         </div>
       )}
       {fase !== 'erro' && !paisagem && (
@@ -1105,85 +483,8 @@ export default function ProjetoArmor({ onVoltar }) {
         </div>
       )}
 
-      <style>{`
-        .armor-canvas { image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; image-rendering: pixelated; }
-        /* Animação "VIRE O CELULAR" — idêntica à do jogo Free Kick World */
-        .armor-rotate-phone { width:62px; height:110px; border:5px solid #7dd3fc; border-radius:14px;
-          position:relative; margin-bottom:30px; box-shadow:0 0 26px rgba(125,211,252,.5);
-          animation:rodarCelular 2.4s ease-in-out infinite; }
-        .armor-rotate-phone::before { content:''; position:absolute; left:50%; bottom:7px; width:20px; height:4px;
-          border-radius:3px; background:#7dd3fc; transform:translateX(-50%); }
-        .armor-rotate-phone::after { content:''; position:absolute; inset:7px; border-radius:7px;
-          background:rgba(125,211,252,.12); }
-        @keyframes rodarCelular {
-          0%,16%   { transform:rotate(0deg); }
-          46%,72%  { transform:rotate(-90deg); }
-          96%,100% { transform:rotate(0deg); }
-        }
-        /* --- Botões do menu inicial: onda / efeito piano ao deslizar --- */
-        .armor-menu-btn {
-          position:absolute;
-          background-size:contain; background-position:center; background-repeat:no-repeat;
-          transform-origin:center; transform:translate(-50%,-50%) scale(1);
-          opacity:0; z-index:3; cursor:pointer;
-          user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
-          touch-action:none; will-change:transform,opacity,filter;
-          transition:transform .12s ease, opacity .12s ease, filter .12s ease;
-        }
-        /* Botão sob o dedo agora: aceso, ampliado e com brilho neon (segura a "nota"). */
-        .armor-menu-btn.is-ativo {
-          opacity:1; transform:translate(-50%,-50%) scale(1.28);
-          filter:drop-shadow(0 0 9px rgba(96,199,255,.95)) drop-shadow(0 0 20px rgba(56,150,255,.55));
-          transition:transform .08s ease-out, opacity .08s ease-out, filter .08s ease-out;
-        }
-        /* Rastro da onda: ao sair do botão, ele dá um salto extra e desvanece. */
-        .armor-menu-btn.is-onda { animation:armorOnda .5s cubic-bezier(.2,.9,.25,1) forwards; }
-        @keyframes armorOnda {
-          0%   { opacity:1; transform:translate(-50%,-50%) scale(1.28);
-                 filter:drop-shadow(0 0 9px rgba(96,199,255,.95)) drop-shadow(0 0 20px rgba(56,150,255,.55)); }
-          30%  { opacity:1; transform:translate(-50%,-50%) scale(1.44);
-                 filter:drop-shadow(0 0 16px rgba(130,220,255,1)) drop-shadow(0 0 30px rgba(56,150,255,.75)); }
-          100% { opacity:0; transform:translate(-50%,-50%) scale(1.05);
-                 filter:drop-shadow(0 0 0 rgba(96,199,255,0)) drop-shadow(0 0 0 rgba(56,150,255,0)); }
-        }
-      `}</style>
+      <style>{CSS_ARMOR}</style>
     </div>,
     document.body
   );
 }
-
-const es = {
-  fundo: { position: 'fixed', inset: 0, backgroundColor: '#000', zIndex: 999999, overflow: 'hidden', touchAction: 'none' },
-  canvas: { width: '100%', height: '100%', display: 'block', imageRendering: 'pixelated', touchAction: 'none' },
-  barra: { position: 'absolute', left: 0, width: '100%', height: 22, backgroundColor: '#000', zIndex: 5, pointerEvents: 'none' },
-  botaoZoom: { position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 42, height: 46, borderRadius: 14, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.14)', color: '#8E8E93', cursor: 'pointer', zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'monospace' },
-  botaoRelogio: { position: 'absolute', top: 30, right: 16, display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 20, padding: '6px 12px', cursor: 'pointer', zIndex: 30, fontFamily: 'monospace' },
-  voltar: { position: 'absolute', top: 30, left: 16, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, color: '#8E8E93', fontSize: 13, padding: '6px 13px', cursor: 'pointer', zIndex: 30 },
-  // ----- HUD por imagem: joysticks de mover/mirar + botão de voar -----
-  joyZona: { position: 'absolute', left: 0, bottom: 0, width: '50%', top: '22%', zIndex: 25, touchAction: 'none', background: 'transparent' },
-  // Joystick de MOVER em código (glassmorphism) — sem imagens.
-  joyBase: { position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1', transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 26, boxSizing: 'border-box', borderRadius: '50%', background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.55)', boxShadow: '0 0 18px rgba(255,255,255,0.18), inset 0 0 20px rgba(255,255,255,0.08)', transition: 'transform 0.12s ease' },
-  joyKnob: { position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(38px,5.6vw,62px)', aspectRatio: '1', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27, transition: 'transform 0.07s ease-out', boxSizing: 'border-box', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.7)', boxShadow: '0 0 12px rgba(255,255,255,0.2)' },
-  botaoVoar: { position: 'absolute', left: '78.7%', top: '83.8%', width: 'clamp(54px,7.9vw,90px)', aspectRatio: '1', transformOrigin: 'center', transition: 'transform 0.1s ease', zIndex: 28, cursor: 'pointer', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' },
-  miraZona: { position: 'absolute', left: '50%', top: '22%', right: 0, bottom: 0, zIndex: 25, touchAction: 'none', background: 'transparent' },
-  // Joystick de MIRAR em código (glassmorphism) — sem imagens.
-  miraBase: { position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1', transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 26, boxSizing: 'border-box', borderRadius: '50%', background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.55)', boxShadow: '0 0 18px rgba(255,255,255,0.18), inset 0 0 20px rgba(255,255,255,0.08)', transition: 'transform 0.12s ease' },
-  miraKnob: { position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(48px,7.1vw,80px)', aspectRatio: '1', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27, transition: 'transform 0.04s ease-out', boxSizing: 'border-box', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.7)', boxShadow: '0 0 12px rgba(255,255,255,0.2)' },
-  overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, backdropFilter: 'blur(4px)', fontFamily: 'monospace' },
-  txtRodar: { color: '#7dd3fc', fontSize: 'clamp(20px,6vw,30px)', fontWeight: 700, letterSpacing: '2px', textShadow: '2px 2px 0 #0a3d62', margin: 0 },
-  cancelarRodar: { marginTop: 28, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(125,211,252,0.4)', borderRadius: 22, color: '#7dd3fc', fontFamily: 'monospace', fontSize: 15, fontWeight: 700, letterSpacing: '1px', padding: '9px 26px', cursor: 'pointer' },
-  txtGrande: { color: '#F0C040', fontSize: 19, fontWeight: 700, letterSpacing: '0.18em', margin: '0 0 8px' },
-  txtPeq: { color: '#8E8E93', fontSize: 12, letterSpacing: '0.1em', margin: 0 },
-  // O vídeo agora é alta resolução (2172x954, ≥ tela): a filtragem padrão
-  // exibe nítido; pixelated nessa escala quase 1:1 só degradaria.
-  videoIntro: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, backgroundColor: '#000' },
-  // Tela inicial: só o vídeo (fundo transparente), com botões/perfil por cima.
-  overlayVideo: { position: 'absolute', inset: 0, zIndex: 20, overflow: 'hidden', cursor: 'pointer' },
-  // Perfil no canto superior direito do vídeo: silhueta à esquerda, nome em
-  // cima e nível logo abaixo.
-  perfilBox: { position: 'absolute', left: '72%', top: '3.6%', width: '20.5%', height: '17%', display: 'flex', alignItems: 'center', boxSizing: 'border-box', zIndex: 3, pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', fontFamily: "'Rajdhani', sans-serif" },
-  perfilFoto: { position: 'absolute', left: '16%', top: '50%', transform: 'translate(-50%, -50%)', height: '82%', aspectRatio: '1', objectFit: 'contain', filter: 'drop-shadow(0 0 5px rgba(0,0,0,0.55))' },
-  perfilTxt: { display: 'flex', flexDirection: 'column', justifyContent: 'center', lineHeight: 1.12, minWidth: 0, marginLeft: '40%' },
-  perfilNome: { color: '#FFFFFF', fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: 'clamp(12px,2.3vw,28px)', letterSpacing: '0.01em', whiteSpace: 'nowrap', textShadow: '0 1px 5px rgba(0,0,0,0.7)' },
-  perfilNivel: { color: '#FFFFFF', fontFamily: "'Rajdhani', sans-serif", fontWeight: 500, fontSize: 'clamp(11px,2.0vw,24px)', letterSpacing: '0.01em', whiteSpace: 'nowrap', textShadow: '0 1px 5px rgba(0,0,0,0.7)' },
-};

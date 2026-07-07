@@ -1,0 +1,101 @@
+// ============================================================
+// PROJETO ARMOR · CARREGAMENTO + AUTOCALIBRAÇÃO DAS SPRITES
+// Baixa as folhas de sprite e MEDE cada quadro (onde estão o corpo e os pés)
+// para o motor plantar o personagem no chão sem tremor. Devolve as imagens já
+// carregadas + as "leituras" (calibração) de cada uma.
+//
+// Chamado uma vez, na abertura (fase 'carregando' → 'pronto'/'erro').
+// ============================================================
+import {
+  SPRITE_ANDAR, SPRITE_CORRER, SPRITE_PULAR, SPRITE_PARADO_ANIM, IMG_CHAO,
+  FRAMES_ANDAR, FRAMES_CORRER, FRAMES_PARADO_ANIM,
+} from './sprites';
+
+// Baixa uma imagem (opcionalmente com CORS, para poder ler os pixels).
+const carregar = (src, cors) =>
+  new Promise((res, rej) => {
+    const img = new Image();
+    if (cors) img.crossOrigin = 'anonymous';
+    img.onload = () => res(img); img.onerror = rej; img.src = src;
+  });
+
+// Mede, quadro a quadro de uma tira horizontal, a base (pés) e o centro do
+// corpo — para o motor ancorar o personagem no chão sem tremor.
+const calibrar = (img, nFrames) => {
+  try {
+    const CW = 200 * nFrames, CH = Math.max(1, Math.round(img.height * (CW / img.width)));
+    const c = document.createElement('canvas'); c.width = CW; c.height = CH;
+    const cx = c.getContext('2d'); cx.drawImage(img, 0, 0, CW, CH);
+    const fw = CW / nFrames; const frames = []; let maiorCorpo = 0;
+    for (let f = 0; f < nFrames; f++) {
+      const x0 = Math.round(f * fw), W = Math.round(fw);
+      const data = cx.getImageData(x0, 0, W, CH).data;
+      let top = CH, bot = -1, esq = W, dir = -1;
+      for (let y = 0; y < CH; y++) for (let x = 0; x < W; x++)
+        if (data[(y * W + x) * 4 + 3] > 12) {
+          if (y < top) top = y; if (y > bot) bot = y;
+          if (x < esq) esq = x; if (x > dir) dir = x;
+        }
+      if (bot < 0) { frames.push(null); continue; }
+      const corpo = bot - top + 1; if (corpo > maiorCorpo) maiorCorpo = corpo;
+      frames.push({ botR: bot / CH, cxR: (esq + dir) / 2 / W });
+    }
+    const valido = frames.find(f => f !== null);
+    if (!valido || maiorCorpo === 0) return null;
+    for (let f = 0; f < nFrames; f++) if (!frames[f]) frames[f] = valido;
+    return { frames, corpoR: maiorCorpo / CH };
+  } catch (e) { return null; }
+};
+
+// Mede a faixa de chão: onde começa/termina verticalmente e a cor do rodapé.
+const calibrarChao = (img) => {
+  try {
+    const CW = 400, CH = Math.max(1, Math.round(img.height * (CW / img.width)));
+    const c = document.createElement('canvas'); c.width = CW; c.height = CH;
+    const cx = c.getContext('2d'); cx.drawImage(img, 0, 0, CW, CH);
+    const data = cx.getImageData(0, 0, CW, CH).data;
+    let topRow = -1, botRow = -1;
+    for (let y = 0; y < CH && topRow < 0; y++) for (let x = 0; x < CW; x += 2)
+      if (data[(y * CW + x) * 4 + 3] > 12) { topRow = y; break; }
+    for (let y = CH - 1; y >= 0 && botRow < 0; y--) for (let x = 0; x < CW; x += 2)
+      if (data[(y * CW + x) * 4 + 3] > 12) { botRow = y; break; }
+    if (topRow < 0) return null;
+    const sy = Math.max(0, botRow - 2), si = (sy * CW + Math.floor(CW / 2)) * 4;
+    return { topR: topRow / CH, botR: (botRow + 1) / CH, cor: `rgb(${data[si]},${data[si + 1]},${data[si + 2]})` };
+  } catch (e) { return null; }
+};
+
+// Carrega uma sprite tentando CORS (para calibrar); se falhar, cai para sem
+// CORS (só exibe, sem leitura de pixels).
+const carregarSprite = async (src, medir) => {
+  try { const img = await carregar(src, true); return { img, leitura: medir(img) }; }
+  catch (e) { const img = await carregar(src, false); return { img, leitura: null }; }
+};
+
+// Baixa TODAS as folhas + o chão e devolve o objeto que o motor consome.
+// Lança (rejeita) se as folhas essenciais (andar/chão) não carregarem.
+export async function carregarSprites() {
+  const [a, r, solo, pl, idle] = await Promise.all([
+    carregarSprite(SPRITE_ANDAR, (im) => calibrar(im, FRAMES_ANDAR)),
+    carregarSprite(SPRITE_CORRER, (im) => calibrar(im, FRAMES_CORRER)),
+    carregarSprite(IMG_CHAO, calibrarChao),
+    carregarSprite(SPRITE_PULAR, () => null),   // grade fixa: não precisa de autocalibração
+    // Idle é opcional: se falhar, cai no frame parado da folha de andar.
+    carregarSprite(SPRITE_PARADO_ANIM, (im) => calibrar(im, FRAMES_PARADO_ANIM)).catch(() => null),
+  ]);
+
+  // A folha do idle já vem com os pés ancorados no mesmo ponto de cada célula.
+  // Usamos a leitura do frame 0 para TODOS os frames: offset de desenho
+  // constante → pés fixos no chão (a autocalibração por frame compensaria o
+  // balanço do corpo e faria os pés tremerem).
+  if (idle && idle.leitura && idle.leitura.frames.length) {
+    const base = idle.leitura.frames[0];
+    idle.leitura = { ...idle.leitura, frames: idle.leitura.frames.map(() => base) };
+  }
+
+  return {
+    andar: a.img, calibAndar: a.leitura, correr: r.img, calibCorrer: r.leitura,
+    chao: solo.img, chaoCalib: solo.leitura, pular: pl.img,
+    parado: idle ? idle.img : null, calibParado: idle ? idle.leitura : null,
+  };
+}
