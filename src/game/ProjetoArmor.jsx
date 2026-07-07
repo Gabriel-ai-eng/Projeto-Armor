@@ -13,18 +13,18 @@ import { carregarEstado, salvarEstado, estadoInicial } from '../lib/playerSave';
 const asset = (p) => import.meta.env.BASE_URL + p;
 
 // ?v=N força o navegador/CDN a baixar a imagem nova quando ela muda (cache-busting).
-// Incremente o número sempre que trocar o conteúdo de armor-andar.png.
+// Incremente o número sempre que trocar o conteúdo de armor-andar.webp.
 // As folhas de andar/idle são pré-redimensionadas (offline, Lanczos) para o
 // corpo medir exatamente 105·RENDER_SCALE px: o canvas copia 1:1, sem
 // reamostragem por frame → nítido e sem tremor (pixel crawl) no nearest.
-const SPRITE_ANDAR = asset('armor-andar.png?v=12');
+const SPRITE_ANDAR = asset('armor-andar.webp?v=12');
 // Idle: personagem respirando/olhando em volta quando parado (loop contínuo).
-const SPRITE_PARADO_ANIM = asset('armor-parado.png?v=5');
+const SPRITE_PARADO_ANIM = asset('armor-parado.webp?v=5');
 const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
 // Pulo: folha em GRADE (10 colunas x 17 linhas = 170 frames), lida em zigue-zague
 // esquerda→direita, de cima→baixo. O ciclo completo: agacha (anticipação) →
 // impulso a jato → voo → aterrissagem com poeira → recupera e fica de pé.
-const SPRITE_PULAR = asset('armor-pular.png?v=1');
+const SPRITE_PULAR = asset('armor-pular.webp?v=1');
 const IMG_CHAO = 'https://i.ibb.co/KzVkz7dS/11-20260612-202236-0000.png';
 
 const SPRITE_OLHA_PARA = 'direita';
@@ -118,13 +118,13 @@ function faseDia(h, sr, ss) {
 // em repouso, saltam (~1,3x) e acendem ao serem pressionados. Posições/tamanhos
 // em % do vídeo, iguais à tela inicial original.
 const BOTOES_INICIO = [
-  { id: 'jogar',         src: asset('btn-jogar.png'),         cx: 11.10, cy: 37.82, w: 20.4, aspect: 4.07 },
-  { id: 'armadura',      src: asset('btn-armadura.png'),      cx: 11.10, cy: 47.90, w: 16.9, aspect: 4.93 },
-  { id: 'missoes',       src: asset('btn-missoes.png'),       cx: 11.10, cy: 56.60, w: 16.8, aspect: 5.06 },
-  { id: 'loja',          src: asset('btn-loja.png'),          cx: 11.10, cy: 65.56, w: 16.9, aspect: 5.22 },
-  { id: 'ranking',       src: asset('btn-ranking.png'),       cx: 11.10, cy: 74.10, w: 16.8, aspect: 5.25 },
-  { id: 'configuracoes', src: asset('btn-configuracoes.png'), cx: 11.10, cy: 83.13, w: 16.9, aspect: 5.33 },
-  { id: 'sair',          src: asset('btn-sair.png'),          cx: 11.10, cy: 91.18, w: 17.1, aspect: 4.84 },
+  { id: 'jogar',         src: asset('btn-jogar.webp'),         cx: 11.10, cy: 37.82, w: 20.4, aspect: 4.07 },
+  { id: 'armadura',      src: asset('btn-armadura.webp'),      cx: 11.10, cy: 47.90, w: 16.9, aspect: 4.93 },
+  { id: 'missoes',       src: asset('btn-missoes.webp'),       cx: 11.10, cy: 56.60, w: 16.8, aspect: 5.06 },
+  { id: 'loja',          src: asset('btn-loja.webp'),          cx: 11.10, cy: 65.56, w: 16.9, aspect: 5.22 },
+  { id: 'ranking',       src: asset('btn-ranking.webp'),       cx: 11.10, cy: 74.10, w: 16.8, aspect: 5.25 },
+  { id: 'configuracoes', src: asset('btn-configuracoes.webp'), cx: 11.10, cy: 83.13, w: 16.9, aspect: 5.33 },
+  { id: 'sair',          src: asset('btn-sair.webp'),          cx: 11.10, cy: 91.18, w: 17.1, aspect: 4.84 },
 ];
 
 const IconeRelogio = ({ size = 13 }) => (
@@ -980,7 +980,7 @@ export default function ProjetoArmor({ onVoltar }) {
 
           {/* Botão de VOAR (direita) */}
           <img
-            src={asset('botao-voar.png')}
+            src={asset('botao-voar.webp')}
             alt="Voar"
             draggable={false}
             onPointerDown={voarPress}
