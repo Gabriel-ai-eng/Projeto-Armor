@@ -1,5 +1,6 @@
 // ============================================================
-// PROJETO ARMOR · MOTOR (o "cérebro": laço principal)  ⭐
+// PROJETO ARMOR · RENDER (o "cérebro": laço + desenho)  ⭐
+// Equivale ao render.js do Free Kick World (aqui juntando o laço e o desenho).
 // A cada frame ele: lê os controles (joysticks/voar), aplica a FÍSICA
 // (andar/correr, pulo roteirizado, voo), ESCOLHE o sprite pelo estado do
 // personagem e DESENHA tudo — céu por fase do dia, chão, personagem, mira,

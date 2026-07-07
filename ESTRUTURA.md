@@ -1,18 +1,19 @@
 # Projeto Armor — Guia de Estrutura
 
-Como o código está organizado, no mesmo espírito do **Free Kick World**: as
-imagens ficam em `public/`, cada assunto tem seu arquivo com nome do que faz, e
-um "cérebro" (o **motor**) decide e desenha tudo a cada frame.
+Organizado no mesmo espírito do **Free Kick World**: as imagens ficam em
+`assets/`, cada folha de sprite tem um arquivo "gêmeo" com o mesmo nome em
+`js/assets/` (onde você edita quadros/corte/velocidade), e um "cérebro"
+(`render.js`) que escolhe e desenha o sprite a cada frame.
 
 ## 1. Visão geral em 1 frase
 
-As **imagens** ficam em `public/`; a **configuração de cada folha de sprite**
-fica em `src/game/sprites.js`; e quem **anima e desenha** o jogo a cada frame é
-o **motor** em `src/game/motor.js`.
+As **imagens** ficam em `assets/`; a **configuração de cada folha** fica no
+"gêmeo" com o mesmo nome em `js/assets/`; e quem **anima e desenha** é o
+`render.js`.
 
 ## 2. Onde estão as IMAGENS
 
-Todas em `public/` — são WebP puros, sem código:
+Todas em `assets/` — são WebP puros, sem código (o vídeo da intro também):
 
 | Arquivo | O que é |
 |---|---|
@@ -21,43 +22,51 @@ Todas em `public/` — são WebP puros, sem código:
 | `armor-pular.webp` | Pulando (folha em grade 10×17) |
 | `btn-*.webp` | Botões da tela inicial (jogar, armadura, missões…) |
 | `botao-voar.webp` | Botão de voar |
+| `armor-intro.mp4` · `armor-logo.webp` | Vídeo e logo da tela inicial |
 
 > Correr e o chão vêm de imagens hospedadas fora (`i.ibb.co`) — os links estão
-> em `sprites.js`.
+> nos gêmeos `js/assets/armor-correr.js` e `js/assets/chao.js`.
 
-## 3. Os arquivos, 1 linha cada (em `src/game/`)
+## 3. Quem CONFIGURA cada folha — `js/assets/` (os "gêmeos")
+
+Cada folha de sprite tem um arquivo de código com o **mesmo nome** da imagem.
+Ex.: `assets/armor-andar.webp` ↔ `js/assets/armor-andar.js`. É **aqui** que você
+edita a folha:
+
+| Gêmeo | O que você edita |
+|---|---|
+| `js/assets/armor-andar.js` | URL da folha, nº de quadros e a cadência (velocidade) do andar |
+| `js/assets/armor-parado.js` | quadros e fps do idle |
+| `js/assets/armor-correr.js` | URL e quadros da corrida |
+| `js/assets/armor-pular.js` | grade (colunas/linhas), **corte** (bodyR/footR), velocidade e quadros de decolagem/pouso |
+| `js/assets/chao.js` | URL da imagem do chão |
+
+> Observação sobre o "corte": nas tiras (andar/parado/correr) o corte/escala do
+> corpo é **medido sozinho** em tempo real; o que você ajusta é nº de quadros e
+> velocidade. Já no pulo (grade), o corte é manual em `bodyR`/`footR`.
+
+## 4. Os arquivos, 1 linha cada (em `src/game/`)
 
 | Arquivo | O que é / o que você edita |
 |---|---|
-| `ProjetoArmor.jsx` | As **telas** e o fluxo (carregando → tela inicial → jogando), o vídeo da intro, os botões e o HUD. Monta o motor e os controles. |
-| `ajustes.js` | **Números de ajuste fino**: tamanho do personagem, física (gravidade, pulo, voo), velocidades, armas e cores. |
-| `sprites.js` | **Folhas de sprite** (o "gêmeo" de cada imagem): URL com `?v=N`, grade (quadros/colunas/linhas) e velocidade. Também os botões do menu. |
-| `mundo.js` | Matemática pura do céu/sol/lua e da altura do pulo. |
+| `render.js` ⭐ | O **cérebro**: laço principal — física + escolha do sprite + desenho. |
+| `ProjetoArmor.jsx` | As **telas** e o fluxo (carregando → tela inicial → jogando); monta o render e os controles. |
+| `sprites.js` | Junta os gêmeos de `js/assets/` e entrega os valores prontos (+ botões do menu). |
+| `ajustes.js` | Números de ajuste fino: física, tamanho, velocidades, armas e cores. |
+| `mundo.js` | Matemática pura do céu/sol/lua e do pulo. |
 | `carregarSprites.js` | Baixa as folhas e **mede** cada quadro (autocalibração dos pés). |
-| `motor.js` | ⭐ O **cérebro**: o laço principal — física + escolha do sprite + desenho. |
-| `controles.js` | Os **joysticks** (mover/mirar), o botão de **voar** e a onda dos botões do menu. |
-| `estilos.js` | Visual das telas/HUD (`es`) e as animações CSS (`CSS_ARMOR`). |
-| `../lib/supabase.js` | Cliente Supabase (mesma conta da plataforma). |
-| `../lib/playerSave.js` | Salvar/carregar o progresso do jogador na nuvem. |
+| `controles.js` | Joysticks (mover/mirar), botão de voar e a onda dos botões do menu. |
+| `estilos.js` | Visual das telas/HUD e as animações CSS. |
+| `../lib/supabase.js` · `../lib/playerSave.js` | Cliente Supabase e salvar/carregar o progresso. |
 
-## 4. O que eu preciso editar? (tabela-resumo)
+## 5. O que eu preciso editar? (tabela-resumo)
 
 | O que eu quero fazer | Arquivos que edito |
 |---|---|
-| Trocar a arte de um sprite existente | a imagem em `public/` + os números da folha em `sprites.js` (e subo o `?v=N`) |
-| Mudar velocidade/quadros de uma animação | só a folha em `sprites.js` |
+| Trocar a arte de um sprite | a imagem em `assets/` + o gêmeo em `js/assets/` (e subo o `?v=N`) |
+| Mudar quadros/velocidade/corte de uma animação | só o gêmeo em `js/assets/` |
 | Afinar física, tamanho, velocidades ou cores | `ajustes.js` |
-| Mudar **quando/como** um sprite aparece (prioridade) | `motor.js` (a escolha do `modo` no laço) |
+| Mudar **quando/como** um sprite aparece (prioridade) | `render.js` |
 | Mexer nos joysticks / botão de voar | `controles.js` |
-| Mudar as telas, botões do menu ou HUD | `ProjetoArmor.jsx` (e o visual em `estilos.js`) |
+| Mudar as telas, botões do menu ou HUD | `ProjetoArmor.jsx` (visual em `estilos.js`) |
 | Mudar o que é salvo na nuvem | `../lib/playerSave.js` |
-
-## 5. Como as peças se encaixam
-
-```
-ProjetoArmor.jsx  (telas + estados + efeitos)
-      │  carregarSprites()  →  baixa/mede as folhas
-      │  criarControles(...) →  joysticks + voar  →  escrevem em moveRef / aimRef
-      └─ criarLoop(...)     →  motor.js  (lê ajustes.js, sprites.js, mundo.js)
-                                 a cada frame: física → escolhe sprite → desenha
-```

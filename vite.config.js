@@ -9,5 +9,9 @@ import { defineConfig } from 'vite'
 // reaproveita a sessão de login já existente (sem novo login/cadastro).
 export default defineConfig({
   base: '/jogo/',
+  // As imagens do jogo ficam na pasta `assets/` (renomeada de `public/`, para
+  // ficar igual ao Free Kick World). O Vite copia tudo dessa pasta para a raiz
+  // do site, então continuam sendo servidas como /jogo/<arquivo>.
+  publicDir: 'assets',
   plugins: [react()],
 })

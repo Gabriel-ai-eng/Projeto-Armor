@@ -1,63 +1,59 @@
 // ============================================================
-// PROJETO ARMOR · FOLHAS DE SPRITE (o "gêmeo" de cada imagem)
-// Mesma ideia do Free Kick World: as IMAGENS ficam em public/
-// (armor-*.webp); AQUI fica a configuração de cada folha — a URL (com ?v=N
-// para furar o cache do navegador), a grade (quadros/colunas/linhas) e a
-// velocidade da animação.
+// PROJETO ARMOR · FOLHAS DE SPRITE (índice dos "gêmeos")
+// Mesma ideia do Free Kick World:
+//   • as IMAGENS ficam em  assets/        (armor-*.webp)
+//   • a CONFIG de cada folha fica em  js/assets/<mesmo-nome>.js  (o "gêmeo"):
+//     quadros, corte, velocidade — é LÁ que você edita cada sprite.
 //
-// TROCAR um sprite que já existe = 2 lugares:
-//   1) troco a imagem em public/
-//   2) ajusto os números da folha aqui e subo o ?v=N
-// O motor (motor.js) desenha qualquer folha que estes números descrevam —
-// não precisa ser tocado.
+// Este arquivo só junta os gêmeos e entrega os valores prontos para o motor
+// (render.js) e o carregador (carregarSprites.js). Para trocar/afinar um
+// sprite, edite o arquivo em js/assets/ — não precisa mexer aqui.
 // ============================================================
+import ANDAR from '../../js/assets/armor-andar.js';
+import PARADO from '../../js/assets/armor-parado.js';
+import CORRER from '../../js/assets/armor-correr.js';
+import PULAR from '../../js/assets/armor-pular.js';
+import CHAO from '../../js/assets/chao.js';
 
-// Prefixo do deploy (definido pelo Vite): '/jogo/' em produção sob o domínio
-// da plataforma, '/' no dev/standalone. Todo asset de public/ precisa dele
-// para resolver corretamente através do proxy do domínio.
+// Prefixo do deploy (Vite): '/jogo/' em produção, '/' no dev. Todo arquivo de
+// assets/ precisa dele para resolver através do proxy do domínio.
 export const asset = (p) => import.meta.env.BASE_URL + p;
+// URL final da folha: se for link externo (http...), usa direto; se for um
+// arquivo local de assets/, ganha o prefixo do deploy.
+const url = (s) => (s.startsWith('http') ? s : asset(s));
 
 // Lado para o qual a arte do personagem "olha" na folha original.
 export const SPRITE_OLHA_PARA = 'direita';
 
-// ---- ANDAR: corpo pré-dimensionado; frame 0 = parado, 1..78 = ciclo ----
-// A folha é pré-redimensionada (offline, Lanczos) para o corpo medir exatamente
-// 105·RENDER_SCALE px: o canvas copia 1:1, sem reamostragem por frame → nítido.
-export const SPRITE_ANDAR = asset('armor-andar.webp?v=12');
-export const FRAMES_ANDAR = 79;    // frame 0 = parado; 1..78 = ciclo de caminhada
-export const FRAME_PARADO = 0;     // frame usado se o idle não carregar
-// Cadência FIXA da caminhada (medida do vídeo de referência): o ciclo fecha
-// sempre em ~1,18 s — a velocidade do personagem NÃO muda o FPS do andar.
-export const ANDAR_CICLO_TICKS = 71;                                          // ticks (60/s) por volta da folha
-export const ANDAR_FRAMES_POR_TICK = (FRAMES_ANDAR - 1) / ANDAR_CICLO_TICKS;  // ≈1.10 quadros de sprite por tick
+// ---- ANDAR (js/assets/armor-andar.js) ----
+export const SPRITE_ANDAR = url(ANDAR.src);
+export const FRAMES_ANDAR = ANDAR.frames;
+export const FRAME_PARADO = ANDAR.frameParado;
+export const ANDAR_CICLO_TICKS = ANDAR.cicloTicks;
+export const ANDAR_FRAMES_POR_TICK = (FRAMES_ANDAR - 1) / ANDAR_CICLO_TICKS;
 
-// ---- PARADO (idle animado): respiração/olhar em volta, em loop por tempo ----
-export const SPRITE_PARADO_ANIM = asset('armor-parado.webp?v=5');
-export const FRAMES_PARADO_ANIM = 100;  // folha do idle (1 de cada 3 frames do original)
-export const PARADO_FPS = 10;           // 100 quadros a 10 fps = loop de ~10 s
+// ---- PARADO / idle (js/assets/armor-parado.js) ----
+export const SPRITE_PARADO_ANIM = url(PARADO.src);
+export const FRAMES_PARADO_ANIM = PARADO.frames;
+export const PARADO_FPS = PARADO.fps;
 
-// ---- CORRER (folha hospedada externamente) ----
-export const SPRITE_CORRER = 'https://i.ibb.co/tTxmyXws/titan-correr-tira.png';
-export const FRAMES_CORRER = 15;
+// ---- CORRER (js/assets/armor-correr.js) ----
+export const SPRITE_CORRER = url(CORRER.src);
+export const FRAMES_CORRER = CORRER.frames;
 
-// ---- PULAR: folha em GRADE (10 col x 17 lin = 170), lida em zigue-zague ----
-// esquerda→direita, cima→baixo. Ciclo: agacha → impulso a jato → voo →
-// aterrissagem com poeira → recupera e fica de pé.
-export const SPRITE_PULAR = asset('armor-pular.webp?v=1');
-export const PULAR_COLS = 10, PULAR_ROWS = 17, PULAR_FRAMES = 170;
-export const PULAR_BODY_R = 0.797;  // altura do corpo ÷ altura da célula (frame em pé) → escala fixa
-export const PULAR_FOOT_R = 0.12;   // distância dos pés até a base da célula (planta os pés no solo)
-export const JUMP_ANIM_SPEED = 1.6; // quadros de sprite por tick (~1,8 s para os 170 frames)
-export const JUMP_LAUNCH_F = 30;    // frame em que sai do chão (fim da anticipação)
-export const JUMP_LAND_F = 129;     // frame em que aterrissa (impacto/poeira)
-export const JUMP_ARC_H = 100;      // altura do arco do pulo (px)
+// ---- PULAR / grade (js/assets/armor-pular.js) ----
+export const SPRITE_PULAR = url(PULAR.src);
+export const PULAR_COLS = PULAR.cols, PULAR_ROWS = PULAR.rows, PULAR_FRAMES = PULAR.frames;
+export const PULAR_BODY_R = PULAR.bodyR, PULAR_FOOT_R = PULAR.footR;
+export const JUMP_ANIM_SPEED = PULAR.animSpeed;
+export const JUMP_LAUNCH_F = PULAR.launchF, JUMP_LAND_F = PULAR.landF, JUMP_ARC_H = PULAR.arcH;
 
-// ---- CHÃO (imagem hospedada externamente) ----
-export const IMG_CHAO = 'https://i.ibb.co/KzVkz7dS/11-20260612-202236-0000.png';
+// ---- CHÃO (js/assets/chao.js) ----
+export const IMG_CHAO = url(CHAO.src);
 
-// ---- BOTÕES da tela inicial (imagem própria por botão, sobre o vídeo) ----
+// ---- BOTÕES da tela inicial (imagens em assets/, não são folhas de animação) ----
 // Invisíveis em repouso; saltam e acendem ao serem pressionados. Posições e
-// tamanhos em % do vídeo. Trocar a arte = trocar o .webp em public/.
+// tamanhos em % do vídeo. Trocar a arte = trocar o .webp em assets/.
 export const BOTOES_INICIO = [
   { id: 'jogar',         src: asset('btn-jogar.webp'),         cx: 11.10, cy: 37.82, w: 20.4, aspect: 4.07 },
   { id: 'armadura',      src: asset('btn-armadura.webp'),      cx: 11.10, cy: 47.90, w: 16.9, aspect: 4.93 },

@@ -5,7 +5,7 @@ import { ALT, RENDER_SCALE, ZOOM_PERTO, AZUL } from './ajustes';
 import { asset, BOTOES_INICIO } from './sprites';
 import { calcularSol } from './mundo';
 import { carregarSprites } from './carregarSprites';
-import { criarLoop } from './motor';
+import { criarLoop } from './render';
 import { criarControles } from './controles';
 import { es, CSS_ARMOR } from './estilos';
 
@@ -216,7 +216,7 @@ export default function ProjetoArmor({ onVoltar }) {
     estadoRef.current.pos = { x: g.p.x, y: g.p.y, face: g.p.face };
   };
 
-  // ---------- LOOP PRINCIPAL (o motor: motor.js) ----------
+  // ---------- LOOP PRINCIPAL (o cérebro: render.js) ----------
   useEffect(() => {
     if (fase !== 'jogando') return;
     initGame();
