@@ -2,6 +2,16 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
+    <!-- Acesso canônico: o jogo só deve rodar sob o domínio da plataforma
+         (alpsprime.com.br/jogo) — mesma origem em que a sessão de login já
+         existe. Se alguém abrir o domínio "cru" da Vercel (*.vercel.app),
+         mandamos para o caminho oficial. Roda no navegador do usuário, então
+         NÃO afeta o proxy interno do AlpsPrime (que só busca o HTML, sem JS). -->
+    <script>
+      if (location.hostname.endsWith(".vercel.app")) {
+        location.replace("https://www.alpsprime.com.br/jogo/" + location.search + location.hash);
+      }
+    </script>
     <!-- viewport-fit=cover: em tela cheia, o jogo desenha também na área do
          recorte da câmera (notch/furo) — sem isso o navegador deixa faixas
          pretas nas laterais em paisagem. -->
