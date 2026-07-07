@@ -970,11 +970,11 @@ export default function ProjetoArmor({ onVoltar }) {
             onPointerCancel={joyFim}
             onContextMenu={(e) => e.preventDefault()}
           />
-          <img ref={joyBaseRef} src={asset('joystick-base.png')} alt="" draggable={false} style={es.joyBase} />
-          <img
-            src={asset('joystick-knob.png')}
-            alt=""
-            draggable={false}
+          <div
+            ref={joyBaseRef}
+            style={{ ...es.joyBase, transform: (knobOff.x || knobOff.y) ? 'translate(-50%,-50%) scale(1.06)' : 'translate(-50%,-50%)' }}
+          />
+          <div
             style={{ ...es.joyKnob, transform: `translate(calc(-50% + ${knobOff.x}px), calc(-50% + ${knobOff.y}px))` }}
           />
 
@@ -1001,11 +1001,11 @@ export default function ProjetoArmor({ onVoltar }) {
             onPointerCancel={miraFim}
             onContextMenu={(e) => e.preventDefault()}
           />
-          <img ref={miraBaseRef} src={asset('mira-base.png')} alt="" draggable={false} style={es.miraBase} />
-          <img
-            src={asset('mira-knob.png')}
-            alt=""
-            draggable={false}
+          <div
+            ref={miraBaseRef}
+            style={{ ...es.miraBase, transform: (miraOff.x || miraOff.y) ? 'translate(-50%,-50%) scale(1.06)' : 'translate(-50%,-50%)' }}
+          />
+          <div
             style={{ ...es.miraKnob, transform: `translate(calc(-50% + ${miraOff.x}px), calc(-50% + ${miraOff.y}px))` }}
           />
         </>
@@ -1161,12 +1161,14 @@ const es = {
   voltar: { position: 'absolute', top: 30, left: 16, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, color: '#8E8E93', fontSize: 13, padding: '6px 13px', cursor: 'pointer', zIndex: 30 },
   // ----- HUD por imagem: joysticks de mover/mirar + botão de voar -----
   joyZona: { position: 'absolute', left: 0, bottom: 0, width: '50%', top: '22%', zIndex: 25, touchAction: 'none', background: 'transparent' },
-  joyBase: { position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1', transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 26 },
-  joyKnob: { position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(38px,5.6vw,62px)', aspectRatio: '1', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27, transition: 'transform 0.07s ease-out' },
+  // Joystick de MOVER em código (glassmorphism) — sem imagens.
+  joyBase: { position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1', transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 26, boxSizing: 'border-box', borderRadius: '50%', background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.55)', boxShadow: '0 0 18px rgba(255,255,255,0.18), inset 0 0 20px rgba(255,255,255,0.08)', transition: 'transform 0.12s ease' },
+  joyKnob: { position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(38px,5.6vw,62px)', aspectRatio: '1', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27, transition: 'transform 0.07s ease-out', boxSizing: 'border-box', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.7)', boxShadow: '0 0 12px rgba(255,255,255,0.2)' },
   botaoVoar: { position: 'absolute', left: '78.7%', top: '83.8%', width: 'clamp(54px,7.9vw,90px)', aspectRatio: '1', transformOrigin: 'center', transition: 'transform 0.1s ease', zIndex: 28, cursor: 'pointer', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' },
   miraZona: { position: 'absolute', left: '50%', top: '22%', right: 0, bottom: 0, zIndex: 25, touchAction: 'none', background: 'transparent' },
-  miraBase: { position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1', transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 26 },
-  miraKnob: { position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(48px,7.1vw,80px)', aspectRatio: '1', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27, transition: 'transform 0.04s ease-out' },
+  // Joystick de MIRAR em código (glassmorphism) — sem imagens.
+  miraBase: { position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1', transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 26, boxSizing: 'border-box', borderRadius: '50%', background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.55)', boxShadow: '0 0 18px rgba(255,255,255,0.18), inset 0 0 20px rgba(255,255,255,0.08)', transition: 'transform 0.12s ease' },
+  miraKnob: { position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(48px,7.1vw,80px)', aspectRatio: '1', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27, transition: 'transform 0.04s ease-out', boxSizing: 'border-box', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.7)', boxShadow: '0 0 12px rgba(255,255,255,0.2)' },
   overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, backdropFilter: 'blur(4px)', fontFamily: 'monospace' },
   txtRodar: { color: '#7dd3fc', fontSize: 'clamp(20px,6vw,30px)', fontWeight: 700, letterSpacing: '2px', textShadow: '2px 2px 0 #0a3d62', margin: 0 },
   cancelarRodar: { marginTop: 28, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(125,211,252,0.4)', borderRadius: 22, color: '#7dd3fc', fontFamily: 'monospace', fontSize: 15, fontWeight: 700, letterSpacing: '1px', padding: '9px 26px', cursor: 'pointer' },
