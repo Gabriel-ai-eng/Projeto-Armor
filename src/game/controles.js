@@ -8,7 +8,7 @@ export function criarControles(deps) {
   const {
     setKnobOff, setMiraOff, setVoarAtivo,
     moveRef, aimRef, joyBaseRef, joyPointerRef, miraBaseRef, miraPointerRef,
-    G, btnRefs, arrastoMenuRef, entrar, sair,
+    G, btnRefs, arrastoMenuRef, entrar, sair, mostrarEmBreve
   } = deps;
 
   // ---------- ONDA / EFEITO PIANO DOS BOTÕES DA TELA INICIAL ----------
@@ -18,6 +18,7 @@ export function criarControles(deps) {
     el.classList.remove('is-onda');
     el.classList.add('is-ativo');
   };
+  
   const soltarComOnda = (id) => {
     const el = btnRefs.current[id];
     if (!el) return;
@@ -26,16 +27,19 @@ export function criarControles(deps) {
     void el.offsetWidth;         
     el.classList.add('is-onda');
   };
+  
   const botaoSobPonto = (x, y) => {
     const alvo = document.elementFromPoint(x, y);
     const btn = alvo && alvo.closest ? alvo.closest('[data-armor-btn]') : null;
     return btn ? btn.dataset.armorBtn : null;
   };
+  
   const menuDown = (e, id) => {
     e.currentTarget.setPointerCapture?.(e.pointerId);
     arrastoMenuRef.current = { ativo: true, atual: id, inicio: id, vagou: false };
     acenderBotao(id);
   };
+  
   const menuMove = (e) => {
     const d = arrastoMenuRef.current;
     if (!d.ativo) return;
@@ -46,16 +50,24 @@ export function criarControles(deps) {
     d.atual = id;
     d.vagou = true;                        
   };
+  
   const menuUp = () => {
     const d = arrastoMenuRef.current;
     if (!d.ativo) return;
     if (d.atual) soltarComOnda(d.atual);
     if (!d.vagou && d.inicio === d.atual) {
-      if (d.inicio === 'jogar') entrar();
-      else if (d.inicio === 'sair') sair();
+      if (d.inicio === 'jogar') {
+        entrar();
+      } else if (d.inicio === 'sair') {
+        sair();
+      } else if (d.inicio !== 'configuracoes') {
+        // Se for armadura, missoes, loja ou ranking dispara o Em Breve
+        if (mostrarEmBreve) mostrarEmBreve();
+      }
     }
     arrastoMenuRef.current = { ativo: false, atual: null, inicio: null, vagou: false };
   };
+  
   const menuFimAnim = (e) => {
     if (e.animationName === 'armorOnda') e.currentTarget.classList.remove('is-onda');
   };
@@ -76,14 +88,10 @@ export function criarControles(deps) {
   
   const joyInicio = (e) => {
     e.preventDefault();
-    
-    // REESCRITO: Cancela a ação se o jogador encostar o dedo FORA do limite circular do joystick de mover. 
-    // Isso impede a ativação ao tocar no meio ou em cima da tela esquerda.
     const el = joyBaseRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    // Multiplicado por 1.1 para dar uma margem microscópica pro dedo do jogador
     if (Math.hypot(e.clientX - cx, e.clientY - cy) > (r.width / 2) * 1.1) return; 
 
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
@@ -95,6 +103,7 @@ export function criarControles(deps) {
     if (joyPointerRef.current !== e.pointerId) return;
     joyAtualizar(e.clientX, e.clientY);
   };
+  
   const joyFim = (e) => {
     if (joyPointerRef.current !== e.pointerId) return;
     joyPointerRef.current = null;
@@ -115,6 +124,7 @@ export function criarControles(deps) {
     }
     setVoarAtivo(true);
   };
+  
   const voarRelease = () => {
     const g = G.current;
     if (g) g.flying = false; 
@@ -144,8 +154,6 @@ export function criarControles(deps) {
     const r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     
-    // REESCRITO: A mira já tinha esse bloqueio, mas eu reduzi o raio de 1.35 para 1.1,
-    // garantindo que fique contido restritamente no espaço do círculo.
     if (Math.hypot(e.clientX - cx, e.clientY - cy) > (r.width / 2) * 1.1) return;
     
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
@@ -157,6 +165,7 @@ export function criarControles(deps) {
     if (miraPointerRef.current !== e.pointerId) return;
     miraAtualizar(e.clientX, e.clientY);
   };
+  
   const miraFim = (e) => {
     if (miraPointerRef.current !== e.pointerId) return;
     miraPointerRef.current = null;
