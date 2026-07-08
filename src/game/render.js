@@ -100,9 +100,9 @@ export function criarLoop(deps) {
       sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
       
       // FIX DE VELOCIDADE: multiplicador um pouco mais rápido que antes
-      // (0.45 -> 0.55), mantendo a cadência estável (sem trancos) e ainda
+      // (0.55 -> 0.62), mantendo a cadência estável (sem trancos) e ainda
       // longe do valor que causava o efeito "patinação".
-      p.animT += (ANDAR_FRAMES_POR_TICK * 0.55);
+      p.animT += (ANDAR_FRAMES_POR_TICK * 0.62);
       
       frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
     } else if (parado) {
