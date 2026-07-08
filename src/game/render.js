@@ -215,6 +215,7 @@ export function criarLoop(deps) {
       const dGap = Math.round(footGap * sEff);
       ctx.save();
       ctx.setTransform(flip ? -1 : 1, 0, 0, 1, ax, ay);
+      ctx.imageSmoothingEnabled = false; // sem suavização no pulo: sprite mais nítida
       ctx.drawImage(pular, Math.round(col * cw), Math.round(row * ch), Math.round(cw), Math.round(ch), -Math.round(dW / 2), -dH + dGap, dW, dH);
       ctx.restore();
     } else {
