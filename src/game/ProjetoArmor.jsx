@@ -30,19 +30,17 @@ export default function ProjetoArmor({ onVoltar }) {
   const [zoomPerto, setZoomPerto] = useState(false);
   const [relogioAtivo, setRelogioAtivo] = useState(false);
   const [horaTexto, setHoraTexto] = useState('--:--');
-  const btnRefs = useRef({});   
+  const btnRefs = useRef({});   // id do botão do menu → elemento (para acender/animar)
+  // Estado do arrasto que gera a onda: botão inicial, botão atual sob o dedo e
+  // se o dedo já "vagou" para outro botão (aí é gesto de onda, não um toque).
   const arrastoMenuRef = useRef({ ativo: false, atual: null, inicio: null, vagou: false });
-  const [knobOff, setKnobOff] = useState({ x: 0, y: 0 }); 
-  const [miraOff, setMiraOff] = useState({ x: 0, y: 0 }); 
-  const [voarAtivo, setVoarAtivo] = useState(false);      
-  const [nivel, setNivel] = useState(0);                  
+  const [knobOff, setKnobOff] = useState({ x: 0, y: 0 }); // knob do joystick de mover
+  const [miraOff, setMiraOff] = useState({ x: 0, y: 0 }); // knob do joystick de mirar
+  const [voarAtivo, setVoarAtivo] = useState(false);      // feedback visual do botão de voar
+  const [nivel, setNivel] = useState(0);                  // nível do jogador (salvo no Supabase)
   const [paisagem, setPaisagem] = useState(
     typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : true
   );
-
-  // Estado para a mensagem "Em breve"
-  const [emBreve, setEmBreve] = useState(false);
-  const emBreveTimerRef = useRef(null);
 
   const canvasRef = useRef(null);
   const G = useRef(null);
@@ -52,19 +50,25 @@ export default function ProjetoArmor({ onVoltar }) {
   const latRef = useRef(null);
   const imgsRef = useRef({ andar: null, correr: null, chao: null, pular: null, parado: null, calibAndar: null, calibCorrer: null, calibParado: null, calibPular: null, chaoCalib: null });
   const videoIntroRef = useRef(null);
+  // Vídeo da intro baixado inteiro para a memória (blob) assim que o app abre:
+  // quando o celular vira para paisagem, toca na hora, sem buffering de rede.
   const [videoIntroSrc, setVideoIntroSrc] = useState(null);
   const introTocouRef = useRef(false);
+  // Guarda a orientação anterior para detectar a transição retrato→paisagem
+  // (é o único gatilho que inicia o vídeo da intro).
   const prevPaisagemRef = useRef(false);
-  const moveRef = useRef({ x: 0, mag: 0 });   
+  // Joysticks (leitura entregue ao loop do jogo via refs).
+  const moveRef = useRef({ x: 0, mag: 0 });   // mover: x = -1..1, mag = 0..1
   const joyBaseRef = useRef(null);
   const joyPointerRef = useRef(null);
-  const aimRef = useRef({ active: false, ang: 0 }); 
+  const aimRef = useRef({ active: false, ang: 0 }); // mirar: direção + se dispara
   const miraBaseRef = useRef(null);
+  // Estado persistido no Supabase (prefs + estatísticas + progresso).
   const estadoRef = useRef(estadoInicial());
-  const carregadoRef = useRef(false); 
+  const carregadoRef = useRef(false); // só salva depois que carregou (evita apagar)
   const miraPointerRef = useRef(null);
 
-  // ---------- CARREGAMENTO DAS SPRITES ----------
+  // ---------- CARREGAMENTO DAS SPRITES (ver carregarSprites.js) ----------
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     let vivos = true;
@@ -80,12 +84,19 @@ export default function ProjetoArmor({ onVoltar }) {
 
   // ---------- ORIENTAÇÃO + CANVAS 2x ----------
   useEffect(() => {
+    // O matchMedia reflete a orientação real no exato instante da virada; o
+    // window.innerWidth costuma ficar defasado durante a rotação, o que atrasava
+    // a troca para a tela do vídeo. Por isso a orientação passa a ser decidida
+    // pelo matchMedia (com fallback para as dimensões da janela).
     const mqLandscape = window.matchMedia('(orientation: landscape)');
     const redimensionar = () => {
       const ww = window.innerWidth, wh = window.innerHeight;
       const landscape = mqLandscape.matches || ww > wh;
       setPaisagem(landscape);
-      
+      // Ao virar para horizontal, tenta entrar em tela cheia automaticamente.
+      // Obs.: a maioria dos navegadores só permite tela cheia a partir de um
+      // gesto do usuário; quando a rotação não conta como gesto, isto falha em
+      // silêncio e o toque na tela (entrarTelaCheia) continua valendo.
       if (landscape && !document.fullscreenElement) {
         try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (e) {}
         try { window.screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
@@ -96,7 +107,7 @@ export default function ProjetoArmor({ onVoltar }) {
     redimensionar();
     window.addEventListener('resize', redimensionar);
     window.addEventListener('orientationchange', redimensionar);
-    
+    // Estes disparam no momento exato da virada → vídeo aparece instantâneo.
     if (mqLandscape.addEventListener) mqLandscape.addEventListener('change', redimensionar);
     else if (mqLandscape.addListener) mqLandscape.addListener(redimensionar);
     try { window.screen.orientation.addEventListener('change', redimensionar); } catch (e) {}
@@ -123,15 +134,20 @@ export default function ProjetoArmor({ onVoltar }) {
     return () => clearInterval(id);
   }, [relogioAtivo]);
 
-  // ---------- SAVE NA NUVEM ----------
+  // ---------- SAVE NA NUVEM (Supabase) ----------
+  // Ao abrir: carrega o estado salvo, reaplica as preferências, conta mais uma
+  // sessão e regrava. A identificação do jogador é a sessão do Supabase Auth
+  // compartilhada com a plataforma (ver lib/playerSave.js).
   useEffect(() => {
     let vivo = true;
     (async () => {
       const est = await carregarEstado();
       if (!vivo) return;
+      // reaplica preferências salvas
       if (est.prefs.zoomPerto) { setZoomPerto(true); zoomAlvoRef.current = ZOOM_PERTO; }
       if (est.prefs.relogioAtivo) { relogioAtivoRef.current = true; setRelogioAtivo(true); }
       setNivel(est.progresso.nivel || 0);
+      // registra a sessão atual
       const agora = new Date().toISOString();
       est.stats.sessoes = (est.stats.sessoes || 0) + 1;
       est.stats.primeiraVez = est.stats.primeiraVez || agora;
@@ -143,6 +159,8 @@ export default function ProjetoArmor({ onVoltar }) {
     return () => { vivo = false; };
   }, []);
 
+  // Enquanto joga, acumula tempo jogado, sobe de nível (1 nível a cada 2 min) e
+  // grava periodicamente. Também grava ao sair do modo "jogando".
   useEffect(() => {
     if (fase !== 'jogando' || !carregadoRef.current) return;
     const id = setInterval(() => {
@@ -161,6 +179,7 @@ export default function ProjetoArmor({ onVoltar }) {
     return () => { clearInterval(id); if (carregadoRef.current) { sincronizarPos(); salvarEstado(estadoRef.current); } };
   }, [fase]);
 
+  // Garante a gravação quando o app é minimizado ou fechado.
   useEffect(() => {
     const salvarSaindo = () => {
       if (carregadoRef.current && document.visibilityState === 'hidden') { sincronizarPos(); salvarEstado(estadoRef.current); }
@@ -174,6 +193,7 @@ export default function ProjetoArmor({ onVoltar }) {
   }, []);
 
   const initGame = () => {
+    // Retoma a posição salva (onde o jogador parou); na primeira vez usa o padrão.
     const salvo = estadoRef.current && estadoRef.current.pos;
     const px = salvo && typeof salvo.x === 'number' ? salvo.x : 260;
     const py = salvo && typeof salvo.y === 'number' ? salvo.y : 0;
@@ -188,13 +208,15 @@ export default function ProjetoArmor({ onVoltar }) {
     };
   };
 
+  // Copia a posição atual do personagem (posição viva no loop) para o estado
+  // persistido, antes de gravar. Sem partida ativa, não faz nada.
   const sincronizarPos = () => {
     const g = G.current;
     if (!g || !g.p || !estadoRef.current) return;
     estadoRef.current.pos = { x: g.p.x, y: g.p.y, face: g.p.face };
   };
 
-  // ---------- LOOP PRINCIPAL ----------
+  // ---------- LOOP PRINCIPAL (o cérebro: render.js) ----------
   useEffect(() => {
     if (fase !== 'jogando') return;
     initGame();
@@ -208,36 +230,30 @@ export default function ProjetoArmor({ onVoltar }) {
     return () => loop.stop();
   }, [fase]);
 
+  // Entrar de fato no jogo (botão "Jogar").
   const entrar = async () => {
     try { await document.documentElement.requestFullscreen(); } catch (e) {}
     try { await window.screen.orientation.lock('landscape'); } catch (e) {}
     setFase('jogando');
   };
-  
+  // Toque no fundo do vídeo: só entra em tela cheia, sem iniciar o jogo.
   const entrarTelaCheia = async () => {
     if (document.fullscreenElement) return;
     try { await document.documentElement.requestFullscreen(); } catch (e) {}
     try { await window.screen.orientation.lock('landscape'); } catch (e) {}
   };
-  
+  // Botão "Sair" da tela inicial: volta para de onde o jogador veio (o card do
+  // Alps OS, aberto na mesma aba). Se o jogo estiver embutido (onVoltar), usa-o.
   const sair = () => { if (onVoltar) onVoltar(); else window.history.back(); };
 
-  // Função para exibir a mensagem "Em Breve"
-  const mostrarEmBreve = () => {
-    setEmBreve(true);
-    if (emBreveTimerRef.current) clearTimeout(emBreveTimerRef.current);
-    emBreveTimerRef.current = setTimeout(() => {
-      setEmBreve(false);
-    }, 2000);
-  };
-
+  // Alterna o zoom da câmera (perto/longe) e salva a preferência.
   const alternarZoom = () => {
     const novo = !zoomPerto; setZoomPerto(novo);
     zoomAlvoRef.current = novo ? ZOOM_PERTO : 1;
     estadoRef.current.prefs.zoomPerto = novo;
     if (carregadoRef.current) salvarEstado(estadoRef.current);
   };
-  
+  // Liga o relógio do mundo real (fase do dia no céu), pedindo a latitude.
   const ativarRelogio = () => {
     if (relogioAtivo) return;
     const aplicar = (lat) => {
@@ -254,7 +270,7 @@ export default function ProjetoArmor({ onVoltar }) {
     } else aplicar(null);
   };
 
-  // ---------- CONTROLES ----------
+  // ---------- CONTROLES (joysticks + voar + onda do menu) ----------
   const {
     menuDown, menuMove, menuUp, menuFimAnim,
     joyInicio, joyMover, joyFim,
@@ -263,15 +279,18 @@ export default function ProjetoArmor({ onVoltar }) {
   } = criarControles({
     setKnobOff, setMiraOff, setVoarAtivo,
     moveRef, aimRef, joyBaseRef, joyPointerRef, miraBaseRef, miraPointerRef,
-    G, btnRefs, arrastoMenuRef, entrar, sair, mostrarEmBreve
+    G, btnRefs, arrastoMenuRef, entrar, sair,
   });
 
   // ---------- REPRODUÇÃO DA INTRO ----------
+  // A intro toca do começo (personagem surge do escuro) SOMENTE no momento em
+  // que o celular vira para paisagem estando na tela inicial (transição
+  // retrato→paisagem). Depois congela no último quadro (onEnded).
   useEffect(() => {
-    if (fase !== 'pronto') return;         
+    if (fase !== 'pronto') return;         // só conta na tela inicial
     const was = prevPaisagemRef.current;
     prevPaisagemRef.current = paisagem;
-    if (!paisagem || was) return;          
+    if (!paisagem || was) return;          // precisa ser a transição p/ paisagem
     const v = videoIntroRef.current;
     if (!v) return;
     introTocouRef.current = true;
@@ -279,6 +298,11 @@ export default function ProjetoArmor({ onVoltar }) {
     v.play().catch(() => {});
   }, [fase, paisagem]);
 
+  // Pré-baixa o vídeo da intro para a memória assim que o app abre (em
+  // paralelo com as sprites). Se o download terminar antes da intro tocar,
+  // o <video> passa a usar o blob local → reprodução instantânea na virada
+  // do celular, sem depender da rede. Se a intro já tocou, não troca o src
+  // (trocaria o quadro congelado por tela preta).
   useEffect(() => {
     let vivo = true, url = null;
     fetch(asset('armor-intro.mp4?v=5'))
@@ -288,7 +312,7 @@ export default function ProjetoArmor({ onVoltar }) {
         url = URL.createObjectURL(b);
         setVideoIntroSrc(url);
       })
-      .catch(() => {});   
+      .catch(() => {});   // sem blob, fica o src normal com preload="auto"
     return () => { vivo = false; if (url) URL.revokeObjectURL(url); };
   }, []);
 
@@ -311,8 +335,11 @@ export default function ProjetoArmor({ onVoltar }) {
             </span>
           </button>
 
+          {/* Voltar: retorna para a tela inicial do próprio jogo. */}
           <button onClick={() => setFase('pronto')} style={es.voltar}>← Voltar</button>
 
+          {/* Joystick de MOVER (esquerda): zona transparente capta o toque;
+              base e knob ficam por cima sem capturar. */}
           <div
             style={es.joyZona}
             onPointerDown={joyInicio}
@@ -329,6 +356,7 @@ export default function ProjetoArmor({ onVoltar }) {
             style={{ ...es.joyKnob, transform: `translate(calc(-50% + ${knobOff.x}px), calc(-50% + ${knobOff.y}px))` }}
           />
 
+          {/* Botão de VOAR (direita) */}
           <img
             src={asset('botao-voar.webp')}
             alt="Voar"
@@ -341,6 +369,8 @@ export default function ProjetoArmor({ onVoltar }) {
             style={{ ...es.botaoVoar, transform: `translate(-50%, -50%) scale(${voarAtivo ? 1.08 : 1})` }}
           />
 
+          {/* Joystick de MIRAR (direita): zona transparente capta o toque;
+              base e knob por cima. Enquanto mira, dispara sozinho. */}
           <div
             style={es.miraZona}
             onPointerDown={miraInicio}
@@ -369,15 +399,25 @@ export default function ProjetoArmor({ onVoltar }) {
         <div style={es.overlay}>
           <div className="armor-rotate-phone" />
           <p style={es.txtRodar}>VIRE O CELULAR</p>
+          {/* Cancelar: volta para a Home (seção que abriu o jogo). */}
           <button onClick={sair} style={es.cancelarRodar}>Cancelar</button>
         </div>
       )}
       {fase !== 'erro' && (
+        // O vídeo da tela inicial fica montado desde a abertura do app
+        // (inclusive durante o carregamento das sprites), já baixando em
+        // segundo plano; só aparece (display) na tela inicial em paisagem.
+        // Assim, Jogar → Voltar retorna EXATAMENTE ao mesmo quadro pausado
+        // (personagem de frente), sem recarregar nem recomeçar. A intro só
+        // toca de novo quando o componente remonta (saiu para a Home e voltou).
         <div
           style={{ ...es.overlayVideo, display: fase === 'pronto' && paisagem ? 'block' : 'none' }}
           onClick={fase === 'pronto' ? entrarTelaCheia : undefined}
           onContextMenu={(e) => e.preventDefault()}
         >
+          {/* Vídeo do personagem. A reprodução é iniciada pelo useEffect da
+              intro (só na virada para paisagem); aqui apenas congelamos no
+              último quadro quando o vídeo termina. */}
           <video
             ref={videoIntroRef}
             style={es.videoIntro}
@@ -395,6 +435,9 @@ export default function ProjetoArmor({ onVoltar }) {
           />
           {fase === 'pronto' && (
             <>
+          {/* Botões sobre o vídeo: invisíveis em repouso. Segurar e deslizar por
+              eles gera uma onda (efeito piano) — cada botão acende, salta e
+              desvanece em sequência. Um toque limpo aciona Jogar/Sair. */}
           {BOTOES_INICIO.map((b) => (
             <div
               key={b.id}
@@ -419,8 +462,13 @@ export default function ProjetoArmor({ onVoltar }) {
               }}
             />
           ))}
+          {/* Perfil do usuário no canto superior direito do vídeo. Tudo em
+              código: a silhueta é um SVG (avatar genérico) e nome/nível são
+              texto (Rajdhani). Não captura toque, então tocar aqui ainda
+              entra em tela cheia. */}
           <div style={es.perfilBox}>
             <svg viewBox="0 0 64 64" style={es.perfilFoto} aria-hidden="true" focusable="false">
+              {/* cabeça + ombros de um avatar genérico, branco */}
               <circle cx="32" cy="23" r="13" fill="#FFFFFF" />
               <path d="M8 57c0-13.3 10.7-20 24-20s24 6.7 24 20v3H8z" fill="#FFFFFF" />
             </svg>
@@ -429,32 +477,8 @@ export default function ProjetoArmor({ onVoltar }) {
               <span style={es.perfilNivel}>Nível {nivel}</span>
             </div>
           </div>
-            </>
-          )}
 
-          {/* Overlay "Em Breve" centralizado */}
-          {emBreve && (
-            <div style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              backgroundColor: 'rgba(0, 0, 0, 0.75)',
-              color: '#F4F4F4',
-              padding: '12px 30px',
-              borderRadius: '8px',
-              fontFamily: "ui-monospace, 'Courier New', monospace",
-              fontSize: '22px',
-              letterSpacing: '2px',
-              textTransform: 'uppercase',
-              border: '1px solid rgba(244, 244, 244, 0.3)',
-              zIndex: 9999,
-              pointerEvents: 'none',
-              textAlign: 'center',
-              boxShadow: '0 0 15px rgba(0, 0, 0, 0.5)'
-            }}>
-              Em breve
-            </div>
+            </>
           )}
         </div>
       )}
