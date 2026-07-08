@@ -6,7 +6,7 @@
 // quadros de decolagem/pouso do pulo.
 // ============================================================
 export default {
-  src: 'armor-pular.webp?v=2', // folha nova trocada (?v=2 fura o cache)
+  src: 'armor-pular.webp?v=3', // folha estabilizada quadro a quadro (?v=3 fura o cache)
   cols: 10, rows: 21, frames: 207, // grade 10x21; última linha só usa 7 colunas (207 = 20*10 + 7)
   bodyR: 0.807,   // altura do corpo ÷ altura da célula (medido no quadro 0, em pé)
   footR: 0.102,   // distância dos pés até a base da célula (medido no quadro 0)
