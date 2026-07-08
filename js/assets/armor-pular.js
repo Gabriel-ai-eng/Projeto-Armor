@@ -6,12 +6,12 @@
 // quadros de decolagem/pouso do pulo.
 // ============================================================
 export default {
-  src: 'armor-pular.webp?v=1', // arquivo em assets/ (?v=N fura o cache ao trocar)
-  cols: 10, rows: 17, frames: 170, // grade e total de quadros
-  bodyR: 0.797,   // altura do corpo ÷ altura da célula (escala/corte vertical, frame em pé)
-  footR: 0.12,    // distância dos pés até a base da célula (planta os pés no chão)
-  animSpeed: 1.6, // quadros de sprite por tick (~1,8 s para os 170 frames)
-  launchF: 30,    // quadro em que sai do chão (fim da anticipação)
-  landF: 129,     // quadro em que aterrissa (impacto/poeira)
+  src: 'armor-pular.webp?v=2', // folha nova trocada (?v=2 fura o cache)
+  cols: 10, rows: 21, frames: 207, // grade 10x21; última linha só usa 7 colunas (207 = 20*10 + 7)
+  bodyR: 0.80,    // altura do corpo ÷ altura da célula (medido na folha nova, quadro em pé)
+  footR: 0.10,    // distância dos pés até a base da célula (medido na folha nova)
+  animSpeed: 1.95, // quadros de sprite por tick (mantém ~1,8s de pulo com 207 quadros)
+  launchF: 30,    // quadro em que sai do chão (linha 3: começa o jato/impulso)
+  landF: 140,     // quadro em que aterrissa (linha 14: pose de impacto/poeira)
   arcH: 100,      // altura do arco do pulo (px)
 };
