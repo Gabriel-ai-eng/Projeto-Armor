@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { carregarEstado, salvarEstado, estadoInicial } from '../lib/playerSave';
-import { ALT, RENDERSCALE, ZOOMPERTO, AZUL } from './ajustes';
-import { asset, BOTOESINICIO } from './sprites';
+import { ALT, RENDERSCALE, ZOOM_PERTO, AZUL } from './ajustes';
+import { asset, BOTOES_INICIO } from './sprites';
 import { calcularSol } from './mundo';
 import { carregarSprites } from './carregarSprites';
 import { criarLoop } from './render';
