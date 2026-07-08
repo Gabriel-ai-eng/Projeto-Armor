@@ -205,10 +205,9 @@ export function criarLoop(deps) {
       const jFrame = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
       const cw = pular.width / PULAR_COLS, ch = pular.height / PULAR_ROWS;
       const col = jFrame % PULAR_COLS, row = Math.floor(jFrame / PULAR_COLS);
-      // Cada quadro da folha de pulo tem o corpo num tamanho/posição levemente
-      // diferente dentro da célula (arte gerada quadro a quadro, sem rig).
-      // Com autocalibração (calibPular) replantamos pé e centro a cada quadro,
-      // igual ao andar/correr, pra tirar o tremor; sem ela, cai no corte fixo.
+      // calibPular traz UMA leitura fixa (quadro 0, em pé) aplicada a todos os
+      // quadros — escala e âncora constantes: em pé fica do mesmo tamanho do
+      // andar/correr e não há tremor (ver carregarSprites.js). Sem ela, corte fixo.
       let esc, footGap, offXPulo = 0;
       if (calibPular) {
         esc = ALTURA_ARMOR / (calibPular.corpoR * ch);

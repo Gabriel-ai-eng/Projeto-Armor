@@ -75,7 +75,7 @@ const calibrarGrade = (img, cols, rows, nFrames, excluir) => {
       }
       if (bot < 0) { frames.push(null); continue; }
       const corpo = bot - top + 1; if (corpo > maiorCorpo) maiorCorpo = corpo;
-      frames.push({ botR: bot / H, cxR: (esq + dir) / 2 / W });
+      frames.push({ botR: bot / H, cxR: (esq + dir) / 2 / W, altR: corpo / H });
     }
     const valido = frames.find(f => f !== null);
     if (!valido || maiorCorpo === 0) return null;
@@ -133,6 +133,20 @@ export async function carregarSprites() {
   if (idle && idle.leitura && idle.leitura.frames.length) {
     const base = idle.leitura.frames[0];
     idle.leitura = { ...idle.leitura, frames: idle.leitura.frames.map(() => base) };
+  }
+
+  // PULO: mesma técnica do idle. A folha tem 207 quadros gerados um a um (sem
+  // rig), então a caixa do corpo muda de tamanho/posição a cada quadro — se a
+  // âncora seguisse essas caixas, o personagem tremia e encolhia (a escala era
+  // normalizada pelo MAIOR corpo da folha, uma pose esticada de voo). Usamos a
+  // leitura do quadro 0 (em pé) para TODOS: escala constante — em pé fica do
+  // MESMO tamanho do andar/correr — e âncora fixa, sem tremor.
+  if (pl.leitura && pl.leitura.frames.length) {
+    const base = pl.leitura.frames[0];
+    pl.leitura = {
+      corpoR: base.altR || pl.leitura.corpoR,
+      frames: pl.leitura.frames.map(() => base),
+    };
   }
 
   return {
