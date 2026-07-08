@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { carregarEstado, salvarEstado, estadoInicial } from '../lib/playerSave';
-import { ALT, RENDERSCALE, ZOOM_PERTO, AZUL } from './ajustes';
+import { ALT, RENDER_SCALE, ZOOM_PERTO, AZUL } from './ajustes';
 import { asset, BOTOES_INICIO } from './sprites';
 import { calcularSol } from './mundo';
 import { carregarSprites } from './carregarSprites';
