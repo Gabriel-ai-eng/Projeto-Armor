@@ -93,11 +93,17 @@ export function criarLoop(deps) {
       // Suaviza a velocidade usada na animação (média móvel) para evitar saltos
       // bruscos de quadro quando vAbs oscila — deixa a corrida mais fluida.
       p.animVCorrer = (p.animVCorrer ?? vAbs) + (vAbs - (p.animVCorrer ?? vAbs)) * 0.3;
+      // FIX DE VELOCIDADE: um pouco mais rápida que antes (0.035 -> 0.042)
       p.animT += p.animVCorrer * 0.042;
       frameAtual = Math.floor(p.animT) % nFrames;
     } else if (modo === 'andar') {
       sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
+      
+      // FIX DE VELOCIDADE: multiplicador um pouco mais rápido que antes
+      // (0.55 -> 0.62), mantendo a cadência estável (sem trancos) e ainda
+      // longe do valor que causava o efeito "patinação".
       p.animT += (ANDAR_FRAMES_POR_TICK * 0.62);
+      
       frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
     } else if (parado) {
       sprite = parado; calib = calibParado; nFrames = FRAMES_PARADO_ANIM;
@@ -199,37 +205,18 @@ export function criarLoop(deps) {
       const jFrame = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
       const cw = pular.width / PULAR_COLS, ch = pular.height / PULAR_ROWS;
       const col = jFrame % PULAR_COLS, row = Math.floor(jFrame / PULAR_COLS);
-      
-      // --- NOVO RECORTE LATERAL ---
-      // Remove fisicamente o excesso de espaço vazio nas laterais da grade do pulo.
-      // O valor de 0.30 remove 30% da esquerda e 30% da direita da célula (sobra 40%).
-      const lateralTrim = 0.30; 
-      const widthUtil = 1 - (lateralTrim * 2); 
-      
-      const srcX = (col * cw) + (cw * lateralTrim);
-      const srcY = row * ch;
-      const srcW = cw * widthUtil;
-      const srcH = ch;
-      
       const esc = ALTURA_ARMOR / (PULAR_BODY_R * ch);
-      const destW = srcW * esc, destH = srcH * esc, footGap = PULAR_FOOT_R * ch * esc;
-      
+      const destW = cw * esc, destH = ch * esc, footGap = PULAR_FOOT_R * ch * esc;
       const mt = ctx.getTransform();
       const ax = Math.round(mt.a * p.x + mt.c * corpoY + mt.e);
       const ay = Math.round(mt.b * p.x + mt.d * corpoY + mt.f);
       const sEff = Z * RENDER_SCALE;
       const dW = Math.round(destW * sEff), dH = Math.round(destH * sEff);
       const dGap = Math.round(footGap * sEff);
-      
       ctx.save();
       ctx.setTransform(flip ? -1 : 1, 0, 0, 1, ax, ay);
       ctx.imageSmoothingEnabled = false; // sem suavização no pulo: sprite mais nítida
-      ctx.drawImage(
-        pular, 
-        Math.round(srcX), Math.round(srcY), 
-        Math.round(srcW), Math.round(srcH), 
-        -Math.round(dW / 2), -dH + dGap, dW, dH
-      );
+      ctx.drawImage(pular, Math.round(col * cw), Math.round(row * ch), Math.round(cw), Math.round(ch), -Math.round(dW / 2), -dH + dGap, dW, dH);
       ctx.restore();
     } else {
       const fw = sprite.width / nFrames, fh = sprite.height;
