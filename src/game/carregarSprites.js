@@ -114,44 +114,59 @@ const carregarSprite = async (src, medir) => {
   catch (e) { const img = await carregar(src, false); return { img, leitura: null }; }
 };
 
-// Baixa TODAS as folhas + o chão e devolve o objeto que o motor consome.
-// Lança (rejeita) se as folhas essenciais (andar/chão) não carregarem.
-export async function carregarSprites() {
-  const [a, r, solo, pl, idle] = await Promise.all([
+// Baixa as folhas ESSENCIAIS (andar + chão, ~700KB) e devolve — é o que o
+// menu inicial espera. As folhas pesadas (parado 3MB, pular 2,7MB) e a de
+// correr (host externo, pode ser lento) carregam em SEGUNDO PLANO e são
+// entregues via `aoChegarExtra(patch)` conforme ficam prontas: o menu e o
+// jogo abrem rápido, e correr/pular/parado "ligam" segundos depois (o motor
+// já cai no sprite de andar enquanto cada uma não chega).
+// Lança (rejeita) somente se as essenciais (andar/chão) não carregarem.
+export async function carregarSprites(aoChegarExtra) {
+  const [a, solo] = await Promise.all([
     carregarSprite(SPRITE_ANDAR, (im) => calibrar(im, FRAMES_ANDAR)),
-    carregarSprite(SPRITE_CORRER, (im) => calibrar(im, FRAMES_CORRER)),
     carregarSprite(IMG_CHAO, calibrarChao),
-    carregarSprite(SPRITE_PULAR, (im) => calibrarGrade(im, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES, ehChamaPropulsor)),
-    // Idle é opcional: se falhar, cai no frame parado da folha de andar.
-    carregarSprite(SPRITE_PARADO_ANIM, (im) => calibrar(im, FRAMES_PARADO_ANIM)).catch(() => null),
   ]);
+
+  const entregar = (patch) => { if (aoChegarExtra) aoChegarExtra(patch); };
+
+  carregarSprite(SPRITE_CORRER, (im) => calibrar(im, FRAMES_CORRER))
+    .then((r) => entregar({ correr: r.img, calibCorrer: r.leitura }))
+    .catch(() => {});
+
+  // PULO: a folha tem 207 quadros gerados um a um (sem rig), então a caixa do
+  // corpo muda de tamanho/posição a cada quadro — se a âncora seguisse essas
+  // caixas, o personagem tremia e encolhia (a escala era normalizada pelo
+  // MAIOR corpo da folha, uma pose esticada de voo). Usamos a leitura do
+  // quadro 0 (em pé) para TODOS: escala constante — em pé fica do MESMO
+  // tamanho do andar/correr — e âncora fixa, sem tremor.
+  carregarSprite(SPRITE_PULAR, (im) => calibrarGrade(im, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES, ehChamaPropulsor))
+    .then((pl) => {
+      if (pl.leitura && pl.leitura.frames.length) {
+        const base = pl.leitura.frames[0];
+        pl.leitura = {
+          corpoR: base.altR || pl.leitura.corpoR,
+          frames: pl.leitura.frames.map(() => base),
+        };
+      }
+      entregar({ pular: pl.img, calibPular: pl.leitura });
+    })
+    .catch(() => {});
 
   // A folha do idle já vem com os pés ancorados no mesmo ponto de cada célula.
   // Usamos a leitura do frame 0 para TODOS os frames: offset de desenho
   // constante → pés fixos no chão (a autocalibração por frame compensaria o
   // balanço do corpo e faria os pés tremerem).
-  if (idle && idle.leitura && idle.leitura.frames.length) {
-    const base = idle.leitura.frames[0];
-    idle.leitura = { ...idle.leitura, frames: idle.leitura.frames.map(() => base) };
-  }
+  carregarSprite(SPRITE_PARADO_ANIM, (im) => calibrar(im, FRAMES_PARADO_ANIM))
+    .then((idle) => {
+      if (idle.leitura && idle.leitura.frames.length) {
+        const base = idle.leitura.frames[0];
+        idle.leitura = { ...idle.leitura, frames: idle.leitura.frames.map(() => base) };
+      }
+      entregar({ parado: idle.img, calibParado: idle.leitura });
+    })
+    .catch(() => {});
 
-  // PULO: mesma técnica do idle. A folha tem 207 quadros gerados um a um (sem
-  // rig), então a caixa do corpo muda de tamanho/posição a cada quadro — se a
-  // âncora seguisse essas caixas, o personagem tremia e encolhia (a escala era
-  // normalizada pelo MAIOR corpo da folha, uma pose esticada de voo). Usamos a
-  // leitura do quadro 0 (em pé) para TODOS: escala constante — em pé fica do
-  // MESMO tamanho do andar/correr — e âncora fixa, sem tremor.
-  if (pl.leitura && pl.leitura.frames.length) {
-    const base = pl.leitura.frames[0];
-    pl.leitura = {
-      corpoR: base.altR || pl.leitura.corpoR,
-      frames: pl.leitura.frames.map(() => base),
-    };
-  }
-
-  return {
-    andar: a.img, calibAndar: a.leitura, correr: r.img, calibCorrer: r.leitura,
-    chao: solo.img, chaoCalib: solo.leitura, pular: pl.img, calibPular: pl.leitura,
-    parado: idle ? idle.img : null, calibParado: idle ? idle.leitura : null,
-  };
+  // Só as essenciais; as demais chegam pelos patches acima (o ref do
+  // componente já nasce com todas as chaves em null).
+  return { andar: a.img, calibAndar: a.leitura, chao: solo.img, chaoCalib: solo.leitura };
 }

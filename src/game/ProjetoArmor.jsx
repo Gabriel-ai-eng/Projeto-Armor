@@ -72,8 +72,10 @@ export default function ProjetoArmor({ onVoltar }) {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     let vivos = true;
-    carregarSprites()
-      .then((imgs) => { if (!vivos) return; imgsRef.current = imgs; setFase('pronto'); })
+    // As folhas pesadas (correr/pular/parado) chegam DEPOIS, em segundo plano,
+    // via patch — o menu abre só com o essencial (andar + chão), bem mais rápido.
+    carregarSprites((patch) => { if (vivos) imgsRef.current = { ...imgsRef.current, ...patch }; })
+      .then((imgs) => { if (!vivos) return; imgsRef.current = { ...imgsRef.current, ...imgs }; setFase('pronto'); })
       .catch(() => vivos && setFase('erro'));
     return () => {
       vivos = false; document.body.style.overflow = 'auto';
@@ -118,6 +120,23 @@ export default function ProjetoArmor({ onVoltar }) {
       else if (mqLandscape.removeListener) mqLandscape.removeListener(redimensionar);
       try { window.screen.orientation.removeEventListener('change', redimensionar); } catch (e) {}
     };
+  }, []);
+
+  // ---------- TELA CHEIA NO PRIMEIRO TOQUE ----------
+  // Os navegadores SÓ permitem requestFullscreen dentro de um gesto do usuário
+  // — virar o celular não conta como gesto, então o pedido automático do
+  // redimensionar falha em silêncio. Este listener (fase de captura, pega o
+  // toque antes de qualquer botão) garante: o PRIMEIRO toque em qualquer coisa
+  // após virar para paisagem já entra em tela cheia e trava a orientação.
+  useEffect(() => {
+    const aoTocar = () => {
+      if (window.innerWidth > window.innerHeight && !document.fullscreenElement) {
+        try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (e) {}
+        try { window.screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
+      }
+    };
+    document.addEventListener('pointerdown', aoTocar, true);
+    return () => document.removeEventListener('pointerdown', aoTocar, true);
   }, []);
 
   // ---------- RELÓGIO EM TEMPO REAL ----------

@@ -22,10 +22,16 @@
     <!-- Baixa o vídeo da tela inicial junto com a página, antes mesmo do JS
          rodar, para ele aparecer na hora quando o celular virar de lado. -->
     <link rel="preload" href="/armor-intro.mp4?v=5" as="video" type="video/mp4" fetchpriority="high" />
-    <!-- Fonte Rajdhani: usada no bloco de perfil da tela inicial (nome + nível). -->
+    <!-- Fonte Rajdhani: usada no bloco de perfil da tela inicial (nome + nível).
+         Carregada SEM BLOQUEAR: como <link rel="stylesheet"> normal, o navegador
+         segura a renderização e o JS do app inteiro até o Google Fonts responder
+         — com rede lenta isso atrasava a tela inicial em vários segundos. O
+         truque media="print" + onload aplica a fonte só quando ela chegar; até
+         lá o texto usa a fonte padrão (display=swap). -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap"
+          rel="stylesheet" media="print" onload="this.media='all'" />
     <title>Projeto Armor</title>
   </head>
   <body>
