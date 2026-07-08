@@ -99,10 +99,10 @@ export function criarLoop(deps) {
     } else if (modo === 'andar') {
       sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
       
-      // FIX DE VELOCIDADE: Multiplicamos o avanço do frame por 0.45.
-      // Isso reduz a velocidade da animação em mais da metade, removendo 
-      // o efeito "patinação" e dando um passo mais robótico e natural.
-      p.animT += (ANDAR_FRAMES_POR_TICK * 0.45);
+      // FIX DE VELOCIDADE: multiplicador um pouco mais rápido que antes
+      // (0.45 -> 0.55), mantendo a cadência estável (sem trancos) e ainda
+      // longe do valor que causava o efeito "patinação".
+      p.animT += (ANDAR_FRAMES_POR_TICK * 0.55);
       
       frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
     } else if (parado) {
