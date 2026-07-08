@@ -9,6 +9,7 @@
 import {
   SPRITE_ANDAR, SPRITE_CORRER, SPRITE_PULAR, SPRITE_PARADO_ANIM, IMG_CHAO,
   FRAMES_ANDAR, FRAMES_CORRER, FRAMES_PARADO_ANIM,
+  PULAR_COLS, PULAR_ROWS, PULAR_FRAMES,
 } from './sprites';
 
 // Baixa uma imagem (opcionalmente com CORS, para poder ler os pixels).
@@ -47,6 +48,47 @@ const calibrar = (img, nFrames) => {
   } catch (e) { return null; }
 };
 
+// Mede, quadro a quadro de uma folha em GRADE (colunas x linhas), a base
+// (pés) e o centro do corpo — igual à `calibrar` acima, mas para grades em
+// vez de tira horizontal. `excluir(r,g,b)` opcionalmente ignora pixels de
+// efeito visual (ex.: chama do propulsor do pulo) que não são o corpo, pra
+// não puxar a medição pra ponta do efeito e fazer o personagem "tremer".
+const calibrarGrade = (img, cols, rows, nFrames, excluir) => {
+  try {
+    const CW = img.width, CH = img.height;
+    const c = document.createElement('canvas'); c.width = CW; c.height = CH;
+    const cx = c.getContext('2d'); cx.drawImage(img, 0, 0, CW, CH);
+    const fw = CW / cols, fh = CH / rows;
+    const frames = []; let maiorCorpo = 0;
+    for (let f = 0; f < nFrames; f++) {
+      const col = f % cols, row = Math.floor(f / cols);
+      const x0 = Math.round(col * fw), y0 = Math.round(row * fh);
+      const W = Math.round(fw), H = Math.round(fh);
+      const data = cx.getImageData(x0, y0, W, H).data;
+      let top = H, bot = -1, esq = W, dir = -1;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 4;
+        if (data[i + 3] <= 12) continue;
+        if (excluir && excluir(data[i], data[i + 1], data[i + 2])) continue;
+        if (y < top) top = y; if (y > bot) bot = y;
+        if (x < esq) esq = x; if (x > dir) dir = x;
+      }
+      if (bot < 0) { frames.push(null); continue; }
+      const corpo = bot - top + 1; if (corpo > maiorCorpo) maiorCorpo = corpo;
+      frames.push({ botR: bot / H, cxR: (esq + dir) / 2 / W });
+    }
+    const valido = frames.find(f => f !== null);
+    if (!valido || maiorCorpo === 0) return null;
+    for (let f = 0; f < nFrames; f++) if (!frames[f]) frames[f] = valido;
+    return { frames, corpoR: maiorCorpo / fh };
+  } catch (e) { return null; }
+};
+
+// Cor do rastro do propulsor do pulo (azul-ciano bem saturado) — pixels
+// assim são ignorados na medição do corpo, senão o "pé" mediria a ponta da
+// chama em vez da bota do personagem.
+const ehChamaPropulsor = (r, g, b) => (b - r > 55 && b > 130 && g > 90);
+
 // Mede a faixa de chão: onde começa/termina verticalmente e a cor do rodapé.
 const calibrarChao = (img) => {
   try {
@@ -79,7 +121,7 @@ export async function carregarSprites() {
     carregarSprite(SPRITE_ANDAR, (im) => calibrar(im, FRAMES_ANDAR)),
     carregarSprite(SPRITE_CORRER, (im) => calibrar(im, FRAMES_CORRER)),
     carregarSprite(IMG_CHAO, calibrarChao),
-    carregarSprite(SPRITE_PULAR, () => null),   // grade fixa: não precisa de autocalibração
+    carregarSprite(SPRITE_PULAR, (im) => calibrarGrade(im, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES, ehChamaPropulsor)),
     // Idle é opcional: se falhar, cai no frame parado da folha de andar.
     carregarSprite(SPRITE_PARADO_ANIM, (im) => calibrar(im, FRAMES_PARADO_ANIM)).catch(() => null),
   ]);
@@ -95,7 +137,7 @@ export async function carregarSprites() {
 
   return {
     andar: a.img, calibAndar: a.leitura, correr: r.img, calibCorrer: r.leitura,
-    chao: solo.img, chaoCalib: solo.leitura, pular: pl.img,
+    chao: solo.img, chaoCalib: solo.leitura, pular: pl.img, calibPular: pl.leitura,
     parado: idle ? idle.img : null, calibParado: idle ? idle.leitura : null,
   };
 }

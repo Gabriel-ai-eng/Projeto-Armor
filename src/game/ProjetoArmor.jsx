@@ -48,7 +48,7 @@ export default function ProjetoArmor({ onVoltar }) {
   const relogioAtivoRef = useRef(false);
   const solRef = useRef({ sr: 6.5, ss: 18.5 });
   const latRef = useRef(null);
-  const imgsRef = useRef({ andar: null, correr: null, chao: null, pular: null, parado: null, calibAndar: null, calibCorrer: null, calibParado: null, chaoCalib: null });
+  const imgsRef = useRef({ andar: null, correr: null, chao: null, pular: null, parado: null, calibAndar: null, calibCorrer: null, calibParado: null, calibPular: null, chaoCalib: null });
   const videoIntroRef = useRef(null);
   // Vídeo da intro baixado inteiro para a memória (blob) assim que o app abre:
   // quando o celular vira para paisagem, toca na hora, sem buffering de rede.

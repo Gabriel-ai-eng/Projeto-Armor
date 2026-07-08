@@ -30,7 +30,7 @@ export function criarLoop(deps) {
   const passo = () => {
     raf = requestAnimationFrame(passo);
     const g = G.current;
-    const { andar, correr, chao, pular, parado, calibAndar, calibCorrer, calibParado, chaoCalib } = imgsRef.current;
+    const { andar, correr, chao, pular, parado, calibAndar, calibCorrer, calibParado, calibPular, chaoCalib } = imgsRef.current;
     if (!g || !andar || !chao) return;
 
     ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
@@ -205,18 +205,31 @@ export function criarLoop(deps) {
       const jFrame = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
       const cw = pular.width / PULAR_COLS, ch = pular.height / PULAR_ROWS;
       const col = jFrame % PULAR_COLS, row = Math.floor(jFrame / PULAR_COLS);
-      const esc = ALTURA_ARMOR / (PULAR_BODY_R * ch);
-      const destW = cw * esc, destH = ch * esc, footGap = PULAR_FOOT_R * ch * esc;
+      // Cada quadro da folha de pulo tem o corpo num tamanho/posição levemente
+      // diferente dentro da célula (arte gerada quadro a quadro, sem rig).
+      // Com autocalibração (calibPular) replantamos pé e centro a cada quadro,
+      // igual ao andar/correr, pra tirar o tremor; sem ela, cai no corte fixo.
+      let esc, footGap, offXPulo = 0;
+      if (calibPular) {
+        esc = ALTURA_ARMOR / (calibPular.corpoR * ch);
+        const f = calibPular.frames[jFrame];
+        footGap = (1 - f.botR) * ch * esc; offXPulo = (0.5 - f.cxR) * cw * esc;
+      } else {
+        esc = ALTURA_ARMOR / (PULAR_BODY_R * ch);
+        footGap = PULAR_FOOT_R * ch * esc;
+      }
+      const destW = cw * esc, destH = ch * esc;
       const mt = ctx.getTransform();
       const ax = Math.round(mt.a * p.x + mt.c * corpoY + mt.e);
       const ay = Math.round(mt.b * p.x + mt.d * corpoY + mt.f);
       const sEff = Z * RENDER_SCALE;
       const dW = Math.round(destW * sEff), dH = Math.round(destH * sEff);
       const dGap = Math.round(footGap * sEff);
+      const dOffX = Math.round(offXPulo * sEff);
       ctx.save();
       ctx.setTransform(flip ? -1 : 1, 0, 0, 1, ax, ay);
       ctx.imageSmoothingEnabled = false; // sem suavização no pulo: sprite mais nítida
-      ctx.drawImage(pular, Math.round(col * cw), Math.round(row * ch), Math.round(cw), Math.round(ch), -Math.round(dW / 2), -dH + dGap, dW, dH);
+      ctx.drawImage(pular, Math.round(col * cw), Math.round(row * ch), Math.round(cw), Math.round(ch), -Math.round(dW / 2) + dOffX, -dH + dGap, dW, dH);
       ctx.restore();
     } else {
       const fw = sprite.width / nFrames, fh = sprite.height;
