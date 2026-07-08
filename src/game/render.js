@@ -102,13 +102,6 @@ export function criarLoop(deps) {
       p.animT += (ANDAR_FRAMES_POR_TICK * 0.45);
       
       frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
-
-      // IGNORANDO O FRAME 18:
-      if (frameAtual === 18) {
-        p.animT += 1;
-        frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
-      }
-
     } else if (parado) {
       sprite = parado; calib = calibParado; nFrames = FRAMES_PARADO_ANIM;
       p.idleT = (p.idleT || 0) + PARADO_FPS / 60;
