@@ -39,6 +39,7 @@ export function criarLoop(deps) {
     ctx.imageSmoothingEnabled = false;
     const VW = canvas.width / RENDER_SCALE; g.t++;
     if (window.innerWidth <= window.innerHeight) return;
+
     // ===== INPUT (mover + mirar) — vem dos joysticks DOM (por imagem) =====
     const mv = moveRef.current, am = aimRef.current;
     const mx = mv.x, intensidade = mv.mag;
@@ -57,11 +58,15 @@ export function criarLoop(deps) {
     else if (Math.abs(p.vx) > 0.08) p.face = p.vx > 0 ? 1 : -1;
 
     // ===== FÍSICA VERTICAL (pulo roteirizado / voo) =====
-    if (g.flying && g.jump) g.jump = null;            
+    if (g.flying && g.jump) g.jump = null;
     if (g.jump) {
       g.jump.f += JUMP_ANIM_SPEED;
-      if (g.jump.f >= PULAR_FRAMES) { g.jump = null; p.y = 0; p.vy = 0; }
-      else { p.y = jumpArc(g.jump.f); p.vy = 0; }
+      if (g.jump.f >= PULAR_FRAMES) { 
+        g.jump = null;
+        p.y = 0; p.vy = 0; 
+      } else { 
+        p.y = jumpArc(g.jump.f); p.vy = 0;
+      }
     }
     if (!g.jump) {
       if (g.flying) p.vy += FLY_THRUST;
@@ -81,7 +86,6 @@ export function criarLoop(deps) {
     else if (vAbs < 0.06) modo = 'parado';
     else if (vAbs > VEL_ANDAR) modo = 'correr';
     else modo = 'andar';
-    
     if (modo === 'andar' && p.modo !== 'andar') p.animT = 0;
     p.modo = modo;
 
@@ -89,25 +93,35 @@ export function criarLoop(deps) {
     if (emPulo) {
       // Pulo desenhado abaixo
     } else if (modo === 'correr' && correr) {
-      sprite = correr; calib = calibCorrer; nFrames = FRAMES_CORRER;
+      sprite = correr;
+      calib = calibCorrer; nFrames = FRAMES_CORRER;
       // FIX DE VELOCIDADE: Reduzido o multiplicador de 0.07 para 0.035 para dar peso à corrida
-      p.animT += vAbs * 0.035; 
+      p.animT += vAbs * 0.035;
       frameAtual = Math.floor(p.animT) % nFrames;
     } else if (modo === 'andar') {
-      sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
+      sprite = andar;
+      calib = calibAndar; nFrames = FRAMES_ANDAR;
       
-      // FIX DE VELOCIDADE: Multiplicamos o avanço do frame por 0.45.
-      // Isso reduz a velocidade da animação em mais da metade, removendo 
-      // o efeito "patinação" e dando um passo mais robótico e natural.
-      p.animT += (ANDAR_FRAMES_POR_TICK * 0.45);
+      // FIX DE VELOCIDADE PARA ANDAR: Avanço baseado na velocidade real (vAbs).
+      // Isso amarra os quadros da animação à velocidade em que o personagem
+      // desliza na tela, eliminando o efeito "patinação".
+      p.animT += vAbs * 0.12; 
       
       frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
+
+      // IGNORANDO O FRAME 18:
+      if (frameAtual === 18) {
+          p.animT += 1; // Pula um quadro de tempo para saltar o frame defeituoso
+          frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1)); // Recalcula o frame seguro
+      }
+
     } else if (parado) {
       sprite = parado; calib = calibParado; nFrames = FRAMES_PARADO_ANIM;
       p.idleT = (p.idleT || 0) + PARADO_FPS / 60;
       frameAtual = Math.floor(p.idleT) % FRAMES_PARADO_ANIM;
     } else { 
-      sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; 
+      sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
+      frameAtual = FRAME_PARADO; 
     }
 
     // ===== CÂMERA =====
@@ -122,7 +136,7 @@ export function criarLoop(deps) {
     g.fx += (fxAlvo - g.fx) * 0.2;
     g.fy += (fyAlvo - g.fy) * 0.1;
     const Z = g.zoom, fx = g.fx, fy = g.fy, halfWNow = VW / (2 * Z);
-
+    
     // ===== FASE DO DIA =====
     let lum = 0, twi = 0, sunX = 0, sunY = 0, sunArc = 0;
     if (relogioAtivoRef.current) {
@@ -132,7 +146,8 @@ export function criarLoop(deps) {
       const ph = faseDia(h, sr, ss); lum = ph.lum; twi = ph.twi;
       let pSun = (ss > sr) ? (h - sr) / (ss - sr) : 0.5;
       pSun = Math.max(0, Math.min(1, pSun));
-      sunArc = Math.sin(pSun * Math.PI); sunX = VW * (0.12 + 0.76 * pSun); sunY = 190 - sunArc * 135;
+      sunArc = Math.sin(pSun * Math.PI);
+      sunX = VW * (0.12 + 0.76 * pSun); sunY = 190 - sunArc * 135;
     }
 
     // ===== CÉU =====
@@ -142,12 +157,12 @@ export function criarLoop(deps) {
     const ceu = ctx.createLinearGradient(0, 0, 0, ALT);
     ceu.addColorStop(0, rgbStr(top)); ceu.addColorStop(0.55, rgbStr(mid)); ceu.addColorStop(1, rgbStr(bot));
     ctx.fillStyle = ceu; ctx.fillRect(0, 0, VW, ALT);
-
     for (let i = 0; i < 60; i++) {
       const px = (((i * 137 + 53) - fx * 0.12) % (VW + 40) + VW + 40) % (VW + 40) - 20;
       const py = (i * 71 + 23) % (ALT * 0.55);
       ctx.globalAlpha = (0.25 + ((i + g.t * 0.02) % 3) * 0.2) * (1 - lum);
-      ctx.fillStyle = '#FFFFFF'; ctx.fillRect(px, py, i % 7 === 0 ? 2 : 1, i % 7 === 0 ? 2 : 1);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(px, py, i % 7 === 0 ? 2 : 1, i % 7 === 0 ? 2 : 1);
     }
     ctx.globalAlpha = 1;
 
@@ -157,7 +172,8 @@ export function criarLoop(deps) {
       const haloS = ctx.createRadialGradient(sunX, sunY, 3, sunX, sunY, 80);
       haloS.addColorStop(0, rgbaStr(sunCol, 0.9)); haloS.addColorStop(1, rgbaStr([255, 180, 90], 0));
       ctx.fillStyle = haloS; ctx.fillRect(sunX - 80, sunY - 80, 160, 160);
-      ctx.fillStyle = rgbStr(sunCol); ctx.beginPath(); ctx.arc(sunX, sunY, 15, 0, 7); ctx.fill();
+      ctx.fillStyle = rgbStr(sunCol); ctx.beginPath(); ctx.arc(sunX, sunY, 15, 0, 7);
+      ctx.fill();
       ctx.globalAlpha = 1;
     }
     const moonA = 1 - lum;
@@ -166,36 +182,41 @@ export function criarLoop(deps) {
       ctx.globalAlpha = moonA;
       const haloL = ctx.createRadialGradient(luaX, luaY, 4, luaX, luaY, 60);
       haloL.addColorStop(0, 'rgba(190,215,255,0.55)'); haloL.addColorStop(1, 'rgba(190,215,255,0)');
-      ctx.fillStyle = haloL; ctx.fillRect(luaX - 60, luaY - 60, 120, 120);
+      ctx.fillStyle = haloL;
+      ctx.fillRect(luaX - 60, luaY - 60, 120, 120);
       ctx.fillStyle = '#DCE8FF'; ctx.beginPath(); ctx.arc(luaX, luaY, 13, 0, 7); ctx.fill();
       ctx.globalAlpha = 1;
     }
     const m1 = rgbStr(lerpArr([13, 20, 40], [42, 74, 110], lum * 0.7));
     const m2 = rgbStr(lerpArr([20, 30, 56], [58, 90, 128], lum * 0.7));
     ctx.fillStyle = m1; ctx.beginPath(); ctx.moveTo(0, ALT);
-    for (let x = 0; x <= VW; x += 14) { const wx = x + fx * 0.25; ctx.lineTo(x, 215 + 38 * Math.sin(wx * 0.011) + 14 * Math.sin(wx * 0.031)); }
-    ctx.lineTo(VW, ALT); ctx.fill();
+    for (let x = 0; x <= VW; x += 14) { const wx = x + fx * 0.25;
+      ctx.lineTo(x, 215 + 38 * Math.sin(wx * 0.011) + 14 * Math.sin(wx * 0.031)); }
+    ctx.lineTo(VW, ALT);
+    ctx.fill();
     ctx.fillStyle = m2; ctx.beginPath(); ctx.moveTo(0, ALT);
-    for (let x = 0; x <= VW; x += 12) { const wx = x + fx * 0.4; ctx.lineTo(x, 258 + 30 * Math.sin(wx * 0.014 + 2)); }
+    for (let x = 0; x <= VW; x += 12) { const wx = x + fx * 0.4;
+      ctx.lineTo(x, 258 + 30 * Math.sin(wx * 0.014 + 2)); }
     ctx.lineTo(VW, ALT); ctx.fill();
-
+    
     // ===== MUNDO sob a câmera =====
     ctx.save();
-    ctx.translate(VW / 2, ALT / 2); ctx.scale(Z, Z); ctx.translate(-fx, -fy);
+    ctx.translate(VW / 2, ALT / 2); ctx.scale(Z, Z);
+    ctx.translate(-fx, -fy);
 
     const ghW = ALTURA_IMG_CHAO, gwW = chao.width * (ghW / chao.height);
     const topR = chaoCalib ? chaoCalib.topR : 0, botR = chaoCalib ? chaoCalib.botR : 1;
     const dyImg = -topR * ghW, visH = (botR - topR) * ghW, superficie = visH * LINHA_PES;
-
     const leftW = fx - halfWNow - 60, rightW = fx + halfWNow + 60;
     ctx.fillStyle = (chaoCalib && chaoCalib.cor) ? chaoCalib.cor : '#0A0F1A';
     ctx.fillRect(leftW, visH - 1, rightW - leftW, 800);
     const x0 = Math.floor(leftW / gwW) * gwW;
     for (let x = x0; x < rightW; x += gwW) ctx.drawImage(chao, x, dyImg, gwW, ghW);
-    if (lum > 0.01) { ctx.fillStyle = rgbaStr([170, 200, 230], lum * 0.1); ctx.fillRect(leftW, dyImg, rightW - leftW, ghW + 300); }
+    if (lum > 0.01) { ctx.fillStyle = rgbaStr([170, 200, 230], lum * 0.1);
+      ctx.fillRect(leftW, dyImg, rightW - leftW, ghW + 300); }
 
-    const corpoY = superficie - p.y;            
-
+    const corpoY = superficie - p.y;
+    
     // PROJETO ARMOR
     const flip = (p.face === 1) !== (SPRITE_OLHA_PARA === 'direita');
     if (emPulo) {
@@ -220,13 +241,14 @@ export function criarLoop(deps) {
       if (calib) {
         escala = ALTURA_ARMOR / (calib.corpoR * fh);
         const f = calib.frames[frameAtual];
-        gapPes = (1 - f.botR) * fh * escala; offX = (0.5 - f.cxR) * fw * escala;
+        gapPes = (1 - f.botR) * fh * escala;
+        offX = (0.5 - f.cxR) * fw * escala;
       } else escala = ALTURA_ARMOR / fh;
       const destW = fw * escala, destH = fh * escala;
       const mt = ctx.getTransform();
       const ax = Math.round(mt.a * p.x + mt.c * corpoY + mt.e);
       const ay = Math.round(mt.b * p.x + mt.d * corpoY + mt.f);
-      const sEff = Z * RENDER_SCALE;                 
+      const sEff = Z * RENDER_SCALE;
       const dW = Math.round(destW * sEff), dH = Math.round(destH * sEff);
       const dOffX = Math.round(offX * sEff), dGap = Math.round(gapPes * sEff);
       ctx.save();
@@ -246,10 +268,12 @@ export function criarLoop(deps) {
       ctx.setLineDash([]);
       ctx.strokeStyle = rgbaStr(AZUL_RGB, 0.8); ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.arc(ex, ey, 7, 0, 7); ctx.stroke();
-      ctx.beginPath(); ctx.arc(ex, ey, 1.6, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.arc(ex, ey, 1.6, 0, 7);
+      ctx.stroke();
       const ch = ctx.createRadialGradient(ox, oy, 1, ox, oy, 12);
       ch.addColorStop(0, rgbaStr(AZUL_RGB, 0.6)); ch.addColorStop(1, rgbaStr(AZUL_RGB, 0));
-      ctx.fillStyle = ch; ctx.fillRect(ox - 12, oy - 12, 24, 24);
+      ctx.fillStyle = ch;
+      ctx.fillRect(ox - 12, oy - 12, 24, 24);
       ctx.globalCompositeOperation = 'source-over';
     }
 
@@ -271,12 +295,14 @@ export function criarLoop(deps) {
         gl.addColorStop(0, rgbaStr([220, 245, 255], 0.95)); gl.addColorStop(1, rgbaStr(AZUL_RGB, 0));
         ctx.fillStyle = gl; ctx.fillRect(pr.x - 9, pr.y - 9, 18, 18);
         ctx.strokeStyle = rgbaStr([235, 250, 255], 0.9); ctx.lineWidth = 2.4;
-        ctx.beginPath(); ctx.moveTo(pr.x, pr.y); ctx.lineTo(pr.x - pr.vx * 0.5, pr.y - pr.vy * 0.5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(pr.x, pr.y);
+        ctx.lineTo(pr.x - pr.vx * 0.5, pr.y - pr.vy * 0.5); ctx.stroke();
       } else {
         g.particulas.push({ x: pr.x - pr.vx * 0.4, y: pr.y - pr.vy * 0.4, vida: 1, ouro: Math.random() < 0.6 });
         const gl = ctx.createRadialGradient(pr.x, pr.y, 0, pr.x, pr.y, 13);
         gl.addColorStop(0, rgbaStr([255, 220, 150], 0.95)); gl.addColorStop(1, rgbaStr(OURO_RGB, 0));
-        ctx.fillStyle = gl; ctx.fillRect(pr.x - 13, pr.y - 13, 26, 26);
+        ctx.fillStyle = gl;
+        ctx.fillRect(pr.x - 13, pr.y - 13, 26, 26);
         ctx.save(); ctx.translate(pr.x, pr.y); ctx.rotate(Math.atan2(pr.vy, pr.vx));
         ctx.fillStyle = rgbStr(OURO_RGB); ctx.fillRect(-6, -2.4, 12, 4.8);
         ctx.restore();
@@ -285,21 +311,21 @@ export function criarLoop(deps) {
     }
     
     for (let i = g.particulas.length - 1; i >= 0; i--) {
-      const q = g.particulas[i]; q.vida -= 0.06;
+      const q = g.particulas[i];
+      q.vida -= 0.06;
       if (q.vida <= 0) { g.particulas.splice(i, 1); continue; }
       ctx.fillStyle = rgbaStr(q.ouro ? OURO_RGB : AZUL_RGB, q.vida * 0.7);
-      ctx.beginPath(); ctx.arc(q.x, q.y, 2 * q.vida + 0.5, 0, 7); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(q.x, q.y, 2 * q.vida + 0.5, 0, 7); ctx.fill();
     }
     ctx.globalCompositeOperation = 'source-over';
 
-    ctx.restore(); 
-
+    ctx.restore();
     // ===== VINHETA =====
     const vin = ctx.createRadialGradient(VW / 2, ALT / 2, ALT * 0.45, VW / 2, ALT / 2, ALT * 0.95);
     vin.addColorStop(0, 'rgba(0,0,0,0)'); vin.addColorStop(1, `rgba(0,0,0,${0.42 * (1 - lum * 0.5)})`);
     ctx.fillStyle = vin; ctx.fillRect(0, 0, VW, ALT);
   };
-
   return {
     start: () => { raf = requestAnimationFrame(passo); },
     stop: () => cancelAnimationFrame(raf),
