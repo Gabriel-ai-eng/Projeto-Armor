@@ -486,12 +486,11 @@ export default function ProjetoArmor({ onVoltar }) {
 
       {fase !== 'erro' && !paisagem && (
         <div style={es.overlay}>
-          <div className="armor-rotate-phone">
-            <p style={es.txtRodar}>VIRE O CELULAR</p>
-            <button onClick={sair} style={es.cancelarRodar}>
-              Cancelar
-            </button>
-          </div>
+          <div className="armor-rotate-phone" />
+          <p style={es.txtRodar}>VIRE O CELULAR</p>
+          <button onClick={sair} style={es.cancelarRodar}>
+            Cancelar
+          </button>
         </div>
       )}
 
