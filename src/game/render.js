@@ -90,8 +90,11 @@ export function criarLoop(deps) {
       // Pulo desenhado abaixo
     } else if (modo === 'correr' && correr) {
       sprite = correr; calib = calibCorrer; nFrames = FRAMES_CORRER;
-      // FIX DE VELOCIDADE: Reduzido o multiplicador de 0.07 para 0.035 para dar peso à corrida
-      p.animT += vAbs * 0.035; 
+      // Suaviza a velocidade usada na animação (média móvel) para evitar saltos
+      // bruscos de quadro quando vAbs oscila — deixa a corrida mais fluida.
+      p.animVCorrer = (p.animVCorrer ?? vAbs) + (vAbs - (p.animVCorrer ?? vAbs)) * 0.3;
+      // FIX DE VELOCIDADE: um pouco mais rápida que antes (0.035 -> 0.042)
+      p.animT += p.animVCorrer * 0.042;
       frameAtual = Math.floor(p.animT) % nFrames;
     } else if (modo === 'andar') {
       sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
