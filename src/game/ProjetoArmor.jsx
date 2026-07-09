@@ -34,6 +34,8 @@ export default function ProjetoArmor({ onVoltar }) {
   const [relogioAtivo, setRelogioAtivo] = useState(false);
   const [horaTexto, setHoraTexto] = useState('--:--');
   const [nivel, setNivel] = useState(0);
+  const [nomePiloto, setNomePiloto] = useState('');
+  const sensibilidadeRef = useRef(50);
 
   const btnRefs = useRef({});
   const arrastoMenuRef = useRef({ ativo: false, atual: null, inicio: null, vagou: false });
@@ -211,6 +213,9 @@ export default function ProjetoArmor({ onVoltar }) {
       }
 
       setNivel(est.progresso.nivel || 0);
+      setNomePiloto(est.prefs.nomePiloto || '');
+      sensibilidadeRef.current =
+        typeof est.prefs.sensibilidade === 'number' ? est.prefs.sensibilidade : 50;
       estadoRef.current = est;
       carregadoRef.current = true;
       await salvarEstado(est);
@@ -354,6 +359,34 @@ export default function ProjetoArmor({ onVoltar }) {
     setMostrarConfig(true);
   };
 
+  // Aplica uma preferência editada no painel em memória e no efeito ao vivo
+  // (nome no perfil, sensibilidade da mira). A gravação no Supabase é feita
+  // depois, por `persistirEstado` (chamado pelo painel ao soltar o controle).
+  const aplicarPref = (chave, valor) => {
+    estadoRef.current.prefs[chave] = valor;
+    if (chave === 'nomePiloto') setNomePiloto(valor);
+    if (chave === 'sensibilidade') sensibilidadeRef.current = valor;
+  };
+
+  const persistirEstado = () => {
+    if (!carregadoRef.current) return Promise.resolve(false);
+    return salvarEstado(estadoRef.current);
+  };
+
+  // Zera o progresso do jogador (nome, nível, posição, preferências) e grava.
+  const resetarProgresso = () => {
+    const novo = estadoInicial();
+    estadoRef.current = novo;
+    setNomePiloto('');
+    setNivel(0);
+    sensibilidadeRef.current = novo.prefs.sensibilidade;
+    zoomAlvoRef.current = 1;
+    setZoomPerto(false);
+    relogioAtivoRef.current = false;
+    setRelogioAtivo(false);
+    return persistirEstado();
+  };
+
   // Alterna o zoom da câmera (perto/longe) e salva a preferência.
   const alternarZoom = () => {
     const novo = !zoomPerto;
@@ -416,6 +449,7 @@ export default function ProjetoArmor({ onVoltar }) {
     sair,
     mostrarEmBreve,
     abrirConfiguracoes, // (4) passa a função para controles
+    sensibilidadeRef,   // sensibilidade da mira (painel de Configurações)
   });
 
   useEffect(() => {
@@ -639,7 +673,7 @@ export default function ProjetoArmor({ onVoltar }) {
                   <path d="M8 57c0-13.3 10.7-20 24-20s24 6.7 24 20v3H8z" fill="#FFFFFF" />
                 </svg>
                 <div style={es.perfilTxt}>
-                  <span style={es.perfilNome}>Seu nome</span>
+                  <span style={es.perfilNome}>{nomePiloto || 'Seu nome'}</span>
                   <span style={es.perfilNivel}>Nível {nivel}</span>
                 </div>
               </div>
@@ -679,6 +713,15 @@ export default function ProjetoArmor({ onVoltar }) {
       {mostrarConfig && (
         <Configuracoes
           onClose={() => setMostrarConfig(false)}
+          estado={estadoRef.current}
+          nivel={nivel}
+          zoomPerto={zoomPerto}
+          relogioAtivo={relogioAtivo}
+          onAplicarPref={aplicarPref}
+          onPersistir={persistirEstado}
+          onToggleZoom={alternarZoom}
+          onToggleRelogio={ativarRelogio}
+          onResetar={resetarProgresso}
         />
       )}
 

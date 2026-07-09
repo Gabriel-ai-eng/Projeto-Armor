@@ -37,7 +37,15 @@ export async function estaLogado() {
 // gravá-los que eles passam a ser persistidos.
 export function estadoInicial() {
   return {
-    prefs: { zoomPerto: false, relogioAtivo: false },
+    prefs: {
+      zoomPerto: false,
+      relogioAtivo: false,
+      // Novas preferências editáveis no painel de Configurações (persistidas no
+      // mesmo JSON `state` da tabela armor_game_state → salvas no Supabase).
+      nomePiloto: '',       // nome exibido no perfil da tela inicial
+      volume: 70,           // volume mestre (0..100) — usado no feedback sonoro da UI
+      sensibilidade: 50,    // sensibilidade da mira (0..100) — afeta a zona morta do joystick
+    },
     stats: { sessoes: 0, tempoJogadoSeg: 0, primeiraVez: null, ultimaVez: null },
     progresso: { nivel: 0, xp: 0 },
     // Posição do personagem no mundo (para reabrir exatamente onde parou).
