@@ -8,10 +8,20 @@ import { carregarSprites } from './carregarSprites';
 import { criarLoop } from './render';
 import { criarControles } from './controles';
 import { es, CSS_ARMOR } from './estilos';
+import Configuracoes from './Configuracoes'; // (1) nova importação
 
 function IconeRelogio({ size = 13 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 2" />
     </svg>
@@ -39,6 +49,9 @@ export default function ProjetoArmor({ onVoltar }) {
   // Estado para a mensagem "Em breve"
   const [emBreve, setEmBreve] = useState(false);
   const emBreveTimerRef = useRef(null);
+
+  // (2) novo estado para o modal de configurações
+  const [mostrarConfig, setMostrarConfig] = useState(false);
 
   const canvasRef = useRef(null);
   const G = useRef(null);
@@ -82,8 +95,14 @@ export default function ProjetoArmor({ onVoltar }) {
     let vivos = true;
     // As folhas pesadas (correr/pular/parado) chegam DEPOIS, em segundo plano,
     // via patch — o menu abre só com o essencial (andar + chão), bem mais rápido.
-    carregarSprites((patch) => { if (vivos) imgsRef.current = { ...imgsRef.current, ...patch }; })
-      .then((imgs) => { if (!vivos) return; imgsRef.current = { ...imgsRef.current, ...imgs }; setFase('pronto'); })
+    carregarSprites((patch) => {
+      if (vivos) imgsRef.current = { ...imgsRef.current, ...patch };
+    })
+      .then((imgs) => {
+        if (!vivos) return;
+        imgsRef.current = { ...imgsRef.current, ...imgs };
+        setFase('pronto');
+      })
       .catch(() => vivos && setFase('erro'));
     return () => {
       vivos = false;
@@ -143,16 +162,15 @@ export default function ProjetoArmor({ onVoltar }) {
   }, []);
 
   // ---------- TELA CHEIA NO PRIMEIRO TOQUE ----------
-  // Os navegadores SÓ permitem requestFullscreen dentro de um gesto do usuário
-  // — virar o celular não conta como gesto, então o pedido automático do
-  // redimensionar falha em silêncio. Este listener (fase de captura, pega o
-  // toque antes de qualquer botão) garante: o PRIMEIRO toque em qualquer coisa
-  // após virar para paisagem já entra em tela cheia e trava a orientação.
   useEffect(() => {
     const aoTocar = () => {
       if (window.innerWidth > window.innerHeight && !document.fullscreenElement) {
-        try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (e) {}
-        try { window.screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
+        try {
+          document.documentElement.requestFullscreen?.().catch(() => {});
+        } catch (e) {}
+        try {
+          window.screen.orientation.lock('landscape').catch(() => {});
+        } catch (e) {}
       }
     };
     document.addEventListener('pointerdown', aoTocar, true);
@@ -281,10 +299,16 @@ export default function ProjetoArmor({ onVoltar }) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // criarLoop recebe UM OBJETO de dependências (ver render.js), não
-    // argumentos separados — posicional quebrava o jogo ao entrar.
     const loop = criarLoop({
-      ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef,
+      ctx,
+      canvas,
+      G,
+      imgsRef,
+      zoomAlvoRef,
+      relogioAtivoRef,
+      solRef,
+      moveRef,
+      aimRef,
     });
 
     loop.start();
@@ -323,6 +347,11 @@ export default function ProjetoArmor({ onVoltar }) {
     emBreveTimerRef.current = setTimeout(() => {
       setEmBreve(false);
     }, 2000);
+  };
+
+  // (3) função para abrir as configurações
+  const abrirConfiguracoes = () => {
+    setMostrarConfig(true);
   };
 
   // Alterna o zoom da câmera (perto/longe) e salva a preferência.
@@ -386,6 +415,7 @@ export default function ProjetoArmor({ onVoltar }) {
     entrar,
     sair,
     mostrarEmBreve,
+    abrirConfiguracoes, // (4) passa a função para controles
   });
 
   useEffect(() => {
@@ -439,10 +469,23 @@ export default function ProjetoArmor({ onVoltar }) {
           </button>
 
           <button onClick={ativarRelogio} style={es.botaoRelogio} title="Relógio do mundo real">
-            <span style={{ display: 'flex', alignItems: 'center', color: relogioAtivo ? AZUL : '#8E8E93' }}>
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                color: relogioAtivo ? AZUL : '#8E8E93',
+              }}
+            >
               <IconeRelogio />
             </span>
-            <span style={{ marginLeft: 6, fontSize: 12, letterSpacing: '0.08em', color: relogioAtivo ? '#DCE8FF' : '#8E8E93' }}>
+            <span
+              style={{
+                marginLeft: 6,
+                fontSize: 12,
+                letterSpacing: '0.08em',
+                color: relogioAtivo ? '#DCE8FF' : '#8E8E93',
+              }}
+            >
               {relogioAtivo ? horaTexto : 'ATIVAR'}
             </span>
           </button>
@@ -451,9 +494,30 @@ export default function ProjetoArmor({ onVoltar }) {
             Voltar
           </button>
 
-          <div style={es.joyZona} onPointerDown={joyInicio} onPointerMove={joyMover} onPointerUp={joyFim} onPointerCancel={joyFim} onContextMenu={(e) => e.preventDefault()}>
-            <div ref={joyBaseRef} style={{ ...es.joyBase, transform: knobOff.x || knobOff.y ? 'translate(-50%, -50%) scale(1.06)' : 'translate(-50%, -50%)' }} />
-            <div style={{ ...es.joyKnob, transform: `translate(calc(-50% + ${knobOff.x}px), calc(-50% + ${knobOff.y}px))` }} />
+          <div
+            style={es.joyZona}
+            onPointerDown={joyInicio}
+            onPointerMove={joyMover}
+            onPointerUp={joyFim}
+            onPointerCancel={joyFim}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <div
+              ref={joyBaseRef}
+              style={{
+                ...es.joyBase,
+                transform:
+                  knobOff.x || knobOff.y
+                    ? 'translate(-50%, -50%) scale(1.06)'
+                    : 'translate(-50%, -50%)',
+              }}
+            />
+            <div
+              style={{
+                ...es.joyKnob,
+                transform: `translate(calc(-50% + ${knobOff.x}px), calc(-50% + ${knobOff.y}px))`,
+              }}
+            />
           </div>
 
           <img
@@ -465,12 +529,36 @@ export default function ProjetoArmor({ onVoltar }) {
             onPointerCancel={voarRelease}
             onPointerLeave={voarRelease}
             onContextMenu={(e) => e.preventDefault()}
-            style={{ ...es.botaoVoar, transform: `translate(-50%, -50%) scale(${voarAtivo ? 1.08 : 1})` }}
+            style={{
+              ...es.botaoVoar,
+              transform: `translate(-50%, -50%) scale(${voarAtivo ? 1.08 : 1})`,
+            }}
           />
 
-          <div style={es.miraZona} onPointerDown={miraInicio} onPointerMove={miraMover} onPointerUp={miraFim} onPointerCancel={miraFim} onContextMenu={(e) => e.preventDefault()}>
-            <div ref={miraBaseRef} style={{ ...es.miraBase, transform: miraOff.x || miraOff.y ? 'translate(-50%, -50%) scale(1.06)' : 'translate(-50%, -50%)' }} />
-            <div style={{ ...es.miraKnob, transform: `translate(calc(-50% + ${miraOff.x}px), calc(-50% + ${miraOff.y}px))` }} />
+          <div
+            style={es.miraZona}
+            onPointerDown={miraInicio}
+            onPointerMove={miraMover}
+            onPointerUp={miraFim}
+            onPointerCancel={miraFim}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <div
+              ref={miraBaseRef}
+              style={{
+                ...es.miraBase,
+                transform:
+                  miraOff.x || miraOff.y
+                    ? 'translate(-50%, -50%) scale(1.06)'
+                    : 'translate(-50%, -50%)',
+              }}
+            />
+            <div
+              style={{
+                ...es.miraKnob,
+                transform: `translate(calc(-50% + ${miraOff.x}px), calc(-50% + ${miraOff.y}px))`,
+              }}
+            />
           </div>
         </div>
       )}
@@ -585,6 +673,13 @@ export default function ProjetoArmor({ onVoltar }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* (5) renderiza o modal de configurações sobre a tela */}
+      {mostrarConfig && (
+        <Configuracoes
+          onClose={() => setMostrarConfig(false)}
+        />
       )}
 
       <style>{CSS_ARMOR}</style>
