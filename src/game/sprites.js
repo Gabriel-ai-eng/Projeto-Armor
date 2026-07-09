@@ -63,8 +63,11 @@ export const BOTOES_INICIO = [
   { id: 'configuracoes', src: asset('btn-configuracoes.webp'), cx: 11.10, cy: 83.13, w: 16.9, aspect: 5.33 },
   { id: 'sair',          src: asset('btn-sair.webp'),          cx: 11.10, cy: 91.18, w: 17.1, aspect: 4.84 },
   // Diário / Amigos / Conquistas: canto superior direito, ao lado do perfil.
-  // Posições medidas diretamente no vídeo (onde a arte já aparece impressa).
-  { id: 'diario',        src: asset('btn-diario.webp'),        cx: 87.89, cy: 32.55, w: 18.9, aspect: 5.19 },
-  { id: 'amigos',        src: asset('btn-amigos.webp'),        cx: 87.89, cy: 42.77, w: 18.9, aspect: 5.40 },
-  { id: 'conquistas',    src: asset('btn-conquistas.webp'),    cx: 87.89, cy: 52.62, w: 18.9, aspect: 5.26 },
+  // Posição/largura casadas com a arte impressa no vídeo (template matching) e
+  // o `aspect` = proporção REAL de cada .webp — assim, em repouso o overlay
+  // fica exatamente em cima da arte do vídeo e ao pressionar salta igual aos
+  // demais (o mesmo scale 1.28 do .is-ativo).
+  { id: 'diario',        src: asset('btn-diario.webp'),        cx: 86.55, cy: 32.80, w: 19.6, aspect: 4.52 },
+  { id: 'amigos',        src: asset('btn-amigos.webp'),        cx: 86.55, cy: 42.50, w: 19.6, aspect: 4.44 },
+  { id: 'conquistas',    src: asset('btn-conquistas.webp'),    cx: 86.55, cy: 52.70, w: 19.6, aspect: 4.01 },
 ];
