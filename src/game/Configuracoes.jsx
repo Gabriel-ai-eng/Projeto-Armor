@@ -229,6 +229,24 @@ export default function Configuracoes({
     onClose();
   };
 
+  // O toque que ABRE este painel (soltar o dedo no botão "Configurações") só
+  // termina de verdade um instante depois, quando o navegador despacha o
+  // "click" sintético daquele mesmo gesto. Nesse momento o painel já está
+  // montado cobrindo a tela — então esse click "sobrando" cai bem em cima do
+  // fundo (que fecha ao tocar fora) e fecha o painel na hora, antes do
+  // usuário sequer ver. Por isso "não abria": abria e fechava no mesmo
+  // instante. `pronto` só libera o fechar-pelo-fundo depois que o painel já
+  // pintou na tela, descartando esse resíduo do gesto de abertura.
+  const prontoRef = useRef(false);
+  useEffect(() => {
+    prontoRef.current = true;
+  }, []);
+
+  const fecharPorFundo = () => {
+    if (!prontoRef.current) return;
+    fechar();
+  };
+
   // XP dentro do nível atual (nível sobe a cada 120s de jogo — regra do jogo).
   const tempo = stats.tempoJogadoSeg || 0;
   const xpNoNivel = Math.max(0, tempo - nivel * 120);
@@ -243,8 +261,8 @@ export default function Configuracoes({
       : "Progresso salvo automaticamente";
 
   return (
-    <div style={estilos.overlay} onClick={fechar}>
-      <div style={estilos.painel} onClick={(e) => e.stopPropagation()}>
+    <div style={estilos.overlay} onPointerDown={fecharPorFundo}>
+      <div style={estilos.painel} onPointerDown={(e) => e.stopPropagation()}>
         {/* brilho de topo + cantos de HUD */}
         <div style={estilos.scan} />
         <span style={{ ...estilos.canto, top: 8, left: 8 }} />

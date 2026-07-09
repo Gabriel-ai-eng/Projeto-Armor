@@ -65,6 +65,14 @@ export function criarControles(deps) {
     return btn ? btn.dataset.armorBtn : null;
   };
 
+  // Abaixo deste tanto de deslocamento (px), o toque conta como "parado":
+  // telas sensíveis ao toque relatam vários eventos pointermove com um leve
+  // tremor mesmo quando o dedo não sai do lugar. Sem essa margem, esse tremor
+  // batia em `botaoSobPonto` como se fosse outro botão vizinho, marcava
+  // `vagou = true` e o `menuUp` descartava o toque silenciosamente — por isso
+  // era preciso tocar várias vezes até um toque "sortudo" sem tremor.
+  const LIMIAR_ARRASTO_MENU = 14;
+
   const menuDown = (e, id) => {
     e.currentTarget.setPointerCapture?.(e.pointerId);
 
@@ -73,6 +81,8 @@ export function criarControles(deps) {
       atual: id,
       inicio: id,
       vagou: false,
+      x0: e.clientX,
+      y0: e.clientY,
     };
 
     acenderBotao(id);
@@ -82,6 +92,9 @@ export function criarControles(deps) {
     const d = arrastoMenuRef.current;
 
     if (!d.ativo) return;
+
+    const dist = Math.hypot(e.clientX - d.x0, e.clientY - d.y0);
+    if (dist < LIMIAR_ARRASTO_MENU) return;
 
     const id = botaoSobPonto(
       e.clientX,
