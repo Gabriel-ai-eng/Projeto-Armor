@@ -10,6 +10,15 @@ import { criarControles } from './controles';
 import { es, CSS_ARMOR } from './estilos';
 import Configuracoes from './Configuracoes'; // (1) nova importação
 
+// Vídeo da tela inicial: WebM/VP9 (bem mais leve) quando o navegador toca,
+// senão cai para o MP4/H.264 (fallback universal, ex.: Safari/iOS antigos).
+// `canPlayType` é a forma padrão de detectar isso — evita mandar um arquivo
+// que o navegador não sabe decodificar.
+const SUPORTA_WEBM =
+  typeof document !== 'undefined' &&
+  document.createElement('video').canPlayType('video/webm; codecs="vp9"') !== '';
+const INTRO_SRC = SUPORTA_WEBM ? asset('armor-intro.webm?v=1') : asset('armor-intro.mp4?v=6');
+
 function IconeRelogio({ size = 13 }) {
   return (
     <svg
@@ -471,7 +480,7 @@ export default function ProjetoArmor({ onVoltar }) {
     let vivo = true;
     let url = null;
 
-    fetch(asset('armor-intro.mp4?v=5'))
+    fetch(INTRO_SRC)
       .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('http'))))
       .then((b) => {
         if (!vivo || introTocouRef.current) return;
@@ -625,7 +634,7 @@ export default function ProjetoArmor({ onVoltar }) {
           <video
             ref={videoIntroRef}
             style={es.videoIntro}
-            src={videoIntroSrc || asset('armor-intro.mp4?v=5')}
+            src={videoIntroSrc || INTRO_SRC}
             muted
             playsInline
             preload="auto"
