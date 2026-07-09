@@ -22,7 +22,7 @@ Todas em `assets/` — são WebP puros, sem código (o vídeo da intro também):
 | `armor-pular.webp` | Pulando (folha em grade 10×17) |
 | `btn-*.webp` | Botões da tela inicial (jogar, armadura, missões…) |
 | `botao-voar.webp` | Botão de voar |
-| `armor-intro.mp4` · `armor-logo.webp` | Vídeo e logo da tela inicial |
+| `armor-intro.webm` · `armor-intro.mp4` · `armor-logo.webp` | Vídeo (WebM/VP9 com fallback MP4/H.264) e logo da tela inicial |
 
 > Correr e o chão vêm de imagens hospedadas fora (`i.ibb.co`) — os links estão
 > nos gêmeos `js/assets/armor-correr.js` e `js/assets/chao.js`.
