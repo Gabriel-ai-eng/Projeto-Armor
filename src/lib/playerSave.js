@@ -84,6 +84,28 @@ export async function carregarEstado() {
   }
 }
 
+// Busca a foto de perfil que o jogador já tem na plataforma AlpsPrime (tabela
+// `usuarios`, coluna `profile_picture_url` — a MESMA que a tela de Perfil do
+// AlpsPrime-OS lê/grava). Não existe upload de foto aqui dentro do jogo: só
+// se reflete o que já está lá. null = sem sessão ou sem foto cadastrada (a UI
+// então mostra a silhueta padrão).
+export async function carregarFotoPerfil() {
+  const uid = await currentUserId();
+  if (!uid) return null;
+  try {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('profile_picture_url')
+      .eq('id', uid)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.profile_picture_url || null;
+  } catch (e) {
+    console.warn('[armor] falha ao carregar foto de perfil:', e && e.message);
+    return null;
+  }
+}
+
 // Salva (upsert) o estado do jogador logado no Supabase. Fire-and-forget.
 // Sem sessão (jogo aberto fora da plataforma), simplesmente não grava.
 export async function salvarEstado(state) {

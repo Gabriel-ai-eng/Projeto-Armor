@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { carregarEstado, salvarEstado, estadoInicial } from '../lib/playerSave';
+import { carregarEstado, salvarEstado, estadoInicial, carregarFotoPerfil } from '../lib/playerSave';
 import { ALT, RENDER_SCALE, ZOOM_PERTO, AZUL } from './ajustes';
 import { asset, BOTOES_INICIO } from './sprites';
 import { calcularSol } from './mundo';
@@ -44,6 +44,7 @@ export default function ProjetoArmor({ onVoltar }) {
   const [horaTexto, setHoraTexto] = useState('--:--');
   const [nivel, setNivel] = useState(0);
   const [nomePiloto, setNomePiloto] = useState('');
+  const [fotoPerfil, setFotoPerfil] = useState(null);
   const sensibilidadeRef = useRef(50);
 
   const btnRefs = useRef({});
@@ -228,6 +229,14 @@ export default function ProjetoArmor({ onVoltar }) {
       estadoRef.current = est;
       carregadoRef.current = true;
       await salvarEstado(est);
+    })();
+
+    // Foto de perfil: busca à parte (não faz parte do `state` do jogo, vem
+    // direto da tabela `usuarios` da plataforma) — não precisa esperar o
+    // estado do jogo para aparecer.
+    (async () => {
+      const url = await carregarFotoPerfil();
+      if (vivo && url) setFotoPerfil(url);
     })();
 
     return () => {
@@ -677,10 +686,19 @@ export default function ProjetoArmor({ onVoltar }) {
               ))}
 
               <div style={es.perfilBox}>
-                <svg viewBox="0 0 64 64" style={es.perfilFoto} aria-hidden="true" focusable="false">
-                  <circle cx="32" cy="23" r="13" fill="#FFFFFF" />
-                  <path d="M8 57c0-13.3 10.7-20 24-20s24 6.7 24 20v3H8z" fill="#FFFFFF" />
-                </svg>
+                {fotoPerfil ? (
+                  <img
+                    src={fotoPerfil}
+                    alt=""
+                    style={es.perfilFotoImg}
+                    onError={() => setFotoPerfil(null)}
+                  />
+                ) : (
+                  <svg viewBox="0 0 64 64" style={es.perfilFoto} aria-hidden="true" focusable="false">
+                    <circle cx="32" cy="23" r="13" fill="#FFFFFF" />
+                    <path d="M8 57c0-13.3 10.7-20 24-20s24 6.7 24 20v3H8z" fill="#FFFFFF" />
+                  </svg>
+                )}
                 <div style={es.perfilTxt}>
                   <span style={es.perfilNome}>{nomePiloto || 'Seu nome'}</span>
                   <span style={es.perfilNivel}>Nível {nivel}</span>
