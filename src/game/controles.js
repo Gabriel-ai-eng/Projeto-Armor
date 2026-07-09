@@ -26,7 +26,9 @@ export function criarControles(deps) {
     sair,
     mostrarEmBreve,
 
-    abrirConfiguracoes // NOVO
+    abrirConfiguracoes, // NOVO
+
+    sensibilidadeRef // sensibilidade da mira (0..100) vinda das Configurações
   } = deps;
 
   // ==========================================================
@@ -340,7 +342,16 @@ export function criarControles(deps) {
       y: ky,
     });
 
-    if (d > maxR * 0.28) {
+    // Zona morta da mira controlada pela sensibilidade (0..100): quanto maior a
+    // sensibilidade, menor o movimento necessário para a mira "pegar".
+    // sens 0 → 0.45 · sens 50 → 0.28 (padrão) · sens 100 → 0.11.
+    const sens =
+      sensibilidadeRef && typeof sensibilidadeRef.current === "number"
+        ? sensibilidadeRef.current
+        : 50;
+    const zonaMorta = 0.45 - (sens / 100) * 0.34;
+
+    if (d > maxR * zonaMorta) {
 
       aimRef.current = {
         active: true,
