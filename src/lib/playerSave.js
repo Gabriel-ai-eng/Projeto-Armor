@@ -95,11 +95,10 @@ export async function emailDaConta() {
   return data?.session?.user?.email || null;
 }
 
-// Busca a foto de perfil que o jogador já tem na plataforma AlpsPrime (tabela
-// `usuarios`, coluna `profile_picture_url` — a MESMA que a tela de Perfil do
-// AlpsPrime-OS lê/grava). Não existe upload de foto aqui dentro do jogo: só
-// se reflete o que já está lá. null = sem sessão ou sem foto cadastrada (a UI
-// então mostra a silhueta padrão).
+// Busca a foto de perfil salva na tabela `usuarios`, coluna `profile_picture_url`
+// — a MESMA que a tela de Perfil do AlpsPrime-OS lê/grava (mesma conta, mesmo
+// projeto Supabase). null = sem sessão ou sem foto cadastrada (a UI então
+// mostra a silhueta padrão).
 export async function carregarFotoPerfil() {
   const uid = await currentUserId();
   if (!uid) return null;
@@ -115,6 +114,66 @@ export async function carregarFotoPerfil() {
     console.warn('[armor] falha ao carregar foto de perfil:', e && e.message);
     return null;
   }
+}
+
+// Redimensiona/comprime a imagem no navegador antes de subir (evita mandar a
+// foto de 12MB da câmera do celular direto pro Storage). Recorta em quadrado
+// (centralizado) — a foto sempre aparece num círculo na UI, então cortar em
+// quadrado aqui evita "esticar" a foto original.
+const LADO_AVATAR = 400;
+
+async function prepararAvatar(file) {
+  const bitmap = await createImageBitmap(file);
+  const lado = Math.min(bitmap.width, bitmap.height);
+  const sx = (bitmap.width - lado) / 2;
+  const sy = (bitmap.height - lado) / 2;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = LADO_AVATAR;
+  canvas.height = LADO_AVATAR;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, sx, sy, lado, lado, 0, 0, LADO_AVATAR, LADO_AVATAR);
+
+  const blob = await new Promise((resolve) =>
+    canvas.toBlob(resolve, 'image/webp', 0.85)
+  );
+  if (!blob) throw new Error('falha ao comprimir imagem');
+  return blob;
+}
+
+// Envia uma nova foto de perfil: comprime no navegador, sobe pro Storage
+// (bucket "uploads", pasta avatars/<uid>/ — liberada por RLS só pro dono e
+// só com acesso pago, ver migração armor_avatar_upload_rls) e grava a URL em
+// `usuarios.profile_picture_url` (upsert — cobre o caso raro da linha ainda
+// não existir). Retorna a URL nova, ou lança erro (a UI decide como avisar).
+export async function enviarFotoPerfil(file) {
+  const uid = await currentUserId();
+  if (!uid) throw new Error('sem sessão');
+  if (!file || !file.type || !file.type.startsWith('image/')) {
+    throw new Error('escolha um arquivo de imagem');
+  }
+
+  const blob = await prepararAvatar(file);
+  const caminho = `avatars/${uid}/avatar-${Date.now()}.webp`;
+
+  const { error: erroUpload } = await supabase.storage
+    .from('uploads')
+    .upload(caminho, blob, { contentType: 'image/webp', upsert: true });
+  if (erroUpload) throw erroUpload;
+
+  const { data: pub } = supabase.storage.from('uploads').getPublicUrl(caminho);
+  const url = pub?.publicUrl;
+  if (!url) throw new Error('falha ao obter URL pública');
+
+  const { error: erroSalvar } = await supabase
+    .from('usuarios')
+    .upsert(
+      { id: uid, profile_picture_url: url, updated_date: new Date().toISOString() },
+      { onConflict: 'id' }
+    );
+  if (erroSalvar) throw erroSalvar;
+
+  return url;
 }
 
 // Salva (upsert) o estado do jogador logado no Supabase. Fire-and-forget.

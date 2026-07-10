@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { enviarFotoPerfil } from "../lib/playerSave";
 
 // ============================================================
 // PROJETO ARMOR · PAINEL DE CONFIGURAÇÕES (HUD em paisagem)
@@ -112,8 +113,13 @@ export default function Configuracoes({
   email = null,
   onAplicarPref = () => {},
   onPersistir = () => {},
+  onFotoAlterada = () => {},
 }) {
   const prefs = (estado && estado.prefs) || {};
+
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
+  const [erroFoto, setErroFoto] = useState("");
+  const arquivoFotoRef = useRef(null);
 
   const [nome, setNome] = useState(prefs.nomePiloto || "");
   const [idioma, setIdioma] = useState(prefs.idioma || "pt-BR");
@@ -191,11 +197,29 @@ export default function Configuracoes({
     onAplicarPref("volumeEfeitos", v);
   };
 
-  const irParaFoto = () => {
-    // A foto é gerenciada no Perfil da plataforma AlpsPrime (mesma origem).
+  // Abre a galeria/câmera do aparelho (input file nativo, oculto).
+  const abrirSeletorFoto = () => {
+    if (enviandoFoto) return;
+    arquivoFotoRef.current?.click();
+  };
+
+  const fotoEscolhida = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = ""; // permite escolher o mesmo arquivo de novo depois
+    if (!file) return;
+
+    setErroFoto("");
+    setEnviandoFoto(true);
     try {
-      window.location.href = "/profile";
-    } catch {}
+      const url = await enviarFotoPerfil(file);
+      onFotoAlterada(url);
+      beep(volEfeitos, 720);
+    } catch (err) {
+      console.warn("[armor] falha ao enviar foto:", err && err.message);
+      setErroFoto("Não deu pra enviar a foto. Tenta de novo.");
+    } finally {
+      setEnviandoFoto(false);
+    }
   };
 
   const fechar = () => {
@@ -255,10 +279,27 @@ export default function Configuracoes({
                       <path d="M10 57c0-13 10-19 22-19s22 6 22 19" fill="none" stroke={CIANO} strokeWidth="5" strokeLinecap="round" />
                     </svg>
                   )}
+                  {enviandoFoto && (
+                    <div style={estilos.avatarCarregando}>
+                      <span style={estilos.spinner} />
+                    </div>
+                  )}
                 </div>
-                <button style={estilos.cameraBadge} onClick={irParaFoto} aria-label="Trocar foto">
+                <button
+                  style={estilos.cameraBadge}
+                  onClick={abrirSeletorFoto}
+                  disabled={enviandoFoto}
+                  aria-label="Trocar foto"
+                >
                   {Ico.camera(20)}
                 </button>
+                <input
+                  ref={arquivoFotoRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={fotoEscolhida}
+                  style={{ display: "none" }}
+                />
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -274,6 +315,7 @@ export default function Configuracoes({
                   <span style={estilos.lapisBtn}>{Ico.lapis(22)}</span>
                 </div>
                 <div style={estilos.nivelBadge}>NÍVEL {nivel}</div>
+                {erroFoto && <div style={estilos.erroFoto}>{erroFoto}</div>}
               </div>
             </div>
 
@@ -356,6 +398,7 @@ const CSS = `
   from { opacity: 0; transform: scale(0.985); }
   to { opacity: 1; transform: scale(1); }
 }
+@keyframes armorCfgGirar { to { transform: rotate(360deg); } }
 .armor-cfg-range {
   -webkit-appearance: none; appearance: none;
   height: 6px; border-radius: 6px; outline: none; cursor: pointer;
@@ -509,6 +552,33 @@ const estilos = {
     overflow: "hidden",
   },
   avatarImg: { width: "100%", height: "100%", objectFit: "cover" },
+  avatarCarregando: {
+    position: "absolute",
+    inset: 0,
+    borderRadius: "50%",
+    background: "rgba(4,12,20,0.72)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  spinner: {
+    width: 28,
+    height: 28,
+    borderRadius: "50%",
+    border: `3px solid rgba(67,229,255,0.25)`,
+    borderTopColor: CIANO,
+    display: "inline-block",
+    animationName: "armorCfgGirar",
+    animationDuration: ".7s",
+    animationTimingFunction: "linear",
+    animationIterationCount: "infinite",
+  },
+  erroFoto: {
+    marginTop: 8,
+    color: "#ff9d9d",
+    fontSize: "clamp(11px, 1.2vw, 13px)",
+    fontWeight: 500,
+  },
   cameraBadge: {
     position: "absolute",
     right: -2,

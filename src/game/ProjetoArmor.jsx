@@ -743,6 +743,7 @@ export default function ProjetoArmor({ onVoltar }) {
           email={emailConta}
           onAplicarPref={aplicarPref}
           onPersistir={persistirEstado}
+          onFotoAlterada={setFotoPerfil}
         />
       )}
 
