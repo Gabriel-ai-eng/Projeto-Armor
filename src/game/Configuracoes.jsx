@@ -35,6 +35,11 @@ const Ico = {
       <path d="M3 12h18M12 3c2.5 2.6 2.5 15.4 0 18M12 3c-2.5 2.6-2.5 15.4 0 18" />
     </svg>
   ),
+  seta: (s = 22) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={CIANO} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  ),
   envelope: (s = 26) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={CIANO} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
@@ -98,7 +103,7 @@ function SliderVolume({ valor, onInput, onCommit }) {
         onPointerUp={onCommit}
         onKeyUp={onCommit}
         className="armor-cfg-range"
-        style={{ background: fundo }}
+        style={{ background: fundo, flex: 1, minWidth: 0, width: "100%" }}
       />
       <span style={estilos.sliderPct}>{pct}%</span>
     </div>
@@ -318,6 +323,7 @@ export default function Configuracoes({
               <span style={estilos.linhaLabel}>Idioma</span>
               <div style={estilos.selectWrap}>
                 <span style={estilos.select}>Português (Brasil)</span>
+                <span style={estilos.selectSeta}>{Ico.seta(22)}</span>
               </div>
             </div>
 
@@ -633,7 +639,7 @@ const estilos = {
   },
 
   // Select idioma
-  selectWrap: { marginLeft: "auto", position: "relative", display: "flex", alignItems: "center" },
+  selectWrap: { marginLeft: "auto", position: "relative", display: "flex", alignItems: "center", gap: 8 },
   select: {
     color: "#cfeaff",
     fontSize: "clamp(14px, 1.5vw, 19px)",
@@ -641,6 +647,7 @@ const estilos = {
     fontWeight: 500,
     textAlign: "right",
   },
+  selectSeta: { display: "flex", flexShrink: 0, alignItems: "center", opacity: 0.9 },
 
   emailValor: {
     marginLeft: "auto",
