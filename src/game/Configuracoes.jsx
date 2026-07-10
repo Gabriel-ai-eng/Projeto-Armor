@@ -53,7 +53,7 @@ const Ico = {
       <path d="M4 8v8M20 8v8" />
     </svg>
   ),
-  camera: (s = 22) => (
+  camera: (s = 14) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
       <circle cx="12" cy="13" r="3.2" />
@@ -122,7 +122,6 @@ export default function Configuracoes({
   const arquivoFotoRef = useRef(null);
 
   const [nome, setNome] = useState(prefs.nomePiloto || "");
-  const [idioma, setIdioma] = useState(prefs.idioma || "pt-BR");
   const [vibracao, setVibracao] = useState(prefs.vibracao !== false);
   const [volMusica, setVolMusica] = useState(
     typeof prefs.volumeMusica === "number" ? prefs.volumeMusica : 70
@@ -172,12 +171,6 @@ export default function Configuracoes({
     const limpo = v.slice(0, 18);
     setNome(limpo);
     onAplicarPref("nomePiloto", limpo);
-  };
-
-  const mudarIdioma = (v) => {
-    setIdioma(v);
-    onAplicarPref("idioma", v);
-    persistir();
   };
 
   const alternarVibracao = () => {
@@ -291,7 +284,7 @@ export default function Configuracoes({
                   disabled={enviandoFoto}
                   aria-label="Trocar foto"
                 >
-                  {Ico.camera(20)}
+                  {Ico.camera(14)}
                 </button>
                 <input
                   ref={arquivoFotoRef}
@@ -324,16 +317,7 @@ export default function Configuracoes({
               <span style={estilos.linhaIcone}>{Ico.globo()}</span>
               <span style={estilos.linhaLabel}>Idioma</span>
               <div style={estilos.selectWrap}>
-                <select
-                  value={idioma}
-                  onChange={(e) => mudarIdioma(e.target.value)}
-                  style={estilos.select}
-                >
-                  <option value="pt-BR">Português (Brasil)</option>
-                  <option value="en">English</option>
-                  <option value="es">Español</option>
-                </select>
-                <span style={estilos.chevron}>▾</span>
+                <span style={estilos.select}>Português (Brasil)</span>
               </div>
             </div>
 
@@ -583,8 +567,8 @@ const estilos = {
     position: "absolute",
     right: -2,
     bottom: -2,
-    width: 38,
-    height: 38,
+    width: 26,
+    height: 26,
     borderRadius: "50%",
     background: "rgba(6,18,28,0.92)",
     border: `2px solid ${CIANO}`,
@@ -651,21 +635,12 @@ const estilos = {
   // Select idioma
   selectWrap: { marginLeft: "auto", position: "relative", display: "flex", alignItems: "center" },
   select: {
-    appearance: "none",
-    WebkitAppearance: "none",
-    background: "transparent",
-    border: "none",
     color: "#cfeaff",
     fontSize: "clamp(14px, 1.5vw, 19px)",
     fontFamily: "'Rajdhani', sans-serif",
     fontWeight: 500,
-    paddingRight: 22,
     textAlign: "right",
-    cursor: "pointer",
-    outline: "none",
-    direction: "rtl",
   },
-  chevron: { position: "absolute", right: 0, color: CIANO, pointerEvents: "none", fontSize: 16 },
 
   emailValor: {
     marginLeft: "auto",
