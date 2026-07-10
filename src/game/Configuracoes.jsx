@@ -1,109 +1,93 @@
 import React, { useState, useRef, useEffect } from "react";
 
 // ============================================================
-// PROJETO ARMOR · PAINEL DE CONFIGURAÇÕES ("CENTRAL DE COMANDO")
-// Modal em estilo HUD sci-fi. Tudo o que é editável aqui é gravado no MESMO
-// JSON `state` do jogador (tabela armor_game_state) → persiste no Supabase.
+// PROJETO ARMOR · PAINEL DE CONFIGURAÇÕES (HUD em paisagem)
+// Recriação do layout de referência: cabeçalho com "voltar" + título, coluna
+// esquerda (perfil, idioma, e-mail, vibração) e coluna direita (volumes).
 //
-// O componente NÃO fala com o banco direto: recebe do ProjetoArmor.jsx o estado
-// atual e callbacks:
-//   • onAplicarPref(chave, valor) → atualiza a preferência em memória (efeito na
-//     hora: nome no perfil, sensibilidade da mira etc.)
+// Não fala com o banco direto: recebe do ProjetoArmor.jsx o estado atual e
+// callbacks:
+//   • onAplicarPref(chave, valor) → aplica a preferência em memória (efeito ao
+//     vivo: nome no perfil, vibração no tiro etc.)
 //   • onPersistir()               → grava o estado no Supabase (upsert)
-//   • onToggleZoom / onToggleRelogio → reaproveitam a lógica já existente do jogo
-//   • onResetar()                 → zera o progresso e grava
 // ============================================================
 
-const AZUL = "#6ED8FF";
-const OURO = "#F0C040";
-const VERMELHO = "#FF6B6B";
+const CIANO = "#43E5FF";
+const CIANO_SUAVE = "rgba(67,229,255,0.28)";
 
-// Formata segundos em algo humano: "1h 12m", "12m", "45s".
-function formatarTempo(seg) {
-  const s = Math.max(0, Math.floor(seg || 0));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m`;
-  return `${s}s`;
-}
+// ---------------- ÍCONES (SVG inline, traço ciano) ----------------
+const Ico = {
+  voltar: (s = 30) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={CIANO} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 6l-6 6 6 6" />
+    </svg>
+  ),
+  lapis: (s = 22) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={CIANO} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
+  ),
+  globo: (s = 26) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={CIANO} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.6 2.5 15.4 0 18M12 3c-2.5 2.6-2.5 15.4 0 18" />
+    </svg>
+  ),
+  envelope: (s = 26) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={CIANO} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
+      <path d="M3 6.5l9 6 9-6" />
+    </svg>
+  ),
+  cadeado: (s = 20) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={CIANO} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="10.5" width="14" height="10" rx="2" />
+      <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
+    </svg>
+  ),
+  vibrar: (s = 26) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={CIANO} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="8" y="3" width="8" height="18" rx="2" />
+      <path d="M4 8v8M20 8v8" />
+    </svg>
+  ),
+  camera: (s = 22) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+      <circle cx="12" cy="13" r="3.2" />
+    </svg>
+  ),
+  musica: (s = 30) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={CIANO} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 18V5l10-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="16" cy="16" r="3" />
+    </svg>
+  ),
+  efeitos: (s = 30) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={CIANO} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 9v6h4l5 4V5L8 9H4z" />
+      <path d="M17 8.5a5 5 0 0 1 0 7M19.5 6a8 8 0 0 1 0 12" />
+    </svg>
+  ),
+};
 
-// Título por nível — dá uma progressão de "cargo" ao piloto.
-function patente(nivel) {
-  const nomes = [
-    "Recruta",
-    "Cadete",
-    "Piloto",
-    "Piloto Sênior",
-    "Tenente",
-    "Capitão",
-    "Comandante",
-    "Ás de Armor",
-  ];
-  return nomes[Math.min(nivel, nomes.length - 1)];
-}
-
-// ---------------- Interruptor (toggle) estilo HUD ----------------
+// ---------------- Interruptor (toggle) ----------------
 function Interruptor({ ativo, onClick }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        width: 58,
-        height: 30,
-        borderRadius: 30,
-        border: `1px solid ${ativo ? AZUL : "rgba(255,255,255,0.25)"}`,
-        background: ativo ? "rgba(110,216,255,0.22)" : "rgba(255,255,255,0.06)",
-        boxShadow: ativo ? `0 0 12px rgba(110,216,255,0.5)` : "none",
-        position: "relative",
-        cursor: "pointer",
-        transition: "all .2s ease",
-        flexShrink: 0,
-        padding: 0,
-      }}
-      aria-pressed={ativo}
-    >
-      <span
-        style={{
-          position: "absolute",
-          top: 3,
-          left: ativo ? 30 : 3,
-          width: 22,
-          height: 22,
-          borderRadius: "50%",
-          background: ativo ? AZUL : "#8fa3b0",
-          boxShadow: ativo ? `0 0 10px ${AZUL}` : "none",
-          transition: "left .2s ease, background .2s ease",
-        }}
-      />
+    <button onClick={onClick} aria-pressed={ativo} style={estilos.toggle(ativo)}>
+      <span style={estilos.toggleKnob(ativo)} />
     </button>
   );
 }
 
-// ---------------- Linha de opção com toggle ----------------
-function LinhaToggle({ titulo, descricao, ativo, onClick }) {
+// ---------------- Slider de volume (trilho preenchido + knob) ----------------
+function SliderVolume({ valor, onInput, onCommit }) {
+  const pct = Math.max(0, Math.min(100, valor));
+  const fundo = `linear-gradient(90deg, ${CIANO} 0%, ${CIANO} ${pct}%, rgba(255,255,255,0.14) ${pct}%, rgba(255,255,255,0.14) 100%)`;
   return (
-    <div style={estilos.linha}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={estilos.linhaTitulo}>{titulo}</div>
-        <div style={estilos.linhaDesc}>{descricao}</div>
-      </div>
-      <Interruptor ativo={ativo} onClick={onClick} />
-    </div>
-  );
-}
-
-// ---------------- Slider com valor ao lado ----------------
-function Deslizante({ titulo, valor, sufixo, onInput, onCommit, cor = AZUL }) {
-  return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={estilos.sliderTopo}>
-        <span style={estilos.linhaTitulo}>{titulo}</span>
-        <span style={{ ...estilos.valorTag, color: cor, borderColor: cor }}>
-          {valor}
-          {sufixo}
-        </span>
-      </div>
+    <div style={estilos.sliderLinha}>
       <input
         type="range"
         min={0}
@@ -112,8 +96,10 @@ function Deslizante({ titulo, valor, sufixo, onInput, onCommit, cor = AZUL }) {
         onChange={(e) => onInput(Number(e.target.value))}
         onPointerUp={onCommit}
         onKeyUp={onCommit}
-        style={{ ...estilos.slider, accentColor: cor }}
+        className="armor-cfg-range"
+        style={{ background: fundo }}
       />
+      <span style={estilos.sliderPct}>{pct}%</span>
     </div>
   );
 }
@@ -122,32 +108,36 @@ export default function Configuracoes({
   onClose,
   estado,
   nivel = 0,
-  zoomPerto = false,
-  relogioAtivo = false,
+  fotoPerfil = null,
+  email = null,
   onAplicarPref = () => {},
   onPersistir = () => {},
-  onToggleZoom = () => {},
-  onToggleRelogio = () => {},
-  onResetar = () => {},
 }) {
   const prefs = (estado && estado.prefs) || {};
-  const stats = (estado && estado.stats) || {};
 
   const [nome, setNome] = useState(prefs.nomePiloto || "");
-  const [volume, setVolume] = useState(
-    typeof prefs.volume === "number" ? prefs.volume : 70
+  const [idioma, setIdioma] = useState(prefs.idioma || "pt-BR");
+  const [vibracao, setVibracao] = useState(prefs.vibracao !== false);
+  const [volMusica, setVolMusica] = useState(
+    typeof prefs.volumeMusica === "number" ? prefs.volumeMusica : 70
   );
-  const [sens, setSens] = useState(
-    typeof prefs.sensibilidade === "number" ? prefs.sensibilidade : 50
+  const [volEfeitos, setVolEfeitos] = useState(
+    typeof prefs.volumeEfeitos === "number" ? prefs.volumeEfeitos : 85
   );
-  const [confirmarReset, setConfirmarReset] = useState(false);
-  const [sync, setSync] = useState("idle"); // idle | salvando | ok
-  const syncTimer = useRef(null);
 
-  // Bip curto de feedback (Web Audio) com volume proporcional — faz o controle
-  // de volume ter efeito audível de verdade, não só um número salvo.
+  // Escudo de 1 toque: o gesto que ABRE o painel (soltar o dedo no botão do
+  // menu) dispara um "click" residual logo depois, já com o painel na tela —
+  // esse escudo engole esse primeiro clique pra ele não acionar um controle
+  // sem querer. Some sozinho após o resíduo (ou 350ms).
+  const [escudo, setEscudo] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setEscudo(false), 350);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Bip de feedback (Web Audio) com volume proporcional ao "Volume dos efeitos".
   const audioRef = useRef(null);
-  const beep = (vol = volume, freq = 620) => {
+  const beep = (vol = volEfeitos, freq = 620) => {
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
@@ -170,17 +160,7 @@ export default function Configuracoes({
     } catch {}
   };
 
-  useEffect(() => () => clearTimeout(syncTimer.current), []);
-
-  // Marca "salvando" → grava no Supabase → mostra "sincronizado".
-  const persistir = () => {
-    setSync("salvando");
-    clearTimeout(syncTimer.current);
-    Promise.resolve(onPersistir()).finally(() => {
-      setSync("ok");
-      syncTimer.current = setTimeout(() => setSync("idle"), 1800);
-    });
-  };
+  const persistir = () => onPersistir();
 
   const mudarNome = (v) => {
     const limpo = v.slice(0, 18);
@@ -188,247 +168,181 @@ export default function Configuracoes({
     onAplicarPref("nomePiloto", limpo);
   };
 
-  const mudarVolume = (v) => {
-    setVolume(v);
-    onAplicarPref("volume", v);
-  };
-
-  const mudarSens = (v) => {
-    setSens(v);
-    onAplicarPref("sensibilidade", v);
-  };
-
-  const toggleZoom = () => {
-    beep(volume, 520);
-    onToggleZoom();
+  const mudarIdioma = (v) => {
+    setIdioma(v);
+    onAplicarPref("idioma", v);
     persistir();
   };
 
-  const toggleRelogio = () => {
-    if (relogioAtivo) return; // ativar relógio é irreversível na sessão
-    beep(volume, 720);
-    onToggleRelogio();
+  const alternarVibracao = () => {
+    const novo = !vibracao;
+    setVibracao(novo);
+    onAplicarPref("vibracao", novo);
+    if (novo && navigator.vibrate) navigator.vibrate(25);
     persistir();
   };
 
-  const confirmarResetar = async () => {
-    beep(volume, 320);
-    await Promise.resolve(onResetar());
-    setNome("");
-    setVolume(70);
-    setSens(50);
-    setConfirmarReset(false);
-    setSync("ok");
-    clearTimeout(syncTimer.current);
-    syncTimer.current = setTimeout(() => setSync("idle"), 1800);
+  const mudarVolMusica = (v) => {
+    setVolMusica(v);
+    onAplicarPref("volumeMusica", v);
+  };
+  const mudarVolEfeitos = (v) => {
+    setVolEfeitos(v);
+    onAplicarPref("volumeEfeitos", v);
+  };
+
+  const irParaFoto = () => {
+    // A foto é gerenciada no Perfil da plataforma AlpsPrime (mesma origem).
+    try {
+      window.location.href = "/profile";
+    } catch {}
   };
 
   const fechar = () => {
-    beep(volume, 480);
+    beep(volEfeitos, 480);
     persistir();
     onClose();
   };
 
-  // O toque que ABRE este painel (soltar o dedo no botão "Configurações") só
-  // termina de verdade um instante depois, quando o navegador despacha o
-  // "click" sintético daquele mesmo gesto. Nesse momento o painel já está
-  // montado cobrindo a tela — então esse click "sobrando" cai bem em cima do
-  // fundo (que fecha ao tocar fora) e fecha o painel na hora, antes do
-  // usuário sequer ver. Por isso "não abria": abria e fechava no mesmo
-  // instante. `pronto` só libera o fechar-pelo-fundo depois que o painel já
-  // pintou na tela, descartando esse resíduo do gesto de abertura.
-  const prontoRef = useRef(false);
-  useEffect(() => {
-    prontoRef.current = true;
-  }, []);
-
-  const fecharPorFundo = () => {
-    if (!prontoRef.current) return;
-    fechar();
-  };
-
-  // XP dentro do nível atual (nível sobe a cada 120s de jogo — regra do jogo).
-  const tempo = stats.tempoJogadoSeg || 0;
-  const xpNoNivel = Math.max(0, tempo - nivel * 120);
-  const pctXp = Math.min(100, Math.round((xpNoNivel / 120) * 100));
-
   const inicial = (nome.trim()[0] || "").toUpperCase();
-  const statusTxt =
-    sync === "salvando"
-      ? "Salvando…"
-      : sync === "ok"
-      ? "Sincronizado na nuvem"
-      : "Progresso salvo automaticamente";
 
   return (
-    <div style={estilos.overlay} onPointerDown={fecharPorFundo}>
-      <div style={estilos.painel} onPointerDown={(e) => e.stopPropagation()}>
-        {/* brilho de topo + cantos de HUD */}
-        <div style={estilos.scan} />
-        <span style={{ ...estilos.canto, top: 8, left: 8 }} />
-        <span style={{ ...estilos.canto, top: 8, right: 8, transform: "scaleX(-1)" }} />
-        <span style={{ ...estilos.canto, bottom: 8, left: 8, transform: "scaleY(-1)" }} />
-        <span style={{ ...estilos.canto, bottom: 8, right: 8, transform: "scale(-1)" }} />
+    <div style={estilos.tela}>
+      {escudo && (
+        <div
+          style={estilos.escudo}
+          onClickCapture={(e) => {
+            e.stopPropagation();
+            setEscudo(false);
+          }}
+          onPointerDownCapture={(e) => e.stopPropagation()}
+        />
+      )}
 
-        <div style={estilos.conteudo} className="armor-cfg-scroll">
-          {/* ---------- CABEÇALHO ---------- */}
-          <div style={estilos.header}>
-            <div style={estilos.eyebrow}>◈ SISTEMA ARMOR</div>
-            <h1 style={estilos.titulo}>CENTRAL DE COMANDO</h1>
-          </div>
+      <div style={estilos.moldura}>
+        {/* cantos de HUD */}
+        <span style={{ ...estilos.canto, top: 10, left: 10 }} />
+        <span style={{ ...estilos.canto, top: 10, right: 10, transform: "scaleX(-1)" }} />
+        <span style={{ ...estilos.canto, bottom: 10, left: 10, transform: "scaleY(-1)" }} />
+        <span style={{ ...estilos.canto, bottom: 10, right: 10, transform: "scale(-1)" }} />
 
-          {/* ---------- CARTÃO DO PILOTO ---------- */}
-          <div style={estilos.cartao}>
-            <div style={estilos.avatar}>
-              {inicial ? (
-                <span style={estilos.avatarLetra}>{inicial}</span>
-              ) : (
-                <svg width="40" height="40" viewBox="0 0 64 64">
-                  <circle cx="32" cy="22" r="12" fill={AZUL} />
-                  <path
-                    d="M12 56c0-12 9-18 20-18s20 6 20 18"
-                    fill="none"
-                    stroke={AZUL}
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              )}
-              <span style={estilos.nivelBadge}>{nivel}</span>
-            </div>
-
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <label style={estilos.miniLabel}>NOME DO PILOTO</label>
-              <input
-                value={nome}
-                onChange={(e) => mudarNome(e.target.value)}
-                onBlur={persistir}
-                placeholder="Digite seu nome…"
-                style={estilos.inputNome}
-                maxLength={18}
-              />
-              <div style={estilos.patente}>
-                {patente(nivel)} · Nível {nivel}
-              </div>
-              <div style={estilos.xpTrilho}>
-                <div style={{ ...estilos.xpBarra, width: `${pctXp}%` }} />
-              </div>
-              <div style={estilos.xpTxt}>{pctXp}% para o próximo nível</div>
-            </div>
-          </div>
-
-          {/* ---------- ESTATÍSTICAS ---------- */}
-          <div style={estilos.statsGrid}>
-            <div style={estilos.stat}>
-              <div style={estilos.statNum}>{formatarTempo(tempo)}</div>
-              <div style={estilos.statLbl}>Em campo</div>
-            </div>
-            <div style={estilos.stat}>
-              <div style={estilos.statNum}>{stats.sessoes || 0}</div>
-              <div style={estilos.statLbl}>Sessões</div>
-            </div>
-            <div style={estilos.stat}>
-              <div style={estilos.statNum}>{nivel}</div>
-              <div style={estilos.statLbl}>Nível</div>
-            </div>
-          </div>
-
-          {/* ---------- ÁUDIO & CONTROLES ---------- */}
-          <div style={estilos.secao}>
-            <div style={estilos.secaoTitulo}>ÁUDIO & CONTROLES</div>
-            <Deslizante
-              titulo="Volume do sistema"
-              valor={volume}
-              sufixo="%"
-              onInput={mudarVolume}
-              onCommit={() => {
-                beep(volume);
-                persistir();
-              }}
-            />
-            <Deslizante
-              titulo="Sensibilidade da mira"
-              valor={sens}
-              sufixo="%"
-              cor={OURO}
-              onInput={mudarSens}
-              onCommit={persistir}
-            />
-          </div>
-
-          {/* ---------- PREFERÊNCIAS ---------- */}
-          <div style={estilos.secao}>
-            <div style={estilos.secaoTitulo}>PREFERÊNCIAS DE JOGO</div>
-            <LinhaToggle
-              titulo="Câmera aproximada"
-              descricao="Aproxima a câmera do personagem durante o jogo."
-              ativo={zoomPerto}
-              onClick={toggleZoom}
-            />
-            <LinhaToggle
-              titulo="Ciclo dia / noite real"
-              descricao={
-                relogioAtivo
-                  ? "Ativo — o céu segue o horário real do seu local."
-                  : "Sincroniza o céu do jogo com a hora e o sol reais."
-              }
-              ativo={relogioAtivo}
-              onClick={toggleRelogio}
-            />
-          </div>
-
-          {/* ---------- ZONA DE PERIGO ---------- */}
-          <div style={estilos.secao}>
-            <div style={{ ...estilos.secaoTitulo, color: VERMELHO }}>
-              ZONA DE PERIGO
-            </div>
-            {!confirmarReset ? (
-              <button
-                style={estilos.botaoReset}
-                onClick={() => setConfirmarReset(true)}
-              >
-                Resetar progresso
-              </button>
-            ) : (
-              <div style={estilos.confirmBox}>
-                <div style={estilos.confirmTxt}>
-                  Isso apaga nome, nível e posição. Tem certeza?
-                </div>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button
-                    style={estilos.botaoConfirma}
-                    onClick={confirmarResetar}
-                  >
-                    Sim, apagar
-                  </button>
-                  <button
-                    style={estilos.botaoCancela}
-                    onClick={() => setConfirmarReset(false)}
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ---------- STATUS DE NUVEM ---------- */}
-          <div style={estilos.nuvem}>
-            <span
-              style={{
-                ...estilos.nuvemPonto,
-                background: sync === "salvando" ? OURO : AZUL,
-                animation:
-                  sync === "salvando" ? "armorPulse 0.8s infinite" : "none",
-              }}
-            />
-            {statusTxt}
-          </div>
-
-          {/* ---------- FECHAR ---------- */}
-          <button style={estilos.fechar} onClick={fechar}>
-            SALVAR E FECHAR
+        {/* ---------- CABEÇALHO ---------- */}
+        <div style={estilos.header}>
+          <button style={estilos.voltar} onClick={fechar} aria-label="Voltar">
+            {Ico.voltar()}
           </button>
+          <h1 style={estilos.titulo}>CONFIGURAÇÕES</h1>
+          <div style={estilos.circuito}>
+            <span style={estilos.circuitoLinha} />
+            <span style={estilos.circuitoNo} />
+            <span style={{ ...estilos.circuitoNo, opacity: 0.5 }} />
+          </div>
+        </div>
+
+        {/* ---------- CORPO (duas colunas) ---------- */}
+        <div style={estilos.corpo}>
+          {/* ===== COLUNA ESQUERDA ===== */}
+          <div style={estilos.painel}>
+            {/* Perfil */}
+            <div style={estilos.perfil}>
+              <div style={estilos.avatarWrap}>
+                <div style={estilos.avatarRing}>
+                  {fotoPerfil ? (
+                    <img src={fotoPerfil} alt="" style={estilos.avatarImg} />
+                  ) : (
+                    <svg width="60" height="60" viewBox="0 0 64 64">
+                      <circle cx="32" cy="24" r="13" fill={CIANO} />
+                      <path d="M10 57c0-13 10-19 22-19s22 6 22 19" fill="none" stroke={CIANO} strokeWidth="5" strokeLinecap="round" />
+                    </svg>
+                  )}
+                </div>
+                <button style={estilos.cameraBadge} onClick={irParaFoto} aria-label="Trocar foto">
+                  {Ico.camera(20)}
+                </button>
+              </div>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={estilos.nomeLinha}>
+                  <input
+                    value={nome}
+                    onChange={(e) => mudarNome(e.target.value)}
+                    onBlur={persistir}
+                    placeholder="SEU NOME"
+                    style={estilos.nomeInput}
+                    maxLength={18}
+                  />
+                  <span style={estilos.lapisBtn}>{Ico.lapis(22)}</span>
+                </div>
+                <div style={estilos.nivelBadge}>NÍVEL {nivel}</div>
+              </div>
+            </div>
+
+            {/* Idioma */}
+            <div style={estilos.linha}>
+              <span style={estilos.linhaIcone}>{Ico.globo()}</span>
+              <span style={estilos.linhaLabel}>Idioma</span>
+              <div style={estilos.selectWrap}>
+                <select
+                  value={idioma}
+                  onChange={(e) => mudarIdioma(e.target.value)}
+                  style={estilos.select}
+                >
+                  <option value="pt-BR">Português (Brasil)</option>
+                  <option value="en">English</option>
+                  <option value="es">Español</option>
+                </select>
+                <span style={estilos.chevron}>▾</span>
+              </div>
+            </div>
+
+            {/* E-mail */}
+            <div style={estilos.linha}>
+              <span style={estilos.linhaIcone}>{Ico.envelope()}</span>
+              <span style={estilos.linhaLabel}>E-mail da conta</span>
+              <span style={estilos.emailValor}>{email || "seuemail@exemplo.com"}</span>
+              <span style={estilos.cadeado}>{Ico.cadeado(20)}</span>
+            </div>
+
+            {/* Vibração */}
+            <div style={estilos.linha}>
+              <span style={estilos.linhaIcone}>{Ico.vibrar()}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={estilos.linhaLabel}>Vibração ao atirar/acertar</div>
+                <div style={estilos.linhaSub}>Sinta cada disparo e cada acerto.</div>
+              </div>
+              <Interruptor ativo={vibracao} onClick={alternarVibracao} />
+            </div>
+          </div>
+
+          {/* ===== COLUNA DIREITA ===== */}
+          <div style={estilos.colDireita}>
+            <div style={estilos.cardVolume}>
+              <span style={estilos.hexIcone}>{Ico.musica()}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={estilos.volTitulo}>Volume da música</div>
+                <SliderVolume
+                  valor={volMusica}
+                  onInput={mudarVolMusica}
+                  onCommit={persistir}
+                />
+              </div>
+            </div>
+
+            <div style={estilos.cardVolume}>
+              <span style={estilos.hexIcone}>{Ico.efeitos()}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={estilos.volTitulo}>Volume dos efeitos</div>
+                <SliderVolume
+                  valor={volEfeitos}
+                  onInput={mudarVolEfeitos}
+                  onCommit={() => {
+                    beep(volEfeitos);
+                    persistir();
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -438,338 +352,325 @@ export default function Configuracoes({
 }
 
 const CSS = `
-@keyframes armorScan {
-  0% { transform: translateY(-100%); opacity: 0; }
-  50% { opacity: 1; }
-  100% { transform: translateY(1200%); opacity: 0; }
+@keyframes armorCfgEntrada {
+  from { opacity: 0; transform: scale(0.985); }
+  to { opacity: 1; transform: scale(1); }
 }
-@keyframes armorPulse {
-  0%,100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.35; transform: scale(0.7); }
+.armor-cfg-range {
+  -webkit-appearance: none; appearance: none;
+  height: 6px; border-radius: 6px; outline: none; cursor: pointer;
 }
-@keyframes armorEntrada {
-  from { opacity: 0; transform: translateY(14px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+.armor-cfg-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: ${CIANO}; border: 3px solid #eafcff;
+  box-shadow: 0 0 12px ${CIANO}, 0 0 4px ${CIANO};
+  cursor: pointer;
 }
-.armor-cfg-scroll::-webkit-scrollbar { width: 6px; }
-.armor-cfg-scroll::-webkit-scrollbar-thumb {
-  background: rgba(110,216,255,0.4); border-radius: 6px;
+.armor-cfg-range::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: ${CIANO}; border: 3px solid #eafcff;
+  box-shadow: 0 0 12px ${CIANO}; cursor: pointer;
 }
 `;
 
 const estilos = {
-  overlay: {
+  tela: {
     position: "fixed",
     inset: 0,
-    background: "radial-gradient(circle at 50% 30%, rgba(10,30,50,0.7), rgba(0,0,0,0.82))",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
+    zIndex: 9999,
+    background:
+      "radial-gradient(120% 120% at 50% 0%, #0a1a28 0%, #050b12 55%, #02060a 100%)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 9999,
-    fontFamily: "'Rajdhani', 'Segoe UI', sans-serif",
-    padding: 16,
+    padding: "clamp(6px, 1.6vw, 20px)",
     boxSizing: "border-box",
+    fontFamily: "'Rajdhani', 'Segoe UI', sans-serif",
+    animation: "armorCfgEntrada .25s ease",
   },
-  painel: {
+  escudo: { position: "absolute", inset: 0, zIndex: 20 },
+  moldura: {
     position: "relative",
     width: "100%",
-    maxWidth: 540,
-    maxHeight: "92vh",
+    maxWidth: 1180,
+    height: "100%",
+    maxHeight: 640,
+    boxSizing: "border-box",
+    border: `1.5px solid ${CIANO_SUAVE}`,
+    borderRadius: 18,
     background:
-      "linear-gradient(160deg, rgba(12,26,42,0.97), rgba(6,14,24,0.98))",
-    border: `1px solid rgba(110,216,255,0.55)`,
-    borderRadius: 20,
+      "linear-gradient(160deg, rgba(10,26,40,0.55), rgba(4,10,18,0.75))",
     boxShadow:
-      "0 0 40px rgba(110,216,255,0.28), inset 0 0 24px rgba(110,216,255,0.06)",
-    color: "#fff",
+      "0 0 40px rgba(67,229,255,0.15), inset 0 0 30px rgba(67,229,255,0.04)",
+    padding: "clamp(10px, 2.4vmin, 28px)",
+    display: "flex",
+    flexDirection: "column",
     overflow: "hidden",
-    animation: "armorEntrada .28s ease",
-  },
-  scan: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 40,
-    background:
-      "linear-gradient(180deg, rgba(110,216,255,0.28), transparent)",
-    pointerEvents: "none",
-    animation: "armorScan 4.5s ease-in-out infinite",
   },
   canto: {
     position: "absolute",
-    width: 16,
-    height: 16,
-    borderTop: `2px solid ${AZUL}`,
-    borderLeft: `2px solid ${AZUL}`,
-    opacity: 0.8,
+    width: 20,
+    height: 20,
+    borderTop: `2px solid ${CIANO}`,
+    borderLeft: `2px solid ${CIANO}`,
+    opacity: 0.85,
     pointerEvents: "none",
   },
-  conteudo: {
-    padding: "26px 24px 22px",
-    maxHeight: "92vh",
-    overflowY: "auto",
-  },
-  header: { textAlign: "center", marginBottom: 22 },
-  eyebrow: {
-    color: AZUL,
-    fontSize: 12,
-    letterSpacing: "0.28em",
-    fontWeight: 600,
-    opacity: 0.85,
-  },
-  titulo: {
-    fontSize: 28,
-    fontWeight: 700,
-    color: "#EAFBFF",
-    letterSpacing: "0.14em",
-    textShadow: `0 0 18px rgba(110,216,255,0.6)`,
-    margin: "4px 0 0",
-  },
-  cartao: {
+
+  // Cabeçalho
+  header: {
     display: "flex",
     alignItems: "center",
-    gap: 16,
-    padding: 16,
-    borderRadius: 16,
-    background:
-      "linear-gradient(135deg, rgba(110,216,255,0.10), rgba(110,216,255,0.02))",
-    border: "1px solid rgba(110,216,255,0.28)",
-    marginBottom: 16,
-  },
-  avatar: {
-    position: "relative",
-    width: 78,
-    height: 78,
-    borderRadius: "50%",
-    border: `2px solid ${AZUL}`,
-    background: "linear-gradient(145deg,#12324c,#07121e)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: `0 0 18px rgba(110,216,255,0.45)`,
+    gap: "clamp(12px, 2vw, 26px)",
+    marginBottom: "clamp(8px, 2vmin, 22px)",
     flexShrink: 0,
   },
-  avatarLetra: {
-    fontSize: 38,
-    fontWeight: 700,
-    color: AZUL,
-    textShadow: `0 0 14px ${AZUL}`,
-  },
-  nivelBadge: {
-    position: "absolute",
-    bottom: -4,
-    right: -4,
-    minWidth: 24,
-    height: 24,
-    padding: "0 5px",
-    borderRadius: 12,
-    background: OURO,
-    color: "#08131f",
-    fontSize: 13,
-    fontWeight: 700,
+  voltar: {
+    width: 52,
+    height: 46,
+    flexShrink: 0,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: `0 0 12px rgba(240,192,64,0.6)`,
+    background: "rgba(67,229,255,0.06)",
+    border: `1.5px solid ${CIANO_SUAVE}`,
+    borderRadius: 12,
+    cursor: "pointer",
+    clipPath:
+      "polygon(22% 0, 100% 0, 100% 78%, 78% 100%, 0 100%, 0 22%)",
   },
-  miniLabel: {
-    display: "block",
-    fontSize: 10,
-    letterSpacing: "0.18em",
-    color: "rgba(191,223,255,0.65)",
-    marginBottom: 4,
+  titulo: {
+    margin: 0,
+    color: "#eafcff",
+    fontSize: "clamp(24px, 3.6vw, 44px)",
+    fontWeight: 700,
+    letterSpacing: "0.12em",
+    textShadow: `0 0 18px rgba(67,229,255,0.5)`,
+    whiteSpace: "nowrap",
   },
-  inputNome: {
-    width: "100%",
-    boxSizing: "border-box",
-    background: "rgba(0,0,0,0.35)",
-    border: "1px solid rgba(110,216,255,0.35)",
-    borderRadius: 9,
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: 600,
-    fontFamily: "'Rajdhani', sans-serif",
-    padding: "6px 10px",
-    outline: "none",
+  circuito: {
+    flex: 1,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    minWidth: 0,
   },
-  patente: {
-    color: OURO,
-    fontSize: 14,
-    fontWeight: 600,
-    letterSpacing: "0.04em",
-    marginTop: 7,
+  circuitoLinha: {
+    flex: 1,
+    height: 1,
+    background: `linear-gradient(90deg, ${CIANO_SUAVE}, transparent)`,
   },
-  xpTrilho: {
-    marginTop: 6,
-    height: 6,
-    borderRadius: 6,
-    background: "rgba(255,255,255,0.10)",
+  circuitoNo: { width: 6, height: 6, borderRadius: "50%", background: CIANO, boxShadow: `0 0 6px ${CIANO}` },
+
+  // Corpo
+  corpo: {
+    flex: 1,
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "clamp(12px, 2vw, 26px)",
+    minHeight: 0,
+  },
+  painel: {
+    border: `1px solid ${CIANO_SUAVE}`,
+    borderRadius: 14,
+    padding: "clamp(10px, 1.8vmin, 22px)",
+    display: "flex",
+    flexDirection: "column",
+    gap: "clamp(6px, 1.4vmin, 14px)",
+    background: "rgba(8,20,32,0.35)",
+    overflowY: "auto",
+  },
+  colDireita: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "clamp(10px, 1.8vmin, 22px)",
+    minHeight: 0,
+  },
+
+  // Perfil
+  perfil: {
+    display: "flex",
+    alignItems: "center",
+    gap: "clamp(12px, 1.6vw, 22px)",
+    paddingBottom: "clamp(4px, 1vmin, 12px)",
+  },
+  avatarWrap: { position: "relative", flexShrink: 0 },
+  avatarRing: {
+    width: "clamp(66px, 19vmin, 118px)",
+    height: "clamp(66px, 19vmin, 118px)",
+    borderRadius: "50%",
+    border: `2.5px solid ${CIANO}`,
+    boxShadow: `0 0 20px rgba(67,229,255,0.55), inset 0 0 14px rgba(67,229,255,0.25)`,
+    background: "linear-gradient(145deg,#0e2c42,#06121e)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
     overflow: "hidden",
   },
-  xpBarra: {
-    height: "100%",
-    borderRadius: 6,
-    background: `linear-gradient(90deg, ${AZUL}, #9be9ff)`,
-    boxShadow: `0 0 10px ${AZUL}`,
-    transition: "width .4s ease",
+  avatarImg: { width: "100%", height: "100%", objectFit: "cover" },
+  cameraBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 38,
+    height: 38,
+    borderRadius: "50%",
+    background: "rgba(6,18,28,0.92)",
+    border: `2px solid ${CIANO}`,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    boxShadow: `0 0 10px rgba(67,229,255,0.5)`,
   },
-  xpTxt: {
-    fontSize: 11,
-    color: "rgba(191,223,255,0.7)",
-    marginTop: 4,
-  },
-  statsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 10,
-    marginBottom: 20,
-  },
-  stat: {
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: 12,
-    padding: "12px 6px",
-    textAlign: "center",
-  },
-  statNum: {
-    fontSize: 20,
+  nomeLinha: { display: "flex", alignItems: "center", gap: 10 },
+  nomeInput: {
+    minWidth: 0,
+    width: "100%",
+    maxWidth: 260,
+    background: "transparent",
+    border: "none",
+    borderBottom: "1px solid transparent",
+    color: "#fff",
+    fontSize: "clamp(22px, 2.6vw, 34px)",
     fontWeight: 700,
-    color: AZUL,
-    textShadow: `0 0 10px rgba(110,216,255,0.4)`,
-  },
-  statLbl: {
-    fontSize: 11,
-    letterSpacing: "0.1em",
-    color: "rgba(191,223,255,0.6)",
-    marginTop: 2,
+    letterSpacing: "0.04em",
+    fontFamily: "'Rajdhani', sans-serif",
+    outline: "none",
+    padding: "2px 0",
     textTransform: "uppercase",
   },
-  secao: { marginBottom: 20 },
-  secaoTitulo: {
-    fontSize: 12,
-    letterSpacing: "0.22em",
-    color: AZUL,
+  lapisBtn: { display: "flex", flexShrink: 0, opacity: 0.9 },
+  nivelBadge: {
+    display: "inline-block",
+    marginTop: 10,
+    padding: "4px 16px",
+    borderRadius: 8,
+    border: `1.5px solid ${CIANO}`,
+    color: CIANO,
+    fontSize: "clamp(13px, 1.4vw, 17px)",
     fontWeight: 600,
-    marginBottom: 12,
-    paddingBottom: 6,
-    borderBottom: "1px solid rgba(110,216,255,0.18)",
+    letterSpacing: "0.14em",
   },
+
+  // Linhas de opção
   linha: {
     display: "flex",
     alignItems: "center",
-    gap: 12,
-    padding: "10px 0",
-  },
-  linhaTitulo: {
-    fontSize: 16,
-    fontWeight: 600,
-    color: "#EAFBFF",
-  },
-  linhaDesc: {
-    fontSize: 12,
-    color: "rgba(191,223,255,0.6)",
-    marginTop: 2,
-    lineHeight: 1.3,
-  },
-  sliderTopo: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  valorTag: {
-    fontSize: 13,
-    fontWeight: 700,
-    border: "1px solid",
-    borderRadius: 7,
-    padding: "1px 8px",
-    minWidth: 42,
-    textAlign: "center",
-  },
-  slider: {
-    width: "100%",
-    cursor: "pointer",
-    height: 6,
-  },
-  botaoReset: {
-    width: "100%",
-    padding: "12px",
-    borderRadius: 10,
-    background: "rgba(255,107,107,0.10)",
-    border: `1px solid rgba(255,107,107,0.5)`,
-    color: VERMELHO,
-    fontSize: 15,
-    fontWeight: 600,
-    letterSpacing: "0.06em",
-    cursor: "pointer",
-    fontFamily: "'Rajdhani', sans-serif",
-  },
-  confirmBox: {
-    background: "rgba(255,107,107,0.08)",
-    border: "1px solid rgba(255,107,107,0.4)",
+    gap: "clamp(10px, 1.4vw, 18px)",
+    padding: "clamp(7px, 1.5vmin, 16px) clamp(12px, 1.4vw, 18px)",
+    border: `1px solid rgba(67,229,255,0.16)`,
     borderRadius: 12,
-    padding: 14,
+    background: "rgba(67,229,255,0.03)",
   },
-  confirmTxt: {
-    fontSize: 14,
-    color: "#ffdede",
-    marginBottom: 12,
-  },
-  botaoConfirma: {
-    flex: 1,
-    padding: "10px",
-    borderRadius: 9,
-    background: VERMELHO,
-    border: "none",
-    color: "#2a0a0a",
-    fontSize: 14,
-    fontWeight: 700,
-    cursor: "pointer",
-    fontFamily: "'Rajdhani', sans-serif",
-  },
-  botaoCancela: {
-    flex: 1,
-    padding: "10px",
-    borderRadius: 9,
-    background: "transparent",
-    border: "1px solid rgba(255,255,255,0.3)",
-    color: "#cfe6ff",
-    fontSize: 14,
+  linhaIcone: { display: "flex", flexShrink: 0 },
+  linhaLabel: {
+    color: "#eafcff",
+    fontSize: "clamp(15px, 1.7vw, 21px)",
     fontWeight: 600,
-    cursor: "pointer",
-    fontFamily: "'Rajdhani', sans-serif",
+    whiteSpace: "nowrap",
   },
-  nuvem: {
+  linhaSub: {
+    color: "rgba(180,210,230,0.6)",
+    fontSize: "clamp(12px, 1.3vw, 15px)",
+    marginTop: 2,
+    fontWeight: 400,
+  },
+
+  // Select idioma
+  selectWrap: { marginLeft: "auto", position: "relative", display: "flex", alignItems: "center" },
+  select: {
+    appearance: "none",
+    WebkitAppearance: "none",
+    background: "transparent",
+    border: "none",
+    color: "#cfeaff",
+    fontSize: "clamp(14px, 1.5vw, 19px)",
+    fontFamily: "'Rajdhani', sans-serif",
+    fontWeight: 500,
+    paddingRight: 22,
+    textAlign: "right",
+    cursor: "pointer",
+    outline: "none",
+    direction: "rtl",
+  },
+  chevron: { position: "absolute", right: 0, color: CIANO, pointerEvents: "none", fontSize: 16 },
+
+  emailValor: {
+    marginLeft: "auto",
+    color: "rgba(200,225,240,0.85)",
+    fontSize: "clamp(13px, 1.45vw, 18px)",
+    fontWeight: 400,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  cadeado: { display: "flex", flexShrink: 0, marginLeft: 12, opacity: 0.8 },
+
+  // Toggle
+  toggle: (ativo) => ({
+    marginLeft: "auto",
+    width: 62,
+    height: 32,
+    flexShrink: 0,
+    borderRadius: 32,
+    border: `1.5px solid ${ativo ? CIANO : "rgba(255,255,255,0.25)"}`,
+    background: ativo ? "rgba(67,229,255,0.25)" : "rgba(255,255,255,0.06)",
+    boxShadow: ativo ? `0 0 14px rgba(67,229,255,0.55)` : "none",
+    position: "relative",
+    cursor: "pointer",
+    transition: "all .2s ease",
+    padding: 0,
+  }),
+  toggleKnob: (ativo) => ({
+    position: "absolute",
+    top: 3,
+    left: ativo ? 33 : 3,
+    width: 24,
+    height: 24,
+    borderRadius: "50%",
+    background: ativo ? CIANO : "#8fa3b0",
+    boxShadow: ativo ? `0 0 12px ${CIANO}` : "none",
+    transition: "left .2s ease, background .2s ease",
+  }),
+
+  // Cards de volume
+  cardVolume: {
+    flex: 1,
+    display: "flex",
+    alignItems: "center",
+    gap: "clamp(14px, 1.8vw, 24px)",
+    border: `1px solid ${CIANO_SUAVE}`,
+    borderRadius: 14,
+    padding: "clamp(12px, 2.2vmin, 26px) clamp(16px, 2.2vw, 30px)",
+    background: "rgba(8,20,32,0.35)",
+  },
+  hexIcone: {
+    width: "clamp(48px, 8vmin, 72px)",
+    height: "clamp(48px, 8vmin, 72px)",
+    flexShrink: 0,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    fontSize: 12,
-    letterSpacing: "0.06em",
-    color: "rgba(191,223,255,0.7)",
-    marginBottom: 16,
+    border: `1.5px solid ${CIANO_SUAVE}`,
+    background: "rgba(67,229,255,0.05)",
+    clipPath:
+      "polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%)",
   },
-  nuvemPonto: {
-    width: 8,
-    height: 8,
-    borderRadius: "50%",
-    boxShadow: `0 0 8px ${AZUL}`,
+  volTitulo: {
+    color: "#eafcff",
+    fontSize: "clamp(16px, 1.9vw, 24px)",
+    fontWeight: 600,
+    marginBottom: "clamp(6px, 1.6vmin, 16px)",
   },
-  fechar: {
-    width: "100%",
-    padding: 15,
-    background: `linear-gradient(135deg, ${AZUL}, #4fc3f0)`,
-    color: "#04121e",
-    border: "none",
-    borderRadius: 12,
-    fontSize: 18,
+  sliderLinha: { display: "flex", alignItems: "center", gap: "clamp(10px, 1.4vw, 18px)" },
+  sliderPct: {
+    color: "#eafcff",
+    fontSize: "clamp(16px, 1.9vw, 24px)",
     fontWeight: 700,
-    letterSpacing: "0.1em",
-    cursor: "pointer",
-    boxShadow: `0 0 22px rgba(110,216,255,0.5)`,
-    fontFamily: "'Rajdhani', sans-serif",
+    minWidth: 58,
+    textAlign: "right",
+    flexShrink: 0,
   },
 };

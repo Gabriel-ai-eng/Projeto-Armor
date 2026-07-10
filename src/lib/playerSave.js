@@ -40,11 +40,15 @@ export function estadoInicial() {
     prefs: {
       zoomPerto: false,
       relogioAtivo: false,
-      // Novas preferências editáveis no painel de Configurações (persistidas no
-      // mesmo JSON `state` da tabela armor_game_state → salvas no Supabase).
-      nomePiloto: '',       // nome exibido no perfil da tela inicial
-      volume: 70,           // volume mestre (0..100) — usado no feedback sonoro da UI
-      sensibilidade: 50,    // sensibilidade da mira (0..100) — afeta a zona morta do joystick
+      // Preferências editáveis no painel de Configurações (persistidas no mesmo
+      // JSON `state` da tabela armor_game_state → salvas no Supabase).
+      nomePiloto: '',        // nome exibido no perfil da tela inicial
+      volume: 70,            // (legado) volume mestre — mantido por compat
+      volumeMusica: 70,      // volume da música (0..100)
+      volumeEfeitos: 85,     // volume dos efeitos (0..100) — feedback sonoro da UI
+      sensibilidade: 50,     // sensibilidade da mira (0..100) — zona morta do joystick
+      idioma: 'pt-BR',       // idioma da interface
+      vibracao: true,        // vibração ao atirar/acertar
     },
     stats: { sessoes: 0, tempoJogadoSeg: 0, primeiraVez: null, ultimaVez: null },
     progresso: { nivel: 0, xp: 0 },
@@ -82,6 +86,13 @@ export async function carregarEstado() {
     console.warn('[armor] falha ao carregar estado:', e && e.message);
     return estadoInicial();
   }
+}
+
+// E-mail da conta logada (Supabase Auth) — só leitura, para exibir no painel de
+// Configurações. null quando não há sessão (jogo aberto fora da plataforma).
+export async function emailDaConta() {
+  const { data } = await supabase.auth.getSession();
+  return data?.session?.user?.email || null;
 }
 
 // Busca a foto de perfil que o jogador já tem na plataforma AlpsPrime (tabela

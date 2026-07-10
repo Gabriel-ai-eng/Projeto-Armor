@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { carregarEstado, salvarEstado, estadoInicial, carregarFotoPerfil } from '../lib/playerSave';
+import { carregarEstado, salvarEstado, estadoInicial, carregarFotoPerfil, emailDaConta } from '../lib/playerSave';
 import { ALT, RENDER_SCALE, ZOOM_PERTO, AZUL } from './ajustes';
 import { asset, BOTOES_INICIO } from './sprites';
 import { calcularSol } from './mundo';
@@ -45,7 +45,9 @@ export default function ProjetoArmor({ onVoltar }) {
   const [nivel, setNivel] = useState(0);
   const [nomePiloto, setNomePiloto] = useState('');
   const [fotoPerfil, setFotoPerfil] = useState(null);
+  const [emailConta, setEmailConta] = useState(null);
   const sensibilidadeRef = useRef(50);
+  const vibracaoRef = useRef(true);
 
   const btnRefs = useRef({});
   const arrastoMenuRef = useRef({ ativo: false, atual: null, inicio: null, vagou: false });
@@ -226,6 +228,7 @@ export default function ProjetoArmor({ onVoltar }) {
       setNomePiloto(est.prefs.nomePiloto || '');
       sensibilidadeRef.current =
         typeof est.prefs.sensibilidade === 'number' ? est.prefs.sensibilidade : 50;
+      vibracaoRef.current = est.prefs.vibracao !== false;
       estadoRef.current = est;
       carregadoRef.current = true;
       await salvarEstado(est);
@@ -237,6 +240,12 @@ export default function ProjetoArmor({ onVoltar }) {
     (async () => {
       const url = await carregarFotoPerfil();
       if (vivo && url) setFotoPerfil(url);
+    })();
+
+    // E-mail da conta (só leitura, exibido no painel de Configurações).
+    (async () => {
+      const mail = await emailDaConta();
+      if (vivo) setEmailConta(mail);
     })();
 
     return () => {
@@ -332,6 +341,7 @@ export default function ProjetoArmor({ onVoltar }) {
       solRef,
       moveRef,
       aimRef,
+      vibracaoRef,
     });
 
     loop.start();
@@ -384,25 +394,12 @@ export default function ProjetoArmor({ onVoltar }) {
     estadoRef.current.prefs[chave] = valor;
     if (chave === 'nomePiloto') setNomePiloto(valor);
     if (chave === 'sensibilidade') sensibilidadeRef.current = valor;
+    if (chave === 'vibracao') vibracaoRef.current = valor;
   };
 
   const persistirEstado = () => {
     if (!carregadoRef.current) return Promise.resolve(false);
     return salvarEstado(estadoRef.current);
-  };
-
-  // Zera o progresso do jogador (nome, nível, posição, preferências) e grava.
-  const resetarProgresso = () => {
-    const novo = estadoInicial();
-    estadoRef.current = novo;
-    setNomePiloto('');
-    setNivel(0);
-    sensibilidadeRef.current = novo.prefs.sensibilidade;
-    zoomAlvoRef.current = 1;
-    setZoomPerto(false);
-    relogioAtivoRef.current = false;
-    setRelogioAtivo(false);
-    return persistirEstado();
   };
 
   // Alterna o zoom da câmera (perto/longe) e salva a preferência.
@@ -742,13 +739,10 @@ export default function ProjetoArmor({ onVoltar }) {
           onClose={() => setMostrarConfig(false)}
           estado={estadoRef.current}
           nivel={nivel}
-          zoomPerto={zoomPerto}
-          relogioAtivo={relogioAtivo}
+          fotoPerfil={fotoPerfil}
+          email={emailConta}
           onAplicarPref={aplicarPref}
           onPersistir={persistirEstado}
-          onToggleZoom={alternarZoom}
-          onToggleRelogio={ativarRelogio}
-          onResetar={resetarProgresso}
         />
       )}
 

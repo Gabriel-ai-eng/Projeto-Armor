@@ -24,7 +24,7 @@ import { lerpArr, rgbStr, rgbaStr, jumpArc, faseDia } from './mundo';
 
 // deps: { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef }
 export function criarLoop(deps) {
-  const { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef } = deps;
+  const { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef, vibracaoRef } = deps;
   let raf;
 
   const passo = () => {
@@ -276,6 +276,10 @@ export function criarLoop(deps) {
       g.projeteis.push({ tipo: 'tiro', x: ox + dir.x * 12, y: oy + dir.y * 12, vx: dir.x * VEL_TIRO, vy: dir.y * VEL_TIRO, vida: 90 });
       g.tiroCd = COOLDOWN_TIRO;
       if (g.projeteis.length > 90) g.projeteis.shift();
+      // Vibração ao atirar (preferência do painel de Configurações).
+      if (vibracaoRef && vibracaoRef.current && typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(12);
+      }
     }
 
     ctx.globalCompositeOperation = 'lighter';
