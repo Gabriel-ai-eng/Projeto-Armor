@@ -67,16 +67,24 @@ export const CAMADAS = {
     // personagem (ex.: { tile: 'caixaP1', x: 500, y: 30 })
   ],
   luzes: [
-    // Cubo holográfico: apoiado no topo da plataforma (topo = baseZ 40 − 85)
-    { luz: 'cubo', grupo: 'cubo', x: 738, y: -252 },
-    // Barras/aro da plataforma: exatamente sobre o tile apagado
-    { luz: 'plataformaLuz', grupo: 'plataforma', x: 676, y: -45 },
+    // `plano` diz ONDE a luz entra no desenho, para NUNCA cobrir o personagem
+    // indevidamente:
+    //   'fundo'  → logo após a parede (janelas, lâmpadas)
+    //   'chao'   → logo após o piso (linha do rodapé, reflexos)
+    //   baseZ    → entra no DEPTH SORTING junto com objetos e personagem
+    //              (luzes presas a um objeto, como a plataforma e o cubo)
+
+    // Cubo holográfico: apoiado no topo da plataforma; baseZ um pouco antes
+    // do da plataforma (ele "nasce" do centro dela, atrás da borda frontal)
+    { luz: 'cubo', grupo: 'cubo', x: 738, y: -252, baseZ: 32 },
+    // Barras/aro da plataforma: coladas ao tile apagado, mesmo z dele
+    { luz: 'plataformaLuz', grupo: 'plataforma', x: 676, y: -45, baseZ: 40.5 },
     // Linha luminosa do rodapé, atravessando o mundo inteiro
-    { luz: 'linhaPiso', grupo: 'linhaPiso', repetirX: true, y: -5 },
+    { luz: 'linhaPiso', grupo: 'linhaPiso', repetirX: true, y: -5, plano: 'chao' },
     // Reflexo do cubo/plataforma no piso, em frente à plataforma
-    { luz: 'reflexo', grupo: 'reflexo', x: 680, y: 40 },
-    ...LAMPADAS_X.map((x) => ({ luz: 'lampadaLuz', grupo: 'lampadas', x: x - 16, y: -247 })),
-    ...JANELAS_X.map((x) => ({ luz: 'janelaLuz', grupo: 'janelas', x, y: -262 })),
+    { luz: 'reflexo', grupo: 'reflexo', x: 680, y: 40, plano: 'chao' },
+    ...LAMPADAS_X.map((x) => ({ luz: 'lampadaLuz', grupo: 'lampadas', x: x - 16, y: -247, plano: 'fundo' })),
+    ...JANELAS_X.map((x) => ({ luz: 'janelaLuz', grupo: 'janelas', x, y: -262, plano: 'fundo' })),
   ],
 };
 

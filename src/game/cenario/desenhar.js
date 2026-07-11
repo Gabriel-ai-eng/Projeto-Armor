@@ -59,6 +59,23 @@ export function criarCenario({ tileset, emissivo }) {
     }
   };
 
+  // desenha UMA luz emissiva tintada pela cor atual do grupo
+  const luzItem = (ctx, it, de, ate, t, corCeu, fase) => {
+    const g = LUZ.grupos[it.grupo];
+    if (!g) return;
+    const r = LUZES_SPRITES[it.luz], s = TAM_LUZ[it.luz];
+    const alfa = intensidadeAgora(g, t, fase);
+    if (alfa <= 0.01) return;
+    const cor = g.seguirCeu && corCeu ? corCeu : corFinal(g);
+    if (it.repetirX) {
+      const x0 = Math.floor(de / s.w) * s.w;
+      for (let x = x0; x < ate; x += s.w)
+        tintar(ctx, emissivo, r, x, it.y, s.w, s.h, cor, alfa);
+    } else if (!(it.x + s.w < de || it.x > ate)) {
+      tintar(ctx, emissivo, r, it.x, it.y, s.w, s.h, cor, alfa);
+    }
+  };
+
   // Objetos com profundidade: cada um vira { z, desenhar } para o render
   // ordenar junto com o personagem (menor z = mais ao fundo = desenha antes).
   const objetos = CAMADAS.objetos.map((it) => ({
@@ -68,6 +85,17 @@ export function criarCenario({ tileset, emissivo }) {
       tile(ctx, it.tile, it.x, it.baseZ - s.h);
     },
   }));
+  // Luzes presas a objetos (com baseZ) também entram no depth sorting — assim
+  // o personagem NA FRENTE da plataforma não é cortado pelas barras/cubo.
+  let faseObj = 0;
+  for (const it of CAMADAS.luzes) {
+    if (it.baseZ === undefined) continue;
+    const fase = (faseObj += 1.7);
+    objetos.push({
+      z: it.baseZ,
+      desenhar: (ctx, t, corCeu) => luzItem(ctx, it, -1e9, 1e9, t, corCeu, fase),
+    });
+  }
 
   return {
     // Parede, colunas, vigas, janelas e lâmpadas + teto/fundo escuros
@@ -86,24 +114,17 @@ export function criarCenario({ tileset, emissivo }) {
     desenharFrente(ctx, de, ate) {
       camadaBase(ctx, CAMADAS.frente, de, ate);
     },
-    // Emissivos tintados na hora. `corCeu` (opcional) pinta os grupos com
-    // `seguirCeu` (janelas acompanham a fase do dia do relógio do jogo).
-    desenharLuzes(ctx, de, ate, t, corCeu) {
-      let fase = 0;
+    // Emissivos tintados na hora, filtrados por `plano` ('fundo' | 'chao').
+    // As luzes com baseZ NÃO passam por aqui: entram em itensProfundidade.
+    // `corCeu` (opcional) pinta os grupos com `seguirCeu` (janelas
+    // acompanham a fase do dia do relógio do jogo).
+    desenharLuzes(ctx, de, ate, t, corCeu, plano) {
+      let fase = 100;   // fases distintas das luzes com baseZ
       for (const it of CAMADAS.luzes) {
-        const g = LUZ.grupos[it.grupo];
-        if (!g) continue;
-        const r = LUZES_SPRITES[it.luz], s = TAM_LUZ[it.luz];
-        const alfa = intensidadeAgora(g, t, (fase += 1.7));
-        if (alfa <= 0.01) continue;
-        const cor = g.seguirCeu && corCeu ? corCeu : corFinal(g);
-        if (it.repetirX) {
-          const x0 = Math.floor(de / s.w) * s.w;
-          for (let x = x0; x < ate; x += s.w)
-            tintar(ctx, emissivo, r, x, it.y, s.w, s.h, cor, alfa);
-        } else if (!(it.x + s.w < de || it.x > ate)) {
-          tintar(ctx, emissivo, r, it.x, it.y, s.w, s.h, cor, alfa);
-        }
+        if (it.baseZ !== undefined) continue;
+        const f = (fase += 1.7);
+        if ((it.plano || 'fundo') !== plano) continue;
+        luzItem(ctx, it, de, ate, t, corCeu, f);
       }
     },
     // Véu de luz ambiente (em coordenadas de TELA, depois do restore)

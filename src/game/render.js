@@ -167,8 +167,12 @@ export function criarLoop(deps) {
     ctx.translate(VW / 2, ALT / 2); ctx.scale(Z, Z); ctx.translate(-fx, -fy);
 
     const leftW = fx - halfWNow - 60, rightW = fx + halfWNow + 60;
-    cen.desenharFundo(ctx, leftW, rightW);   // parede, colunas, janelas, lâmpadas
-    cen.desenharChao(ctx, leftW, rightW);    // piso
+    // Fundo e piso — com as luzes de cada plano DESENHADAS JUNTO, para nada
+    // do cenário de trás (linha do rodapé, lâmpadas…) cobrir o personagem
+    cen.desenharFundo(ctx, leftW, rightW);                        // parede, colunas, janelas, lâmpadas
+    cen.desenharLuzes(ctx, leftW, rightW, g.t, corCeu, 'fundo');  // luz das janelas/lâmpadas
+    cen.desenharChao(ctx, leftW, rightW);                         // piso
+    cen.desenharLuzes(ctx, leftW, rightW, g.t, corCeu, 'chao');   // linha do rodapé, reflexos
 
     // Pés do personagem: profundidade no piso (z) menos a altura (pulo/voo)
     const corpoY = p.z - p.y;
@@ -231,16 +235,16 @@ export function criarLoop(deps) {
     };  // fim de desenharPersonagem
 
     // ===== DEPTH SORTING =====
-    // Objetos do cenário + personagem, ordenados pelo z da base (menor z =
-    // mais ao fundo, desenha antes) — é o que deixa o personagem ficar ATRÁS
-    // das caixas/plataforma ou NA FRENTE delas conforme anda pelo piso.
+    // Objetos do cenário (e as luzes presas a eles, como cubo/plataforma) +
+    // personagem, ordenados pelo z da base (menor z = mais ao fundo, desenha
+    // antes) — é o que deixa o personagem ficar ATRÁS das caixas/plataforma
+    // ou NA FRENTE delas conforme anda pelo piso, sem nada cobri-lo por erro.
     const itens = cen.itensProfundidade();
     itens.push({ z: p.z, desenhar: desenharPersonagem });
     itens.sort((a, b) => a.z - b.z);
-    for (const it of itens) it.desenhar(ctx);
+    for (const it of itens) it.desenhar(ctx, g.t, corCeu);
 
-    cen.desenharFrente(ctx, leftW, rightW);              // camada "frente"
-    cen.desenharLuzes(ctx, leftW, rightW, g.t, corCeu);  // emissivos tintados
+    cen.desenharFrente(ctx, leftW, rightW);   // camada "frente"
 
     // ===== MIRA =====
     const ox = p.x + p.face * 4, oy = corpoY - alturaCorpo * 0.55;
