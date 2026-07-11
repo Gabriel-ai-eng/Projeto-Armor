@@ -7,6 +7,7 @@ export function criarControles(deps) {
     setKnobOff,
     setMiraOff,
     setVoarAtivo,
+    setLutarAtivo,
 
     moveRef,
     aimRef,
@@ -318,6 +319,31 @@ export function criarControles(deps) {
   };
 
   // ==========================================================
+  // BOTÃO LUTAR (golpe/rajada dourada — dispara o "missil" reservado
+  // no estado do jogo; o cooldown e o disparo em si vivem no render.js)
+  // ==========================================================
+
+  const lutarPress = (e) => {
+
+    e.preventDefault();
+
+    try {
+      e.currentTarget.setPointerCapture(
+        e.pointerId
+      );
+    } catch {}
+
+    const g = G.current;
+    if (g) g.missilQueued = true;
+
+    setLutarAtivo(true);
+  };
+
+  const lutarRelease = () => {
+    setLutarAtivo(false);
+  };
+
+  // ==========================================================
   // JOYSTICK MIRAR
   // ==========================================================
 
@@ -463,6 +489,9 @@ export function criarControles(deps) {
 
     voarPress,
     voarRelease,
+
+    lutarPress,
+    lutarRelease,
 
     miraInicio,
     miraMover,

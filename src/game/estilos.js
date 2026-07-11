@@ -115,6 +115,63 @@ export const CSS_ARMOR = `
   }
 
   .joy-pulse { animation: joyPulse 3s ease-in-out infinite; }
+
+  /* === BOTÕES DE AÇÃO (Pular / Lutar) — mesmo idioma visual dos joysticks:
+     vidro translúcido, brilho difuso, sem nenhuma imagem. === */
+  .armor-action-btn {
+    position: absolute;
+    border-radius: 50%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    backdrop-filter: blur(0.5px);
+    transition: box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+  .armor-action-btn svg { width: 42%; height: 42%; }
+
+  .armor-action-btn.is-voar {
+    background: radial-gradient(circle at 32% 32%, rgba(130,210,255,0.16) 0%, rgba(60,140,200,0.05) 55%, transparent 100%);
+    border: 1px solid rgba(130,200,255,0.3);
+    color: rgba(190,230,255,0.8);
+    box-shadow:
+      0 0 16px rgba(130,200,255,0.18),
+      inset 0 0 18px rgba(130,200,255,0.06),
+      inset 0 1px 2px rgba(255,255,255,0.06);
+  }
+  .armor-action-btn.is-voar.is-ativo {
+    background: radial-gradient(circle at 32% 32%, rgba(160,225,255,0.38) 0%, rgba(80,170,230,0.12) 55%, transparent 100%);
+    border-color: rgba(190,230,255,0.8);
+    color: #eaf8ff;
+    box-shadow:
+      0 0 20px rgba(130,210,255,0.55),
+      0 0 42px rgba(96,180,255,0.32),
+      inset 0 0 20px rgba(160,220,255,0.16);
+  }
+
+  .armor-action-btn.is-lutar {
+    background: radial-gradient(circle at 32% 32%, rgba(255,200,110,0.16) 0%, rgba(200,140,50,0.05) 55%, transparent 100%);
+    border: 1px solid rgba(240,192,64,0.32);
+    color: rgba(255,214,140,0.82);
+    box-shadow:
+      0 0 16px rgba(240,192,64,0.16),
+      inset 0 0 18px rgba(240,192,64,0.06),
+      inset 0 1px 2px rgba(255,255,255,0.06);
+  }
+  .armor-action-btn.is-lutar.is-ativo {
+    background: radial-gradient(circle at 32% 32%, rgba(255,216,140,0.42) 0%, rgba(220,160,60,0.12) 55%, transparent 100%);
+    border-color: rgba(255,222,150,0.85);
+    color: #fff3da;
+    box-shadow:
+      0 0 20px rgba(240,192,64,0.55),
+      0 0 42px rgba(240,170,50,0.32),
+      inset 0 0 20px rgba(255,210,120,0.16);
+  }
 `;
 
 export const es = {
@@ -129,8 +186,10 @@ export const es = {
   joyZona: { position: 'absolute', left: 0, bottom: 0, width: '50%', top: '22%', zIndex: 25, touchAction: 'none', background: 'transparent' },
 
   // FUTURISTA: Joystick de MOVER com design cinematográfico transparente
+  // (mais para dentro da tela — antes ficava com metade do círculo cortada
+  // pela borda esquerda em telas mais estreitas)
   joyBase: {
-    position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1',
+    position: 'absolute', left: '21%', top: '78.1%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1',
     transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none',
     zIndex: 26, boxSizing: 'border-box', borderRadius: '50%',
     background: 'radial-gradient(circle at center, rgba(130, 200, 255, 0.05) 0%, rgba(60, 120, 180, 0.02) 70%, transparent 100%)',
@@ -146,7 +205,7 @@ export const es = {
   },
 
   joyKnob: {
-    position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(38px,5.6vw,62px)', aspectRatio: '1',
+    position: 'absolute', left: '21%', top: '78.1%', width: 'clamp(38px,5.6vw,62px)', aspectRatio: '1',
     pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27,
     transition: 'transform 0.07s ease-out',
     boxSizing: 'border-box', borderRadius: '50%',
@@ -161,12 +220,19 @@ export const es = {
     `
   },
   
-  botaoVoar: { position: 'absolute', left: '78.7%', top: '83.8%', width: 'clamp(54px,7.9vw,90px)', aspectRatio: '1', transformOrigin: 'center', transition: 'transform 0.1s ease', zIndex: 28, cursor: 'pointer', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' },
+  // Botões de ação (Pular/Lutar): posicionados entre os dois joysticks, um
+  // pouco acima da linha deles, formando um par diagonal — igual ao padrão
+  // de jogos de ação mobile. Estilo visual vem da classe .armor-action-btn
+  // (CSS_ARMOR); aqui só posição/tamanho.
+  botaoVoar: { position: 'absolute', left: '67%', top: '86%', width: 'clamp(50px,7.3vw,80px)', aspectRatio: '1', transformOrigin: 'center', transition: 'transform 0.1s ease', zIndex: 28 },
+  botaoLutar: { position: 'absolute', left: '58%', top: '70%', width: 'clamp(46px,6.6vw,72px)', aspectRatio: '1', transformOrigin: 'center', transition: 'transform 0.1s ease', zIndex: 28 },
   miraZona: { position: 'absolute', left: '50%', top: '22%', right: 0, bottom: 0, zIndex: 25, touchAction: 'none', background: 'transparent' },
 
   // FUTURISTA: Joystick de MIRAR com design cinematográfico transparente
+  // (mais para dentro da tela — antes ficava com metade do círculo cortada
+  // pela borda direita em telas mais estreitas)
   miraBase: {
-    position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1',
+    position: 'absolute', left: '79%', top: '80.9%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1',
     transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none',
     zIndex: 26, boxSizing: 'border-box', borderRadius: '50%',
     background: 'radial-gradient(circle at center, rgba(130, 200, 255, 0.05) 0%, rgba(60, 120, 180, 0.02) 70%, transparent 100%)',
@@ -182,7 +248,7 @@ export const es = {
   },
 
   miraKnob: {
-    position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(48px,7.1vw,80px)', aspectRatio: '1',
+    position: 'absolute', left: '79%', top: '80.9%', width: 'clamp(48px,7.1vw,80px)', aspectRatio: '1',
     pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27,
     transition: 'transform 0.04s ease-out',
     boxSizing: 'border-box', borderRadius: '50%',

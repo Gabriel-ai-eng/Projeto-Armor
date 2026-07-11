@@ -55,6 +55,7 @@ export default function ProjetoArmor({ onVoltar }) {
   const [knobOff, setKnobOff] = useState({ x: 0, y: 0 });
   const [miraOff, setMiraOff] = useState({ x: 0, y: 0 });
   const [voarAtivo, setVoarAtivo] = useState(false);
+  const [lutarAtivo, setLutarAtivo] = useState(false);
 
   const [paisagem, setPaisagem] = useState(
     typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : true
@@ -444,6 +445,8 @@ export default function ProjetoArmor({ onVoltar }) {
     joyFim,
     voarPress,
     voarRelease,
+    lutarPress,
+    lutarRelease,
     miraInicio,
     miraMover,
     miraFim,
@@ -451,6 +454,7 @@ export default function ProjetoArmor({ onVoltar }) {
     setKnobOff,
     setMiraOff,
     setVoarAtivo,
+    setLutarAtivo,
     moveRef,
     aimRef,
     joyBaseRef,
@@ -569,9 +573,10 @@ export default function ProjetoArmor({ onVoltar }) {
             />
           </div>
 
-          <img
-            src={asset('botao-voar.webp')}
-            alt="Voar"
+          <div
+            className={`armor-action-btn is-voar${voarAtivo ? ' is-ativo' : ''}`}
+            role="button"
+            aria-label="Pular"
             draggable="false"
             onPointerDown={voarPress}
             onPointerUp={voarRelease}
@@ -580,9 +585,34 @@ export default function ProjetoArmor({ onVoltar }) {
             onContextMenu={(e) => e.preventDefault()}
             style={{
               ...es.botaoVoar,
-              transform: `translate(-50%, -50%) scale(${voarAtivo ? 1.08 : 1})`,
+              transform: `translate(-50%, -50%) scale(${voarAtivo ? 1.1 : 1})`,
             }}
-          />
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 13.5L12 6l7 7.5" />
+              <path d="M5 19L12 11.5L19 19" opacity="0.55" />
+            </svg>
+          </div>
+
+          <div
+            className={`armor-action-btn is-lutar${lutarAtivo ? ' is-ativo' : ''}`}
+            role="button"
+            aria-label="Lutar"
+            draggable="false"
+            onPointerDown={lutarPress}
+            onPointerUp={lutarRelease}
+            onPointerCancel={lutarRelease}
+            onPointerLeave={lutarRelease}
+            onContextMenu={(e) => e.preventDefault()}
+            style={{
+              ...es.botaoLutar,
+              transform: `translate(-50%, -50%) scale(${lutarAtivo ? 1.1 : 1})`,
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <path d="M13 2L4.5 14h5.7l-1.4 8L19 9.5h-5.8z" />
+            </svg>
+          </div>
 
           <div
             style={es.miraZona}

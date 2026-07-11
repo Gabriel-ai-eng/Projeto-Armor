@@ -29,6 +29,8 @@ export const LIMIAR_CORRER = 0.75;   // inclinação do joystick que dispara a c
 export const GRAV = 0.5, JUMP_V = 10, FLY_THRUST = 0.92, VY_MAX = 4.4, VY_FALL = 11, ALT_MAX = 210;
 
 // ---------- Armas ----------
+// TIRO: automático enquanto mira (joystick direito). MISSIL: golpe/rajada
+// dourada disparada pelo botão LUTAR — mais forte e com cooldown maior.
 export const COOLDOWN_TIRO = 8, COOLDOWN_MISSIL = 26, VEL_TIRO = 15, VEL_MISSIL = 8.5;
 
 // ---------- Cores ----------

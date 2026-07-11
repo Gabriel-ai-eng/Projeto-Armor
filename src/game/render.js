@@ -13,7 +13,7 @@
 import {
   RENDER_SCALE, WORLD_W, ALT, ALTURA_ARMOR, ALTURA_IMG_CHAO, LINHA_PES,
   VEL_ANDAR, VEL_CORRER, LIMIAR_CORRER, GRAV, FLY_THRUST, VY_MAX, VY_FALL, ALT_MAX,
-  COOLDOWN_TIRO, VEL_TIRO, AZUL_RGB, OURO_RGB, NOITE, DIA, CREP,
+  COOLDOWN_TIRO, VEL_TIRO, COOLDOWN_MISSIL, VEL_MISSIL, AZUL_RGB, OURO_RGB, NOITE, DIA, CREP,
 } from './ajustes';
 import {
   SPRITE_OLHA_PARA, FRAMES_ANDAR, FRAMES_CORRER, FRAME_PARADO, FRAMES_PARADO_ANIM,
@@ -281,6 +281,18 @@ export function criarLoop(deps) {
         navigator.vibrate(12);
       }
     }
+
+    // ===== GOLPE (botão LUTAR) — rajada dourada, mais forte que o tiro =====
+    if (g.missilCd > 0) g.missilCd--;
+    if (g.missilQueued && g.missilCd <= 0) {
+      g.projeteis.push({ tipo: 'missil', x: ox + dir.x * 12, y: oy + dir.y * 12, vx: dir.x * VEL_MISSIL, vy: dir.y * VEL_MISSIL, vida: 140 });
+      g.missilCd = COOLDOWN_MISSIL;
+      if (g.projeteis.length > 90) g.projeteis.shift();
+      if (vibracaoRef && vibracaoRef.current && typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(22);
+      }
+    }
+    g.missilQueued = false;
 
     ctx.globalCompositeOperation = 'lighter';
     for (let i = g.projeteis.length - 1; i >= 0; i--) {
