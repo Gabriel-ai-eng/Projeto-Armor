@@ -40,6 +40,7 @@ export const PARADO_FPS = PARADO.fps;
 // ---- CORRER (js/assets/armor-correr.js) ----
 export const SPRITE_CORRER = url(CORRER.src);
 export const FRAMES_CORRER = CORRER.frames;
+export const CORRER_ALTURA_REL = CORRER.alturaRel ?? 1;
 
 // ---- PULAR / grade (js/assets/armor-pular.js) ----
 export const SPRITE_PULAR = url(PULAR.src);

@@ -8,7 +8,7 @@
 // ============================================================
 import {
   SPRITE_ANDAR, SPRITE_CORRER, SPRITE_PULAR, SPRITE_PARADO_ANIM, IMG_CHAO,
-  FRAMES_ANDAR, FRAMES_CORRER, FRAMES_PARADO_ANIM,
+  FRAMES_ANDAR, FRAMES_CORRER, FRAMES_PARADO_ANIM, CORRER_ALTURA_REL,
   PULAR_COLS, PULAR_ROWS, PULAR_FRAMES,
 } from './sprites';
 
@@ -21,30 +21,40 @@ const carregar = (src, cors) =>
   });
 
 // Mede, quadro a quadro de uma tira horizontal, a base (pés) e o centro do
-// corpo — para o motor ancorar o personagem no chão sem tremor.
-const calibrar = (img, nFrames) => {
+// corpo — para o motor ancorar o personagem no chão sem tremor. `excluir`
+// (opcional) ignora pixels de efeito (jato/poeira), como na calibrarGrade.
+// Também devolve `areaR`: a área de pixels do corpo (mediana dos quadros,
+// normalizada pela altura² da folha) — medida que quase não muda com a pose,
+// usada para IGUALAR o tamanho entre folhas que não têm pose em pé (correr).
+const calibrar = (img, nFrames, excluir) => {
   try {
     const CW = 200 * nFrames, CH = Math.max(1, Math.round(img.height * (CW / img.width)));
     const c = document.createElement('canvas'); c.width = CW; c.height = CH;
     const cx = c.getContext('2d'); cx.drawImage(img, 0, 0, CW, CH);
-    const fw = CW / nFrames; const frames = []; let maiorCorpo = 0;
+    const fw = CW / nFrames; const frames = []; let maiorCorpo = 0; const areas = [];
     for (let f = 0; f < nFrames; f++) {
       const x0 = Math.round(f * fw), W = Math.round(fw);
       const data = cx.getImageData(x0, 0, W, CH).data;
-      let top = CH, bot = -1, esq = W, dir = -1;
-      for (let y = 0; y < CH; y++) for (let x = 0; x < W; x++)
-        if (data[(y * W + x) * 4 + 3] > 12) {
-          if (y < top) top = y; if (y > bot) bot = y;
-          if (x < esq) esq = x; if (x > dir) dir = x;
-        }
+      let top = CH, bot = -1, esq = W, dir = -1, area = 0;
+      for (let y = 0; y < CH; y++) for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 4;
+        if (data[i + 3] <= 12) continue;
+        if (excluir && excluir(data[i], data[i + 1], data[i + 2])) continue;
+        area++;
+        if (y < top) top = y; if (y > bot) bot = y;
+        if (x < esq) esq = x; if (x > dir) dir = x;
+      }
       if (bot < 0) { frames.push(null); continue; }
       const corpo = bot - top + 1; if (corpo > maiorCorpo) maiorCorpo = corpo;
+      areas.push(area);
       frames.push({ botR: bot / CH, cxR: (esq + dir) / 2 / W });
     }
     const valido = frames.find(f => f !== null);
     if (!valido || maiorCorpo === 0) return null;
     for (let f = 0; f < nFrames; f++) if (!frames[f]) frames[f] = valido;
-    return { frames, corpoR: maiorCorpo / CH };
+    areas.sort((a, b) => a - b);
+    const areaR = areas[Math.floor(areas.length / 2)] / (CH * CH);
+    return { frames, corpoR: maiorCorpo / CH, areaR };
   } catch (e) { return null; }
 };
 
@@ -123,14 +133,29 @@ const carregarSprite = async (src, medir) => {
 // Lança (rejeita) somente se as essenciais (andar/chão) não carregarem.
 export async function carregarSprites(aoChegarExtra) {
   const [a, solo] = await Promise.all([
-    carregarSprite(SPRITE_ANDAR, (im) => calibrar(im, FRAMES_ANDAR)),
+    carregarSprite(SPRITE_ANDAR, (im) => calibrar(im, FRAMES_ANDAR, ehChamaPropulsor)),
     carregarSprite(IMG_CHAO, calibrarChao),
   ]);
 
   const entregar = (patch) => { if (aoChegarExtra) aoChegarExtra(patch); };
 
-  carregarSprite(SPRITE_CORRER, (im) => calibrar(im, FRAMES_CORRER))
-    .then((r) => entregar({ correr: r.img, calibCorrer: r.leitura }))
+  // CORRER: a folha não tem NENHUMA pose em pé (o corpo corre sempre
+  // inclinado), então normalizar pela caixa do quadro mais alto — como nas
+  // outras tiras — deixava o personagem MAIOR ao correr do que andando ou
+  // pulando. Sincronizamos pelo corpo de verdade: a ÁREA de pixels do corpo
+  // (quase constante entre poses) é igualada à da folha de andar — que por
+  // sua vez já fica do mesmo tamanho do pulo/parado. O filtro de chama
+  // (ehChamaPropulsor) tira jato/poeira da medição, senão o rastro entraria
+  // na caixa e afundava/deslocava o personagem em relação ao chão.
+  carregarSprite(SPRITE_CORRER, (im) => calibrar(im, FRAMES_CORRER, ehChamaPropulsor))
+    .then((r) => {
+      const w = a.leitura;
+      if (r.leitura && w && w.areaR && r.leitura.areaR) {
+        r.leitura.corpoR =
+          (w.corpoR * Math.sqrt(r.leitura.areaR / w.areaR)) / CORRER_ALTURA_REL;
+      }
+      entregar({ correr: r.img, calibCorrer: r.leitura });
+    })
     .catch(() => {});
 
   // PULO: a folha tem 207 quadros gerados um a um (sem rig), então a caixa do
