@@ -172,15 +172,103 @@ export const CSS_ARMOR = `
       0 0 42px rgba(240,170,50,0.32),
       inset 0 0 20px rgba(255,210,120,0.16);
   }
+
+  /* === HUD do topo (zoom, relógio, menu) — vidro cinza-prata, mesmo
+     idioma visual dos joysticks/botões de ação, sem ser tudo azul === */
+  .armor-hud-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    background: radial-gradient(circle at 30% 25%, rgba(205,215,228,0.12) 0%, rgba(120,140,160,0.04) 60%, transparent 100%);
+    border: 1px solid rgba(205,215,228,0.22);
+    box-shadow:
+      0 0 14px rgba(160,190,220,0.12),
+      inset 0 0 14px rgba(205,215,228,0.05),
+      inset 0 1px 2px rgba(255,255,255,0.06);
+    backdrop-filter: blur(3px);
+    color: rgba(214,224,234,0.78);
+    transition: box-shadow .15s ease, border-color .15s ease, color .15s ease, background .15s ease, transform .1s ease;
+  }
+  .armor-hud-btn:active { transform: scale(0.94); }
+  .armor-hud-btn.is-ativo {
+    border-color: rgba(120,216,255,0.55);
+    color: #eaf8ff;
+    background: radial-gradient(circle at 30% 25%, rgba(110,216,255,0.16) 0%, rgba(60,140,200,0.05) 60%, transparent 100%);
+    box-shadow:
+      0 0 18px rgba(110,216,255,0.32),
+      inset 0 0 16px rgba(110,216,255,0.1);
+  }
+
+  /* === PAINEL DE PAUSA (Continuar / Sair) === */
+  .armor-pause-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(4,8,16,0.55);
+    backdrop-filter: blur(6px);
+    animation: armorFadeIn .18s ease;
+  }
+  @keyframes armorFadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .armor-pause-painel {
+    min-width: 230px;
+    padding: 28px 32px 24px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(22,34,50,0.88), rgba(9,16,28,0.92));
+    border: 1px solid rgba(130,200,255,0.25);
+    box-shadow: 0 0 40px rgba(0,0,0,0.5), 0 0 30px rgba(110,216,255,0.08), inset 0 1px 0 rgba(255,255,255,0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-family: 'Rajdhani', sans-serif;
+  }
+  .armor-pause-titulo {
+    color: #DCE8FF;
+    font-size: 14px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    text-align: center;
+    margin: 0 0 8px;
+    opacity: 0.6;
+    font-weight: 600;
+  }
+  .armor-pause-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    cursor: pointer;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: transform .1s ease, box-shadow .15s ease;
+    background: radial-gradient(circle at 30% 25%, rgba(110,216,255,0.18), rgba(60,140,200,0.05) 60%, transparent 100%);
+    border: 1px solid rgba(110,216,255,0.35);
+    color: #DCE8FF;
+    box-shadow: 0 0 14px rgba(110,216,255,0.14), inset 0 0 14px rgba(110,216,255,0.05);
+  }
+  .armor-pause-btn:active { transform: scale(0.97); }
+  .armor-pause-btn.sair {
+    border-color: rgba(255,107,129,0.4);
+    color: #FFD8DE;
+    background: radial-gradient(circle at 30% 25%, rgba(255,107,129,0.16), rgba(200,60,80,0.05) 60%, transparent 100%);
+    box-shadow: 0 0 14px rgba(255,107,129,0.16), inset 0 0 14px rgba(255,107,129,0.05);
+  }
 `;
 
 export const es = {
   fundo: { position: 'fixed', inset: 0, backgroundColor: '#000', zIndex: 999999, overflow: 'hidden', touchAction: 'none' },
   canvas: { width: '100%', height: '100%', display: 'block', imageRendering: 'pixelated', touchAction: 'none' },
   barra: { position: 'absolute', left: 0, width: '100%', height: 22, backgroundColor: '#000', zIndex: 5, pointerEvents: 'none' },
-  botaoZoom: { position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 42, height: 46, borderRadius: 14, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.14)', color: '#8E8E93', cursor: 'pointer', zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'monospace' },
-  botaoRelogio: { position: 'absolute', top: 30, right: 16, display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 20, padding: '6px 12px', cursor: 'pointer', zIndex: 30, fontFamily: 'monospace' },
-  voltar: { position: 'absolute', top: 30, left: 16, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, color: '#8E8E93', fontSize: 13, padding: '6px 13px', cursor: 'pointer', zIndex: 30 },
+  // Aparência (vidro translúcido cinza-prata + glow) vem das classes
+  // .armor-hud-btn / .armor-hud-pill em CSS_ARMOR — aqui só posição/tamanho.
+  botaoZoom: { position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', width: 50, height: 54, borderRadius: 18, cursor: 'pointer', zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'Rajdhani', sans-serif", border: 'none', padding: 0, outline: 'none' },
+  botaoRelogio: { position: 'absolute', top: 28, right: 16, display: 'flex', alignItems: 'center', borderRadius: 20, padding: '7px 14px', cursor: 'pointer', zIndex: 30, fontFamily: "'Rajdhani', sans-serif", border: 'none', outline: 'none' },
+  menuBtn: { position: 'absolute', top: 26, left: 16, width: 46, height: 46, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 30, border: 'none', outline: 'none', padding: 0 },
   
   // ----- HUD por imagem: joysticks de mover/mirar + botão de voar -----
   joyZona: { position: 'absolute', left: 0, bottom: 0, width: '50%', top: '22%', zIndex: 25, touchAction: 'none', background: 'transparent' },

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { carregarEstado, salvarEstado, estadoInicial, carregarFotoPerfil, emailDaConta } from '../lib/playerSave';
-import { ALT, RENDER_SCALE, ZOOM_PERTO, AZUL } from './ajustes';
+import { ALT, RENDER_SCALE, ZOOM_PERTO } from './ajustes';
 import { asset, BOTOES_INICIO } from './sprites';
 import { calcularSol } from './mundo';
 import { carregarSprites } from './carregarSprites';
@@ -37,6 +37,29 @@ function IconeRelogio({ size = 13 }) {
   );
 }
 
+// Lupa com + (aproximar) ou - (afastar) — mostra a AÇÃO que o botão vai fazer.
+function IconeZoom({ aproximar, size = 17 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="6.5" />
+      <line x1="20" y1="20" x2="15.8" y2="15.8" />
+      {aproximar && <line x1="11" y1="8.2" x2="11" y2="13.8" />}
+      <line x1="8.2" y1="11" x2="13.8" y2="11" />
+    </svg>
+  );
+}
+
+// Ícone de menu (hambúrguer) — abre o painel de pausa (Continuar/Sair).
+function IconeMenu({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="17" x2="20" y2="17" />
+    </svg>
+  );
+}
+
 export default function ProjetoArmor({ onVoltar }) {
   const [fase, setFase] = useState('carregando');
   const [zoomPerto, setZoomPerto] = useState(false);
@@ -67,6 +90,10 @@ export default function ProjetoArmor({ onVoltar }) {
 
   // (2) novo estado para o modal de configurações
   const [mostrarConfig, setMostrarConfig] = useState(false);
+
+  // Painel de pausa (aberto pelo ícone de menu/hambúrguer no lugar do antigo
+  // botão "Voltar"): Continuar fecha o painel, Sair volta à tela inicial.
+  const [menuPausa, setMenuPausa] = useState(false);
 
   const canvasRef = useRef(null);
   const G = useRef(null);
@@ -514,37 +541,40 @@ export default function ProjetoArmor({ onVoltar }) {
           <div style={{ ...es.barra, top: 0 }} />
           <div style={{ ...es.barra, bottom: 0 }} />
 
-          <button onClick={alternarZoom} style={es.botaoZoom} title="Alternar câmera">
-            <span style={{ fontSize: 17, lineHeight: '17px' }}>{zoomPerto ? '—' : '+'}</span>
-            <span style={{ fontSize: 7, letterSpacing: '0.1em', marginTop: 2 }}>
+          <button
+            onClick={alternarZoom}
+            className="armor-hud-btn"
+            style={es.botaoZoom}
+            title="Alternar câmera"
+            aria-label="Alternar câmera"
+          >
+            <IconeZoom aproximar={!zoomPerto} />
+            <span style={{ fontSize: 8, letterSpacing: '0.14em', marginTop: 3 }}>
               {zoomPerto ? 'LONGE' : 'PERTO'}
             </span>
           </button>
 
-          <button onClick={ativarRelogio} style={es.botaoRelogio} title="Relógio do mundo real">
-            <span
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                color: relogioAtivo ? AZUL : '#8E8E93',
-              }}
-            >
-              <IconeRelogio />
-            </span>
-            <span
-              style={{
-                marginLeft: 6,
-                fontSize: 12,
-                letterSpacing: '0.08em',
-                color: relogioAtivo ? '#DCE8FF' : '#8E8E93',
-              }}
-            >
+          <button
+            onClick={ativarRelogio}
+            className={`armor-hud-btn armor-hud-pill${relogioAtivo ? ' is-ativo' : ''}`}
+            style={es.botaoRelogio}
+            title="Relógio do mundo real"
+            aria-label="Relógio do mundo real"
+          >
+            <IconeRelogio />
+            <span style={{ marginLeft: 6, fontSize: 12, letterSpacing: '0.08em' }}>
               {relogioAtivo ? horaTexto : 'ATIVAR'}
             </span>
           </button>
 
-          <button onClick={() => setFase('pronto')} style={es.voltar}>
-            Voltar
+          <button
+            onClick={() => setMenuPausa(true)}
+            className="armor-hud-btn"
+            style={es.menuBtn}
+            title="Menu"
+            aria-label="Menu"
+          >
+            <IconeMenu />
           </button>
 
           <div
@@ -639,6 +669,30 @@ export default function ProjetoArmor({ onVoltar }) {
               }}
             />
           </div>
+
+          {menuPausa && (
+            <div
+              className="armor-pause-overlay"
+              onClick={() => setMenuPausa(false)}
+              onContextMenu={(e) => e.preventDefault()}
+            >
+              <div className="armor-pause-painel" onClick={(e) => e.stopPropagation()}>
+                <p className="armor-pause-titulo">Pausado</p>
+                <button className="armor-pause-btn" onClick={() => setMenuPausa(false)}>
+                  Continuar
+                </button>
+                <button
+                  className="armor-pause-btn sair"
+                  onClick={() => {
+                    setMenuPausa(false);
+                    setFase('pronto');
+                  }}
+                >
+                  Sair
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
