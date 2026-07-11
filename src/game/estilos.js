@@ -225,7 +225,7 @@ export const es = {
   // de jogos de ação mobile. Estilo visual vem da classe .armor-action-btn
   // (CSS_ARMOR); aqui só posição/tamanho.
   botaoVoar: { position: 'absolute', left: '75%', top: '86%', width: 'clamp(50px,7.3vw,80px)', aspectRatio: '1', transformOrigin: 'center', transition: 'transform 0.1s ease', zIndex: 28 },
-  botaoLutar: { position: 'absolute', left: '58%', top: '70%', width: 'clamp(46px,6.6vw,72px)', aspectRatio: '1', transformOrigin: 'center', transition: 'transform 0.1s ease', zIndex: 28 },
+  botaoLutar: { position: 'absolute', left: '78%', top: '70%', width: 'clamp(46px,6.6vw,72px)', aspectRatio: '1', transformOrigin: 'center', transition: 'transform 0.1s ease', zIndex: 28 },
   miraZona: { position: 'absolute', left: '50%', top: '22%', right: 0, bottom: 0, zIndex: 25, touchAction: 'none', background: 'transparent' },
 
   // FUTURISTA: Joystick de MIRAR com design cinematográfico transparente
