@@ -46,6 +46,75 @@ export const CSS_ARMOR = `
     100% { opacity:0; transform:translate(-50%,-50%) scale(1.05);
            filter:drop-shadow(0 0 0 rgba(96,199,255,0)) drop-shadow(0 0 0 rgba(56,150,255,0)); }
   }
+
+  /* === JOYSTICKS FUTURISTAS === */
+  .joy-base-layer {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  .joy-core {
+    position: absolute;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .joy-glow-ring-1 { border: 1px solid rgba(130, 200, 255, 0.15); }
+  .joy-glow-ring-2 { border: 1.5px solid rgba(96, 180, 255, 0.25); }
+  .joy-glow-ring-3 { border: 0.5px solid rgba(130, 220, 255, 0.35); }
+
+  .joy-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(130, 200, 255, 0.4), rgba(96, 180, 255, 0.15), transparent);
+    box-shadow:
+      inset 0 0 20px rgba(130, 200, 255, 0.2),
+      inset 0 2px 10px rgba(255, 255, 255, 0.1),
+      0 0 15px rgba(130, 200, 255, 0.3);
+  }
+
+  .joy-knob {
+    position: absolute;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    pointer-events: none;
+    will-change: transform;
+    background: radial-gradient(circle at 30% 30%, rgba(130, 220, 255, 0.6), rgba(96, 180, 255, 0.25), rgba(60, 140, 200, 0.1));
+    box-shadow:
+      0 0 12px rgba(130, 200, 255, 0.5),
+      0 0 24px rgba(96, 180, 255, 0.3),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.3),
+      inset 0 2px 6px rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(130, 220, 255, 0.6);
+  }
+
+  .joy-knob-inner {
+    position: absolute;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle at 35% 35%, rgba(180, 230, 255, 0.8), rgba(100, 180, 255, 0.2));
+    box-shadow:
+      inset 0 1px 4px rgba(255, 255, 255, 0.4),
+      0 0 8px rgba(130, 220, 255, 0.6);
+  }
+
+  @keyframes joyPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.8; }
+  }
+
+  .joy-pulse { animation: joyPulse 3s ease-in-out infinite; }
 `;
 
 export const es = {
@@ -58,23 +127,75 @@ export const es = {
   
   // ----- HUD por imagem: joysticks de mover/mirar + botão de voar -----
   joyZona: { position: 'absolute', left: 0, bottom: 0, width: '50%', top: '22%', zIndex: 25, touchAction: 'none', background: 'transparent' },
-  
-  // REESCRITO: Joystick de MOVER limpo, sem desfoque (blur) e sem blush.
-  joyBase: { position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1', transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 26, boxSizing: 'border-box', borderRadius: '50%', 
-  background: 'rgba(10, 25, 40, 0.25)', border: '1.5px solid rgba(130, 200, 255, 0.4)', transition: 'transform 0.12s ease' },
-  
-  joyKnob: { position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(38px,5.6vw,62px)', aspectRatio: '1', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27, transition: 'transform 0.07s ease-out', boxSizing: 'border-box', borderRadius: '50%', 
-  background: 'rgba(130, 200, 255, 0.25)', border: '1.5px solid rgba(130, 200, 255, 0.8)', boxShadow: '0 0 10px rgba(130, 200, 255, 0.2)' },
+
+  // FUTURISTA: Joystick de MOVER com design cinematográfico transparente
+  joyBase: {
+    position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1',
+    transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none',
+    zIndex: 26, boxSizing: 'border-box', borderRadius: '50%',
+    background: 'radial-gradient(circle at center, rgba(130, 200, 255, 0.05) 0%, rgba(60, 120, 180, 0.02) 70%, transparent 100%)',
+    backdropFilter: 'blur(0.5px)',
+    border: '1px solid rgba(130, 200, 255, 0.15)',
+    boxShadow: `
+      0 0 20px rgba(130, 200, 255, 0.15),
+      0 0 40px rgba(96, 180, 255, 0.08),
+      inset 0 0 30px rgba(130, 200, 255, 0.05),
+      inset 0 1px 2px rgba(255, 255, 255, 0.05)
+    `,
+    transition: 'transform 0.12s ease, box-shadow 0.12s ease'
+  },
+
+  joyKnob: {
+    position: 'absolute', left: '11%', top: '78.1%', width: 'clamp(38px,5.6vw,62px)', aspectRatio: '1',
+    pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27,
+    transition: 'transform 0.07s ease-out',
+    boxSizing: 'border-box', borderRadius: '50%',
+    background: 'radial-gradient(circle at 35% 35%, rgba(180, 230, 255, 0.7) 0%, rgba(130, 200, 255, 0.3) 40%, rgba(60, 140, 200, 0.1) 100%)',
+    border: '1px solid rgba(180, 230, 255, 0.8)',
+    boxShadow: `
+      0 0 12px rgba(130, 200, 255, 0.6),
+      0 0 24px rgba(96, 180, 255, 0.4),
+      0 0 40px rgba(130, 200, 255, 0.2),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 2px 6px rgba(255, 255, 255, 0.2)
+    `
+  },
   
   botaoVoar: { position: 'absolute', left: '78.7%', top: '83.8%', width: 'clamp(54px,7.9vw,90px)', aspectRatio: '1', transformOrigin: 'center', transition: 'transform 0.1s ease', zIndex: 28, cursor: 'pointer', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' },
   miraZona: { position: 'absolute', left: '50%', top: '22%', right: 0, bottom: 0, zIndex: 25, touchAction: 'none', background: 'transparent' },
-  
-  // REESCRITO: Joystick de MIRAR limpo, sem desfoque (blur) e sem blush.
-  miraBase: { position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1', transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 26, boxSizing: 'border-box', borderRadius: '50%', 
-  background: 'rgba(10, 25, 40, 0.25)', border: '1.5px solid rgba(130, 200, 255, 0.4)', transition: 'transform 0.12s ease' },
-  
-  miraKnob: { position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(48px,7.1vw,80px)', aspectRatio: '1', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27, transition: 'transform 0.04s ease-out', boxSizing: 'border-box', borderRadius: '50%', 
-  background: 'rgba(130, 200, 255, 0.25)', border: '1.5px solid rgba(130, 200, 255, 0.8)', boxShadow: '0 0 10px rgba(130, 200, 255, 0.2)' },
+
+  // FUTURISTA: Joystick de MIRAR com design cinematográfico transparente
+  miraBase: {
+    position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(90px,13.5vw,150px)', aspectRatio: '1',
+    transform: 'translate(-50%,-50%)', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none',
+    zIndex: 26, boxSizing: 'border-box', borderRadius: '50%',
+    background: 'radial-gradient(circle at center, rgba(130, 200, 255, 0.05) 0%, rgba(60, 120, 180, 0.02) 70%, transparent 100%)',
+    backdropFilter: 'blur(0.5px)',
+    border: '1px solid rgba(130, 200, 255, 0.15)',
+    boxShadow: `
+      0 0 20px rgba(130, 200, 255, 0.15),
+      0 0 40px rgba(96, 180, 255, 0.08),
+      inset 0 0 30px rgba(130, 200, 255, 0.05),
+      inset 0 1px 2px rgba(255, 255, 255, 0.05)
+    `,
+    transition: 'transform 0.12s ease, box-shadow 0.12s ease'
+  },
+
+  miraKnob: {
+    position: 'absolute', left: '91.3%', top: '80.9%', width: 'clamp(48px,7.1vw,80px)', aspectRatio: '1',
+    pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none', zIndex: 27,
+    transition: 'transform 0.04s ease-out',
+    boxSizing: 'border-box', borderRadius: '50%',
+    background: 'radial-gradient(circle at 35% 35%, rgba(180, 230, 255, 0.7) 0%, rgba(130, 200, 255, 0.3) 40%, rgba(60, 140, 200, 0.1) 100%)',
+    border: '1px solid rgba(180, 230, 255, 0.8)',
+    boxShadow: `
+      0 0 12px rgba(130, 200, 255, 0.6),
+      0 0 24px rgba(96, 180, 255, 0.4),
+      0 0 40px rgba(130, 200, 255, 0.2),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 2px 6px rgba(255, 255, 255, 0.2)
+    `
+  },
   
   overlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, backdropFilter: 'blur(4px)', fontFamily: 'monospace' },
   txtRodar: { color: '#7dd3fc', fontSize: 'clamp(20px,6vw,30px)', fontWeight: 700, letterSpacing: '2px', textShadow: '2px 2px 0 #0a3d62', margin: 0 },
