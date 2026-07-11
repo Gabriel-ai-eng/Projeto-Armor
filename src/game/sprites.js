@@ -13,7 +13,6 @@ import ANDAR from '../../js/assets/armor-andar.js';
 import PARADO from '../../js/assets/armor-parado.js';
 import CORRER from '../../js/assets/armor-correr.js';
 import PULAR from '../../js/assets/armor-pular.js';
-import CHAO from '../../js/assets/chao.js';
 
 // Prefixo do deploy (Vite): '/jogo/' em produção, '/' no dev. Todo arquivo de
 // assets/ precisa dele para resolver através do proxy do domínio.
@@ -49,8 +48,9 @@ export const PULAR_BODY_R = PULAR.bodyR, PULAR_FOOT_R = PULAR.footR;
 export const JUMP_ANIM_SPEED = PULAR.animSpeed;
 export const JUMP_LAUNCH_F = PULAR.launchF, JUMP_LAND_F = PULAR.landF, JUMP_ARC_H = PULAR.arcH;
 
-// ---- CHÃO (js/assets/chao.js) ----
-export const IMG_CHAO = url(CHAO.src);
+// ---- CENÁRIO ----
+// O chão/fundo antigos (imagem única) foram substituídos pelo cenário
+// modular em tiles do hangar — ver src/game/cenario/ (tileset, mapa, luzes).
 
 // ---- BOTÕES da tela inicial (imagens em assets/, não são folhas de animação) ----
 // Invisíveis em repouso; saltam e acendem ao serem pressionados. Posições e

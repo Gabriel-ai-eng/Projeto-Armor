@@ -1,6 +1,7 @@
 // ============================================================
 // PROJETO ARMOR · CONTROLES (input do jogador)
 // ============================================================
+import { alturaSolo } from './cenario/colisao';
 
 export function criarControles(deps) {
   const {
@@ -192,6 +193,9 @@ export function criarControles(deps) {
 
     moveRef.current = {
       x: dx / maxR,
+      // eixo vertical do joystick: move o personagem na PROFUNDIDADE do piso
+      // (para dentro/fora do hangar) — usado pelo depth sorting do cenário
+      y: dy / maxR,
       mag: Math.min(
         Math.hypot(dx, dy) / maxR,
         1
@@ -265,6 +269,7 @@ export function criarControles(deps) {
 
     moveRef.current = {
       x: 0,
+      y: 0,
       mag: 0,
     };
   };
@@ -294,10 +299,13 @@ export function criarControles(deps) {
         g.flying = true;
         g.jump = null;
 
-      } else if (g.p.y <= 2 && !g.jump) {
+      } else if (g.p.y <= alturaSolo(g.p.x, g.p.z ?? 0) + 2 && !g.jump) {
 
+        // `base` = altura do apoio no momento do salto (chão ou o topo de
+        // uma caixa/plataforma do cenário) — o arco do pulo parte dela
         g.jump = {
           f: 0,
+          base: alturaSolo(g.p.x, g.p.z ?? 0),
         };
       }
 

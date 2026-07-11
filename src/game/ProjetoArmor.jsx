@@ -6,6 +6,8 @@ import { asset, BOTOES_INICIO } from './sprites';
 import { calcularSol } from './mundo';
 import { carregarSprites } from './carregarSprites';
 import { criarLoop } from './render';
+import { Z_INICIAL, CAMADAS, COLISOES } from './cenario/mapa';
+import { LUZ, PRESETS, definirLuz, aplicarPreset } from './cenario/luzes';
 import { criarControles } from './controles';
 import { es, CSS_ARMOR } from './estilos';
 import Configuracoes from './Configuracoes'; // (1) nova importação
@@ -106,14 +108,15 @@ export default function ProjetoArmor({ onVoltar }) {
   const imgsRef = useRef({
     andar: null,
     correr: null,
-    chao: null,
     pular: null,
     parado: null,
     calibAndar: null,
     calibCorrer: null,
     calibParado: null,
     calibPular: null,
-    chaoCalib: null,
+    // atlas do cenário modular do hangar (src/game/cenario/)
+    cenario: null,
+    emissivo: null,
   });
 
   const videoIntroRef = useRef(null);
@@ -121,7 +124,7 @@ export default function ProjetoArmor({ onVoltar }) {
   const introTocouRef = useRef(false);
   const prevPaisagemRef = useRef(false);
 
-  const moveRef = useRef({ x: 0, mag: 0 });
+  const moveRef = useRef({ x: 0, y: 0, mag: 0 });
   const joyBaseRef = useRef(null);
   const joyPointerRef = useRef(null);
 
@@ -135,6 +138,10 @@ export default function ProjetoArmor({ onVoltar }) {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     let vivos = true;
+    // Console de controle do cenário em tempo real (útil para testar/afinar):
+    //   window.ARMOR_CENARIO.aplicarPreset('alerta' | 'noturno' | 'claro' ...)
+    //   window.ARMOR_CENARIO.definirLuz('cubo', { cor: '#ff44aa', intensidade: 1.2 })
+    window.ARMOR_CENARIO = { LUZ, PRESETS, definirLuz, aplicarPreset, CAMADAS, COLISOES };
     // As folhas pesadas (correr/pular/parado) chegam DEPOIS, em segundo plano,
     // via patch — o menu abre só com o essencial (andar + chão), bem mais rápido.
     carregarSprites((patch) => {
@@ -333,7 +340,8 @@ export default function ProjetoArmor({ onVoltar }) {
     const face = salvo.face === -1 ? -1 : 1;
 
     G.current = {
-      p: { x: px, y: py, vx: 0, vy: 0, face, animT: 0, modo: 'parado' },
+      // z = profundidade no piso do hangar (joystick para cima/baixo)
+      p: { x: px, y: py, z: Z_INICIAL, vx: 0, vy: 0, vz: 0, face, animT: 0, modo: 'parado' },
       fx: px,
       fy: -ALT * 0.22,
       zoom: zoomAlvoRef.current,

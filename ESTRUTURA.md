@@ -24,8 +24,10 @@ Todas em `assets/` — são WebP puros, sem código (o vídeo da intro também):
 | `botao-voar.webp` | Botão de voar |
 | `armor-intro.webm` · `armor-intro.mp4` · `armor-logo.webp` | Vídeo (WebM/VP9 com fallback MP4/H.264) e logo da tela inicial |
 
-> Correr e o chão vêm de imagens hospedadas fora (`i.ibb.co`) — os links estão
-> nos gêmeos `js/assets/armor-correr.js` e `js/assets/chao.js`.
+> Correr vem de imagem hospedada fora (`i.ibb.co`) — o link está no gêmeo
+> `js/assets/armor-correr.js`. O CENÁRIO do hangar fica em `assets/cenario/`
+> (`tileset.webp` = arte das peças, `emissivo.webp` = máscaras de luz) — ver
+> a seção 6.
 
 ## 3. Quem CONFIGURA cada folha — `js/assets/` (os "gêmeos")
 
@@ -39,7 +41,7 @@ edita a folha:
 | `js/assets/armor-parado.js` | quadros e fps do idle |
 | `js/assets/armor-correr.js` | URL e quadros da corrida |
 | `js/assets/armor-pular.js` | grade (colunas/linhas), **corte** (bodyR/footR), velocidade e quadros de decolagem/pouso |
-| `js/assets/chao.js` | URL da imagem do chão |
+| `js/assets/chao.js` | (desativado) a antiga imagem única do chão — o piso agora é tile do cenário |
 
 > Observação sobre o "corte": nas tiras (andar/parado/correr) o corte/escala do
 > corpo é **medido sozinho** em tempo real; o que você ajusta é nº de quadros e
@@ -57,6 +59,7 @@ edita a folha:
 | `carregarSprites.js` | Baixa as folhas e **mede** cada quadro (autocalibração dos pés). |
 | `controles.js` | Joysticks (mover/mirar), botão de voar e a onda dos botões do menu. |
 | `estilos.js` | Visual das telas/HUD e as animações CSS. |
+| `cenario/` ⭐ | O **hangar em tiles**: tileset, mapa em camadas, luzes dinâmicas e colisão (ver seção 6). |
 | `../lib/supabase.js` · `../lib/playerSave.js` | Cliente Supabase e salvar/carregar o progresso. |
 
 ## 5. O que eu preciso editar? (tabela-resumo)
@@ -70,3 +73,39 @@ edita a folha:
 | Mexer nos joysticks / botão de voar | `controles.js` |
 | Mudar as telas, botões do menu ou HUD | `ProjetoArmor.jsx` (visual em `estilos.js`) |
 | Mudar o que é salvo na nuvem | `../lib/playerSave.js` |
+| Mover/adicionar objetos, luzes ou colisões do cenário | `src/game/cenario/mapa.js` |
+| Mudar cor/intensidade das luzes ou criar presets | `src/game/cenario/luzes.js` |
+
+## 6. O CENÁRIO modular (hangar) — `src/game/cenario/`
+
+O cenário não é uma imagem única: é um **tilemap** (estilo Stardew Valley).
+A arte de referência foi fatiada em peças reutilizáveis e o hangar é montado
+por código, em camadas, com luz dinâmica e colisão separada.
+
+**Imagens** (em `assets/cenario/`):
+
+| Arquivo | O que é |
+|---|---|
+| `tileset.webp` | Atlas com a arte BASE de cada peça (parede, coluna, janela, lâmpada, piso, caixas, estante, plataforma, viga) — com a iluminação removida (de-bake) |
+| `emissivo.webp` | Atlas com as LUZES (cubo holográfico, barras da plataforma, linha do piso, lâmpadas, janelas, reflexo) como máscaras neutras — a cor é aplicada em tempo real |
+
+**Código** (em `src/game/cenario/`):
+
+| Arquivo | O que você edita |
+|---|---|
+| `tileset.js` | Retângulos de cada peça dentro dos atlas (+ URLs `?v=N`) |
+| `mapa.js` ⭐ | O MAPA: camadas `fundo` / `chao` / `objetos` / `frente` / `luzes` e as caixas de `COLISOES`. Posições em px do mundo; objetos têm `baseZ` (profundidade no piso) |
+| `luzes.js` ⭐ | Grupos de luz (cor/saturação/brilho/intensidade/opacidade/pulso) e os PRESETS (`claro`, `escuro`, `noturno`, `alerta`, `futurista`) |
+| `desenhar.js` | Desenho das camadas + tint dos emissivos + lista p/ depth sorting |
+| `colisao.js` | Resolução de colisão (x/z) e altura de apoio (subir na plataforma/caixas) |
+
+Como funciona no jogo:
+
+- O personagem anda também em **profundidade** (joystick para cima/baixo) e o
+  **depth sorting** decide se ele fica atrás ou na frente de cada objeto.
+- Caixas/estante/plataforma **bloqueiam** a passagem (`COLISOES`); as com
+  `sobe: true` permitem aterrissar em cima (pulo/voo).
+- Nenhuma luz está gravada na arte: o relógio do jogo pinta as janelas e a luz
+  ambiente; os presets trocam o clima inteiro em tempo real. No console:
+  `window.ARMOR_CENARIO.aplicarPreset('alerta')` ou
+  `window.ARMOR_CENARIO.definirLuz('cubo', { cor: '#ff44cc', intensidade: 1.2 })`.

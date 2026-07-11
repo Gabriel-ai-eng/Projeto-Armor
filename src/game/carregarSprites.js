@@ -7,10 +7,11 @@
 // Chamado uma vez, na abertura (fase 'carregando' → 'pronto'/'erro').
 // ============================================================
 import {
-  SPRITE_ANDAR, SPRITE_CORRER, SPRITE_PULAR, SPRITE_PARADO_ANIM, IMG_CHAO,
+  SPRITE_ANDAR, SPRITE_CORRER, SPRITE_PULAR, SPRITE_PARADO_ANIM,
   FRAMES_ANDAR, FRAMES_CORRER, FRAMES_PARADO_ANIM, CORRER_ALTURA_REL,
   PULAR_COLS, PULAR_ROWS, PULAR_FRAMES,
 } from './sprites';
+import { URL_TILESET, URL_EMISSIVO } from './cenario/tileset';
 
 // Baixa uma imagem (opcionalmente com CORS, para poder ler os pixels).
 const carregar = (src, cors) =>
@@ -99,24 +100,6 @@ const calibrarGrade = (img, cols, rows, nFrames, excluir) => {
 // chama em vez da bota do personagem.
 const ehChamaPropulsor = (r, g, b) => (b - r > 55 && b > 130 && g > 90);
 
-// Mede a faixa de chão: onde começa/termina verticalmente e a cor do rodapé.
-const calibrarChao = (img) => {
-  try {
-    const CW = 400, CH = Math.max(1, Math.round(img.height * (CW / img.width)));
-    const c = document.createElement('canvas'); c.width = CW; c.height = CH;
-    const cx = c.getContext('2d'); cx.drawImage(img, 0, 0, CW, CH);
-    const data = cx.getImageData(0, 0, CW, CH).data;
-    let topRow = -1, botRow = -1;
-    for (let y = 0; y < CH && topRow < 0; y++) for (let x = 0; x < CW; x += 2)
-      if (data[(y * CW + x) * 4 + 3] > 12) { topRow = y; break; }
-    for (let y = CH - 1; y >= 0 && botRow < 0; y--) for (let x = 0; x < CW; x += 2)
-      if (data[(y * CW + x) * 4 + 3] > 12) { botRow = y; break; }
-    if (topRow < 0) return null;
-    const sy = Math.max(0, botRow - 2), si = (sy * CW + Math.floor(CW / 2)) * 4;
-    return { topR: topRow / CH, botR: (botRow + 1) / CH, cor: `rgb(${data[si]},${data[si + 1]},${data[si + 2]})` };
-  } catch (e) { return null; }
-};
-
 // Carrega uma sprite tentando CORS (para calibrar); se falhar, cai para sem
 // CORS (só exibe, sem leitura de pixels).
 const carregarSprite = async (src, medir) => {
@@ -124,17 +107,18 @@ const carregarSprite = async (src, medir) => {
   catch (e) { const img = await carregar(src, false); return { img, leitura: null }; }
 };
 
-// Baixa as folhas ESSENCIAIS (andar + chão, ~700KB) e devolve — é o que o
-// menu inicial espera. As folhas pesadas (parado 3MB, pular 2,7MB) e a de
-// correr (host externo, pode ser lento) carregam em SEGUNDO PLANO e são
-// entregues via `aoChegarExtra(patch)` conforme ficam prontas: o menu e o
-// jogo abrem rápido, e correr/pular/parado "ligam" segundos depois (o motor
-// já cai no sprite de andar enquanto cada uma não chega).
-// Lança (rejeita) somente se as essenciais (andar/chão) não carregarem.
+// Baixa as folhas ESSENCIAIS (andar + os dois atlas do cenário, todos locais
+// e leves) e devolve — é o que o menu inicial espera. As folhas pesadas
+// (parado 3MB, pular 2,7MB) e a de correr (host externo, pode ser lento)
+// carregam em SEGUNDO PLANO e são entregues via `aoChegarExtra(patch)`
+// conforme ficam prontas: o menu e o jogo abrem rápido, e correr/pular/parado
+// "ligam" segundos depois (o motor já cai no sprite de andar enquanto cada
+// uma não chega). Lança (rejeita) somente se as essenciais não carregarem.
 export async function carregarSprites(aoChegarExtra) {
-  const [a, solo] = await Promise.all([
+  const [a, cenarioImg, emissivoImg] = await Promise.all([
     carregarSprite(SPRITE_ANDAR, (im) => calibrar(im, FRAMES_ANDAR, ehChamaPropulsor)),
-    carregarSprite(IMG_CHAO, calibrarChao),
+    carregar(URL_TILESET),
+    carregar(URL_EMISSIVO),
   ]);
 
   const entregar = (patch) => { if (aoChegarExtra) aoChegarExtra(patch); };
@@ -193,5 +177,5 @@ export async function carregarSprites(aoChegarExtra) {
 
   // Só as essenciais; as demais chegam pelos patches acima (o ref do
   // componente já nasce com todas as chaves em null).
-  return { andar: a.img, calibAndar: a.leitura, chao: solo.img, chaoCalib: solo.leitura };
+  return { andar: a.img, calibAndar: a.leitura, cenario: cenarioImg, emissivo: emissivoImg };
 }

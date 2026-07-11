@@ -11,7 +11,7 @@
 // o requestAnimationFrame.
 // ============================================================
 import {
-  RENDER_SCALE, WORLD_W, ALT, ALTURA_ARMOR, ALTURA_IMG_CHAO, LINHA_PES,
+  RENDER_SCALE, WORLD_W, ALT, ALTURA_ARMOR,
   VEL_ANDAR, VEL_CORRER, LIMIAR_CORRER, GRAV, FLY_THRUST, VY_MAX, VY_FALL, ALT_MAX,
   COOLDOWN_TIRO, VEL_TIRO, COOLDOWN_MISSIL, VEL_MISSIL, AZUL_RGB, OURO_RGB, NOITE, DIA, CREP,
 } from './ajustes';
@@ -21,17 +21,22 @@ import {
   PULAR_BODY_R, PULAR_FOOT_R, JUMP_ANIM_SPEED,
 } from './sprites';
 import { lerpArr, rgbStr, rgbaStr, jumpArc, faseDia } from './mundo';
+import { criarCenario } from './cenario/desenhar';
+import { Z_INICIAL, Z_MAX } from './cenario/mapa';
+import { resolverColisao, alturaSolo } from './cenario/colisao';
 
 // deps: { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef }
 export function criarLoop(deps) {
   const { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef, vibracaoRef } = deps;
   let raf;
+  let cen = null;   // instância do cenário (criada quando os atlas chegam)
 
   const passo = () => {
     raf = requestAnimationFrame(passo);
     const g = G.current;
-    const { andar, correr, chao, pular, parado, calibAndar, calibCorrer, calibParado, calibPular, chaoCalib } = imgsRef.current;
-    if (!g || !andar || !chao) return;
+    const { andar, correr, cenario, emissivo, pular, parado, calibAndar, calibCorrer, calibParado, calibPular } = imgsRef.current;
+    if (!g || !andar || !cenario || !emissivo) return;
+    if (!cen) cen = criarCenario({ tileset: cenario, emissivo });
 
     ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
     // Nearest neighbor: sem anti-aliasing ao desenhar as sprites, para os
@@ -56,28 +61,44 @@ export function criarLoop(deps) {
     if (aimActive && Math.abs(Math.cos(aimAng)) > 0.25) p.face = Math.cos(aimAng) >= 0 ? 1 : -1;
     else if (Math.abs(p.vx) > 0.08) p.face = p.vx > 0 ? 1 : -1;
 
+    // ===== PROFUNDIDADE (eixo do piso) =====
+    // O joystick vertical anda para "dentro"/"fora" do hangar. O personagem
+    // então fica ATRÁS ou NA FRENTE das caixas/plataforma (depth sorting por
+    // z), e as caixas de COLISOES (mapa.js) bloqueiam a passagem.
+    const mzJoy = mv.y || 0;
+    p.vz = (p.vz || 0) + mzJoy * (correndo ? 0.45 : 0.12);
+    p.vz *= 0.8;
+    if (Math.abs(p.vz) < 0.04) p.vz = 0;
+    const velMaxZ = velMax * 0.5;
+    p.vz = Math.max(-velMaxZ, Math.min(velMaxZ, p.vz));
+    p.z = (p.z ?? Z_INICIAL) + p.vz;
+    resolverColisao(p);
+    const solo = alturaSolo(p.x, p.z);   // apoio local: 0 = chão, >0 = em cima de algo
+
     // ===== FÍSICA VERTICAL (pulo roteirizado / voo) =====
-    if (g.flying && g.jump) g.jump = null;            
+    if (g.flying && g.jump) g.jump = null;
     if (g.jump) {
       g.jump.f += JUMP_ANIM_SPEED;
-      if (g.jump.f >= PULAR_FRAMES) { g.jump = null; p.y = 0; p.vy = 0; }
-      else { p.y = jumpArc(g.jump.f); p.vy = 0; }
+      if (g.jump.f >= PULAR_FRAMES) { g.jump = null; p.y = solo; p.vy = 0; }
+      else { p.y = (g.jump.base || 0) + jumpArc(g.jump.f); p.vy = 0; }
     }
     if (!g.jump) {
       if (g.flying) p.vy += FLY_THRUST;
       p.vy -= GRAV;
       p.vy = Math.max(-VY_FALL, Math.min(VY_MAX, p.vy));
       p.y += p.vy;
-      if (p.y <= 0) { p.y = 0; if (p.vy < 0) p.vy = 0; }
+      if (p.y <= solo) { p.y = solo; if (p.vy < 0) p.vy = 0; }
       if (p.y >= ALT_MAX) { p.y = ALT_MAX; if (p.vy > 0) p.vy = 0; }
     }
 
     // ===== ANIMAÇÃO =====
-    const vAbs = Math.abs(p.vx);
+    // A profundidade também conta como andar/correr (o ×1.8 compensa o teto
+    // de velocidade menor do eixo z, para a corrida engatar igual).
+    const vAbs = Math.max(Math.abs(p.vx), Math.abs(p.vz) * 1.8);
     const emPulo = !!(g.jump && pular);
     let modo;
     if (emPulo) modo = 'pular';
-    else if (p.y > 3) modo = 'ar';
+    else if (p.y > solo + 3) modo = 'ar';
     else if (vAbs < 0.06) modo = 'parado';
     else if (vAbs > VEL_ANDAR) modo = 'correr';
     else modo = 'andar';
@@ -127,80 +148,37 @@ export function criarLoop(deps) {
     const Z = g.zoom, fx = g.fx, fy = g.fy, halfWNow = VW / (2 * Z);
 
     // ===== FASE DO DIA =====
-    let lum = 0, twi = 0, sunX = 0, sunY = 0, sunArc = 0;
+    // (o sol/lua não são mais desenhados — dentro do hangar a fase do dia
+    //  entra pela COR das janelas e pela luz ambiente do cenário)
+    let lum = 0, twi = 0;
     if (relogioAtivoRef.current) {
       const now = new Date();
       const h = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
       const { sr, ss } = solRef.current;
       const ph = faseDia(h, sr, ss); lum = ph.lum; twi = ph.twi;
-      let pSun = (ss > sr) ? (h - sr) / (ss - sr) : 0.5;
-      pSun = Math.max(0, Math.min(1, pSun));
-      sunArc = Math.sin(pSun * Math.PI); sunX = VW * (0.12 + 0.76 * pSun); sunY = 190 - sunArc * 135;
     }
 
-    // ===== CÉU =====
-    const top = lerpArr(lerpArr(NOITE[0], DIA[0], lum), CREP[0], twi * 0.5);
-    const mid = lerpArr(lerpArr(NOITE[1], DIA[1], lum), CREP[1], twi * 0.55);
-    const bot = lerpArr(lerpArr(NOITE[2], DIA[2], lum), CREP[2], twi * 0.6);
-    const ceu = ctx.createLinearGradient(0, 0, 0, ALT);
-    ceu.addColorStop(0, rgbStr(top)); ceu.addColorStop(0.55, rgbStr(mid)); ceu.addColorStop(1, rgbStr(bot));
-    ctx.fillStyle = ceu; ctx.fillRect(0, 0, VW, ALT);
+    // Cor do "céu" vista pelos VIDROS das janelas do hangar (segue a fase do
+    // dia do relógio, como o céu antigo — ver grupo `janelas` em luzes.js).
+    const corCeu = rgbStr(lerpArr(lerpArr(NOITE[1], DIA[1], lum), CREP[1], twi * 0.55));
 
-    for (let i = 0; i < 60; i++) {
-      const px = (((i * 137 + 53) - fx * 0.12) % (VW + 40) + VW + 40) % (VW + 40) - 20;
-      const py = (i * 71 + 23) % (ALT * 0.55);
-      ctx.globalAlpha = (0.25 + ((i + g.t * 0.02) % 3) * 0.2) * (1 - lum);
-      ctx.fillStyle = '#FFFFFF'; ctx.fillRect(px, py, i % 7 === 0 ? 2 : 1, i % 7 === 0 ? 2 : 1);
-    }
-    ctx.globalAlpha = 1;
-
-    if (lum > 0.01) {
-      const sunCol = lerpArr([255, 154, 77], [255, 243, 200], sunArc);
-      ctx.globalAlpha = lum;
-      const haloS = ctx.createRadialGradient(sunX, sunY, 3, sunX, sunY, 80);
-      haloS.addColorStop(0, rgbaStr(sunCol, 0.9)); haloS.addColorStop(1, rgbaStr([255, 180, 90], 0));
-      ctx.fillStyle = haloS; ctx.fillRect(sunX - 80, sunY - 80, 160, 160);
-      ctx.fillStyle = rgbStr(sunCol); ctx.beginPath(); ctx.arc(sunX, sunY, 15, 0, 7); ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-    const moonA = 1 - lum;
-    if (moonA > 0.01) {
-      const luaX = VW * 0.78 - fx * 0.05, luaY = 70;
-      ctx.globalAlpha = moonA;
-      const haloL = ctx.createRadialGradient(luaX, luaY, 4, luaX, luaY, 60);
-      haloL.addColorStop(0, 'rgba(190,215,255,0.55)'); haloL.addColorStop(1, 'rgba(190,215,255,0)');
-      ctx.fillStyle = haloL; ctx.fillRect(luaX - 60, luaY - 60, 120, 120);
-      ctx.fillStyle = '#DCE8FF'; ctx.beginPath(); ctx.arc(luaX, luaY, 13, 0, 7); ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-    const m1 = rgbStr(lerpArr([13, 20, 40], [42, 74, 110], lum * 0.7));
-    const m2 = rgbStr(lerpArr([20, 30, 56], [58, 90, 128], lum * 0.7));
-    ctx.fillStyle = m1; ctx.beginPath(); ctx.moveTo(0, ALT);
-    for (let x = 0; x <= VW; x += 14) { const wx = x + fx * 0.25; ctx.lineTo(x, 215 + 38 * Math.sin(wx * 0.011) + 14 * Math.sin(wx * 0.031)); }
-    ctx.lineTo(VW, ALT); ctx.fill();
-    ctx.fillStyle = m2; ctx.beginPath(); ctx.moveTo(0, ALT);
-    for (let x = 0; x <= VW; x += 12) { const wx = x + fx * 0.4; ctx.lineTo(x, 258 + 30 * Math.sin(wx * 0.014 + 2)); }
-    ctx.lineTo(VW, ALT); ctx.fill();
-
-    // ===== MUNDO sob a câmera =====
+    // ===== MUNDO sob a câmera — HANGAR em camadas (src/game/cenario/) =====
     ctx.save();
     ctx.translate(VW / 2, ALT / 2); ctx.scale(Z, Z); ctx.translate(-fx, -fy);
 
-    const ghW = ALTURA_IMG_CHAO, gwW = chao.width * (ghW / chao.height);
-    const topR = chaoCalib ? chaoCalib.topR : 0, botR = chaoCalib ? chaoCalib.botR : 1;
-    const dyImg = -topR * ghW, visH = (botR - topR) * ghW, superficie = visH * LINHA_PES;
-
     const leftW = fx - halfWNow - 60, rightW = fx + halfWNow + 60;
-    ctx.fillStyle = (chaoCalib && chaoCalib.cor) ? chaoCalib.cor : '#0A0F1A';
-    ctx.fillRect(leftW, visH - 1, rightW - leftW, 800);
-    const x0 = Math.floor(leftW / gwW) * gwW;
-    for (let x = x0; x < rightW; x += gwW) ctx.drawImage(chao, x, dyImg, gwW, ghW);
-    if (lum > 0.01) { ctx.fillStyle = rgbaStr([170, 200, 230], lum * 0.1); ctx.fillRect(leftW, dyImg, rightW - leftW, ghW + 300); }
+    cen.desenharFundo(ctx, leftW, rightW);   // parede, colunas, janelas, lâmpadas
+    cen.desenharChao(ctx, leftW, rightW);    // piso
 
-    const corpoY = superficie - p.y;            
+    // Pés do personagem: profundidade no piso (z) menos a altura (pulo/voo)
+    const corpoY = p.z - p.y;
+    // Perspectiva sutil: mais "fundo" (z menor) = levemente menor
+    const alturaCorpo = ALTURA_ARMOR * (0.9 + (p.z / Z_MAX) * 0.2);
 
-    // PROJETO ARMOR
+    // PROJETO ARMOR — o desenho vira uma função para entrar no depth sorting
+    // (objetos do cenário e personagem ordenados pelo z da base).
     const flip = (p.face === 1) !== (SPRITE_OLHA_PARA === 'direita');
+    const desenharPersonagem = () => {
     if (emPulo) {
       const jFrame = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
       const cw = pular.width / PULAR_COLS, ch = pular.height / PULAR_ROWS;
@@ -210,11 +188,11 @@ export function criarLoop(deps) {
       // andar/correr e não há tremor (ver carregarSprites.js). Sem ela, corte fixo.
       let esc, footGap, offXPulo = 0;
       if (calibPular) {
-        esc = ALTURA_ARMOR / (calibPular.corpoR * ch);
+        esc = alturaCorpo / (calibPular.corpoR * ch);
         const f = calibPular.frames[jFrame];
         footGap = (1 - f.botR) * ch * esc; offXPulo = (0.5 - f.cxR) * cw * esc;
       } else {
-        esc = ALTURA_ARMOR / (PULAR_BODY_R * ch);
+        esc = alturaCorpo / (PULAR_BODY_R * ch);
         footGap = PULAR_FOOT_R * ch * esc;
       }
       const destW = cw * esc, destH = ch * esc;
@@ -234,10 +212,10 @@ export function criarLoop(deps) {
       const fw = sprite.width / nFrames, fh = sprite.height;
       let escala, gapPes = 0, offX = 0;
       if (calib) {
-        escala = ALTURA_ARMOR / (calib.corpoR * fh);
+        escala = alturaCorpo / (calib.corpoR * fh);
         const f = calib.frames[frameAtual];
         gapPes = (1 - f.botR) * fh * escala; offX = (0.5 - f.cxR) * fw * escala;
-      } else escala = ALTURA_ARMOR / fh;
+      } else escala = alturaCorpo / fh;
       const destW = fw * escala, destH = fh * escala;
       const mt = ctx.getTransform();
       const ax = Math.round(mt.a * p.x + mt.c * corpoY + mt.e);
@@ -250,9 +228,22 @@ export function criarLoop(deps) {
       ctx.drawImage(sprite, Math.round(frameAtual * fw), 0, Math.round(fw), fh, -Math.round(dW / 2) + dOffX, -dH + dGap, dW, dH);
       ctx.restore();
     }
+    };  // fim de desenharPersonagem
+
+    // ===== DEPTH SORTING =====
+    // Objetos do cenário + personagem, ordenados pelo z da base (menor z =
+    // mais ao fundo, desenha antes) — é o que deixa o personagem ficar ATRÁS
+    // das caixas/plataforma ou NA FRENTE delas conforme anda pelo piso.
+    const itens = cen.itensProfundidade();
+    itens.push({ z: p.z, desenhar: desenharPersonagem });
+    itens.sort((a, b) => a.z - b.z);
+    for (const it of itens) it.desenhar(ctx);
+
+    cen.desenharFrente(ctx, leftW, rightW);              // camada "frente"
+    cen.desenharLuzes(ctx, leftW, rightW, g.t, corCeu);  // emissivos tintados
 
     // ===== MIRA =====
-    const ox = p.x + p.face * 4, oy = corpoY - ALTURA_ARMOR * 0.55;
+    const ox = p.x + p.face * 4, oy = corpoY - alturaCorpo * 0.55;
     if (aimActive) {
       const ex = ox + Math.cos(aimAng) * 120, ey = oy + Math.sin(aimAng) * 120;
       ctx.globalCompositeOperation = 'lighter';
@@ -324,7 +315,10 @@ export function criarLoop(deps) {
     }
     ctx.globalCompositeOperation = 'source-over';
 
-    ctx.restore(); 
+    ctx.restore();
+
+    // ===== LUZ AMBIENTE (véu do cenário; presets em cenario/luzes.js) =====
+    cen.desenharAmbiente(ctx, VW, ALT, lum);
 
     // ===== VINHETA =====
     const vin = ctx.createRadialGradient(VW / 2, ALT / 2, ALT * 0.45, VW / 2, ALT / 2, ALT * 0.95);
