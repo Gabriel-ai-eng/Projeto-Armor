@@ -335,13 +335,16 @@ export default function ProjetoArmor({ onVoltar }) {
 
   const initGame = () => {
     const salvo = estadoRef.current.pos || {};
-    const px = typeof salvo.x === 'number' ? salvo.x : 260;
-    const py = typeof salvo.y === 'number' ? salvo.y : 0;
+    // O personagem NASCE em pé DENTRO do cubo holográfico do cenário: no centro
+    // da plataforma (x≈850), apoiado no topo dela (y=72 = altura da plataforma)
+    // e na profundidade z=27, que casa o pé com a superfície e deixa o cubo
+    // (baseZ 32) ordenado à frente, envolvendo o personagem.
+    const px = 850, py = 72, pz = 27;
     const face = salvo.face === -1 ? -1 : 1;
 
     G.current = {
       // z = profundidade no piso do hangar (joystick para cima/baixo)
-      p: { x: px, y: py, z: Z_INICIAL, vx: 0, vy: 0, vz: 0, face, animT: 0, modo: 'parado' },
+      p: { x: px, y: py, z: pz, vx: 0, vy: 0, vz: 0, face, animT: 0, modo: 'parado' },
       fx: px,
       fy: -ALT * 0.22,
       zoom: zoomAlvoRef.current,
