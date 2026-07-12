@@ -98,6 +98,7 @@ por código, em camadas, com luz dinâmica e colisão separada.
 | `luzes.js` ⭐ | Grupos de luz (cor/saturação/brilho/intensidade/opacidade/pulso) e os PRESETS (`claro`, `escuro`, `noturno`, `alerta`, `futurista`) |
 | `desenhar.js` | Desenho das camadas + tint dos emissivos + lista p/ depth sorting |
 | `colisao.js` | Resolução de colisão (x/z) e altura de apoio (subir na plataforma/caixas) |
+| `escudo.js` | Escudo holográfico que ENVOLVE o personagem (bolha atrás + textura na silhueta + bolha na frente) |
 
 Como funciona no jogo:
 
@@ -109,3 +110,6 @@ Como funciona no jogo:
   ambiente; os presets trocam o clima inteiro em tempo real. No console:
   `window.ARMOR_CENARIO.aplicarPreset('alerta')` ou
   `window.ARMOR_CENARIO.definirLuz('cubo', { cor: '#ff44cc', intensidade: 1.2 })`.
+- O **escudo do personagem** (`escudo.js`) é uma bolha holográfica que anda com
+  ele. A cor/intensidade vêm do grupo `escudo` em `luzes.js` (os presets também
+  o recolorem). Para esconder: `window.ARMOR_CENARIO.definirLuz('escudo', { intensidade: 0 })`.
