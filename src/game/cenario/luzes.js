@@ -24,9 +24,6 @@ export const LUZ = {
     lampadas:   { cor: '#ffb44d', saturacao: 1, brilho: 1, intensidade: 0.95, opacidade: 1, pulso: 0.03 },
     // `seguirCeu: true` = a cor dos vidros acompanha a fase do dia (relógio)
     janelas:    { cor: '#aac4e6', saturacao: 1, brilho: 1, intensidade: 0.85, opacidade: 1, pulso: 0, seguirCeu: true },
-    // Escudo holográfico que envolve o personagem (ver cenario/escudo.js).
-    // intensidade 0 = escudo invisível.
-    escudo:     { cor: '#6fd4ff', saturacao: 1, brilho: 1, intensidade: 1.0, opacidade: 1, pulso: 0.16 },
   },
 };
 
@@ -68,7 +65,6 @@ export const PRESETS = {
       reflexo: { cor: '#ff5a4a', pulso: 0.5 },
       lampadas: { cor: '#ff7a4a', intensidade: 0.8 },
       janelas: { cor: '#3a1020', seguirCeu: false, intensidade: 0.5 },
-      escudo: { cor: '#ff4a4a', pulso: 0.5 },
     },
   },
   futurista: {
@@ -80,7 +76,6 @@ export const PRESETS = {
       reflexo: { cor: '#4a8fff' },
       lampadas: { cor: '#7ab4ff' },
       janelas: { cor: '#7a9fdf', seguirCeu: false },
-      escudo: { cor: '#4a9fff' },
     },
   },
 };

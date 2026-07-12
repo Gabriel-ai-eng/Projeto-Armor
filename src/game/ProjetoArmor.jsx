@@ -356,8 +356,6 @@ export default function ProjetoArmor({ onVoltar }) {
       missilCd: 0,
       projeteis: [],
       particulas: [],
-      // escudo holográfico envolvendo o personagem (cenario/escudo.js)
-      escudo: true,
     };
   };
 

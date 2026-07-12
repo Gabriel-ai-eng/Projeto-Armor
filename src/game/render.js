@@ -24,7 +24,6 @@ import { lerpArr, rgbStr, rgbaStr, jumpArc, faseDia } from './mundo';
 import { criarCenario } from './cenario/desenhar';
 import { Z_INICIAL, Z_MAX } from './cenario/mapa';
 import { resolverColisao, alturaSolo } from './cenario/colisao';
-import { escudoAtras, escudoTextura, escudoFrente } from './cenario/escudo';
 
 // deps: { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef }
 export function criarLoop(deps) {
@@ -184,11 +183,6 @@ export function criarLoop(deps) {
     // (objetos do cenário e personagem ordenados pelo z da base).
     const flip = (p.face === 1) !== (SPRITE_OLHA_PARA === 'direita');
     const desenharPersonagem = () => {
-    // 1) metade de TRÁS do escudo (o personagem aparece através dela)
-    if (g.escudo) escudoAtras(ctx, p.x, corpoY, alturaCorpo, g.t);
-
-    // info do sprite deste quadro → reaproveitada pela textura do escudo
-    let info;
     if (emPulo) {
       const jFrame = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
       const cw = pular.width / PULAR_COLS, ch = pular.height / PULAR_ROWS;
@@ -218,7 +212,6 @@ export function criarLoop(deps) {
       ctx.imageSmoothingEnabled = false; // sem suavização no pulo: sprite mais nítida
       ctx.drawImage(pular, Math.round(col * cw), Math.round(row * ch), Math.round(cw), Math.round(ch), -Math.round(dW / 2) + dOffX, -dH + dGap, dW, dH);
       ctx.restore();
-      info = { sprite: pular, sx: Math.round(col * cw), sy: Math.round(row * ch), sw: Math.round(cw), sh: Math.round(ch), ax, ay, flip, dW, dH, dOffX, dGap };
     } else {
       const fw = sprite.width / nFrames, fh = sprite.height;
       let escala, gapPes = 0, offX = 0;
@@ -231,20 +224,13 @@ export function criarLoop(deps) {
       const mt = ctx.getTransform();
       const ax = Math.round(mt.a * p.x + mt.c * corpoY + mt.e);
       const ay = Math.round(mt.b * p.x + mt.d * corpoY + mt.f);
-      const sEff = Z * RENDER_SCALE;
+      const sEff = Z * RENDER_SCALE;                 
       const dW = Math.round(destW * sEff), dH = Math.round(destH * sEff);
       const dOffX = Math.round(offX * sEff), dGap = Math.round(gapPes * sEff);
       ctx.save();
       ctx.setTransform(flip ? -1 : 1, 0, 0, 1, ax, ay);
       ctx.drawImage(sprite, Math.round(frameAtual * fw), 0, Math.round(fw), fh, -Math.round(dW / 2) + dOffX, -dH + dGap, dW, dH);
       ctx.restore();
-      info = { sprite, sx: Math.round(frameAtual * fw), sy: 0, sw: Math.round(fw), sh: fh, ax, ay, flip, dW, dH, dOffX, dGap };
-    }
-
-    // 2) TEXTURA do escudo sobre a silhueta + 3) metade da FRENTE
-    if (g.escudo) {
-      escudoTextura(ctx, info, g.t);
-      escudoFrente(ctx, p.x, corpoY, alturaCorpo, g.t);
     }
     };  // fim de desenharPersonagem
 
