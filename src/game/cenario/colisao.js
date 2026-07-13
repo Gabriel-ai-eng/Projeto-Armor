@@ -5,7 +5,7 @@
 // sobe: pulando/voando acima dele, passa; caixas com `sobe: true` servem de
 // apoio (dá para aterrissar e andar em cima).
 // ============================================================
-import { COLISOES, Z_MIN, Z_MAX } from './mapa';
+import { COLISOES, Z_MIN, Z_MAX, AREA_CUBO } from './mapa';
 
 const RAIO_X = 12;  // meia-largura "física" dos pés do personagem
 const RAIO_Z = 5;   // meia-profundidade dos pés
@@ -30,6 +30,11 @@ export function alturaSolo(x, z) {
 // (em cima dele ou voando por cima).
 export function resolverColisao(p) {
   p.z = Math.max(Z_MIN, Math.min(Z_MAX, p.z));
+
+  // Mantém o personagem dentro do cubo holográfico
+  p.x = Math.max(AREA_CUBO.minX, Math.min(AREA_CUBO.maxX, p.x));
+  p.z = Math.max(AREA_CUBO.minZ, Math.min(AREA_CUBO.maxZ, p.z));
+
   for (const c of COLISOES) {
     if (p.y >= c.altura - 2) continue;
     const l = c.x - RAIO_X, r = c.x + c.w + RAIO_X;
