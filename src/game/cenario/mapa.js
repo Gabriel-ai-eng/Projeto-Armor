@@ -110,15 +110,6 @@ export const COLISOES = [
   { id: 'caixasMedias', x: 1080, w: 98, z: 22, d: 16, altura: 48, sobe: true },
   { id: 'caixaP2', x: 1290, w: 39, z: 58, d: 14, altura: 35, sobe: true },
   { id: 'estante', x: 1530, w: 130, z: 12, d: 22, altura: 144 },
-
-  // ======================================================
-  // Cubo holográfico (paredes invisíveis)
-  // Mantém o Armor preso dentro do cubo.
-  // ======================================================
-  { id: 'cubo_esquerda', x: 720, w: 4, z: 24, d: 18, altura: 500 },
-  { id: 'cubo_direita',  x: 844, w: 4, z: 24, d: 18, altura: 500 },
-  { id: 'cubo_fundo',    x: 720, w: 128, z: 24, d: 4, altura: 500 },
-  { id: 'cubo_frente',   x: 720, w: 128, z: 38, d: 4, altura: 500 },
 ];
 
 // Tamanho de cada peça no mundo (derivado do atlas × escala) — usado pelo
