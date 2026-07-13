@@ -42,6 +42,7 @@ export const AREA_CUBO = {
   maxX: 844,
   minZ: 24,
   maxZ: 38,
+  maxY: 200, // <-- ADICIONE ISSO: Altura máxima do teto (ajuste o número se o teto visual ficar mais alto/baixo)
 };
 
 const wh = (t, ts = TS) => ({ w: t.w * ts, h: t.h * ts });
