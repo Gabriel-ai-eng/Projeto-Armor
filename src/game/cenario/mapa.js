@@ -19,7 +19,7 @@
 //   objetos → caixas/estante/plataforma — ordenados por baseZ junto com o
 //             personagem (ficar atrás/na frente é automático)
 //   frente  → o que deve SEMPRE cobrir o personagem
-//   luzes   → emissives com tint dinâmico (cores em luzes.js)
+//   luzes   → emissivos com tint dinâmico (cores em luzes.js)
 //   colisão → retângulos independentes em COLISOES (edite à vontade)
 // ============================================================
 import { TILES, LUZES_SPRITES } from './tileset';
@@ -32,18 +32,6 @@ export const PAREDE_H = Math.round(TILES.parede.h * TS);  // 345 — altura da p
 export const PISO_H = Math.round(TILES.piso.h * TS);      // 103 — profundidade do piso
 export const Z_MIN = 8, Z_MAX = 96;                       // faixa em que dá pra andar
 export const Z_INICIAL = 46;                              // profundidade inicial dos pés
-
-// ======================================================
-// Área do cubo holográfico (limites de confinamento)
-// Usado pelo colisao.js para manter o Armor preso dentro do cubo.
-// ======================================================
-export const AREA_CUBO = {
-  minX: 720,
-  maxX: 844,
-  minZ: 24,
-  maxZ: 38,
-  maxY: 200, // <-- ADICIONE ISSO: Altura máxima do teto (ajuste o número se o teto visual ficar mais alto/baixo)
-};
 
 const wh = (t, ts = TS) => ({ w: t.w * ts, h: t.h * ts });
 
@@ -105,6 +93,8 @@ export const CAMADAS = {
 // o quanto o obstáculo sobe (pulo/voo por cima passa). `sobe: true` = dá para
 // FICAR EM CIMA (aterrissar do pulo/voo).
 export const COLISOES = [
+  // altura da plataforma = px que os PÉS precisam subir para pousar no topo
+  // VISUAL dela (superfície desenhada em y≈-42 + profundidade média z≈31)
   { id: 'plataforma', x: 676, w: 348, z: 18, d: 26, altura: 72, sobe: true },
   { id: 'caixasGrandes', x: 40, w: 155, z: 14, d: 24, altura: 116 },
   { id: 'caixaP1', x: 205, w: 48, z: 48, d: 14, altura: 40, sobe: true },
