@@ -78,7 +78,7 @@ export function criarLoop(deps) {
     // ===== FÍSICA VERTICAL (pulo roteirizado / voo) =====
     if (g.flying && g.jump) g.jump = null;
     if (g.jump) {
-      g.jump.f += JUMP_ANIM_SPEED;
+      g.jump.f += JUMP_ANIM_SPEED * 1.15;
       if (g.jump.f >= PULAR_FRAMES) { g.jump = null; p.y = solo; p.vy = 0; }
       else { p.y = (g.jump.base || 0) + jumpArc(g.jump.f); p.vy = 0; }
     }
@@ -105,7 +105,6 @@ export function criarLoop(deps) {
     
     if (modo === 'andar' && p.modo !== 'andar') p.animT = 0;
     p.modo = modo;
-
     let sprite, calib, nFrames, frameAtual;
     if (emPulo) {
       // Pulo desenhado abaixo
@@ -114,16 +113,14 @@ export function criarLoop(deps) {
       // Suaviza a velocidade usada na animação (média móvel) para evitar saltos
       // bruscos de quadro quando vAbs oscila — deixa a corrida mais fluida.
       p.animVCorrer = (p.animVCorrer ?? vAbs) + (vAbs - (p.animVCorrer ?? vAbs)) * 0.3;
-      // FIX DE VELOCIDADE: um pouco mais rápida que antes (0.035 -> 0.042)
-      p.animT += p.animVCorrer * 0.042;
+      // FIX DE VELOCIDADE: um pouco mais rápida que antes (0.042 -> 0.055)
+      p.animT += p.animVCorrer * 0.055;
       frameAtual = Math.floor(p.animT) % nFrames;
     } else if (modo === 'andar') {
       sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
       
-      // FIX DE VELOCIDADE: multiplicador um pouco mais rápido que antes
-      // (0.55 -> 0.62), mantendo a cadência estável (sem trancos) e ainda
-      // longe do valor que causava o efeito "patinação".
-      p.animT += (ANDAR_FRAMES_POR_TICK * 0.62);
+      // FIX DE VELOCIDADE: multiplicador ajustado (0.62 -> 1.00)
+      p.animT += (ANDAR_FRAMES_POR_TICK * 1.00);
       
       frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
     } else if (parado) {
@@ -288,8 +285,8 @@ export function criarLoop(deps) {
       }
     }
     g.missilQueued = false;
-
     ctx.globalCompositeOperation = 'lighter';
+
     for (let i = g.projeteis.length - 1; i >= 0; i--) {
       const pr = g.projeteis[i];
       pr.x += pr.vx; pr.y += pr.vy; pr.vida--;
