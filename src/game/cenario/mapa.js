@@ -33,6 +33,17 @@ export const PISO_H = Math.round(TILES.piso.h * TS);      // 103 — profundidad
 export const Z_MIN = 8, Z_MAX = 96;                       // faixa em que dá pra andar
 export const Z_INICIAL = 46;                              // profundidade inicial dos pés
 
+// ======================================================
+// Área do cubo holográfico (limites de confinamento)
+// Usado pelo colisao.js para manter o Armor preso dentro do cubo.
+// ======================================================
+export const AREA_CUBO = {
+  minX: 720,
+  maxX: 844,
+  minZ: 24,
+  maxZ: 38,
+};
+
 const wh = (t, ts = TS) => ({ w: t.w * ts, h: t.h * ts });
 
 // Posições compartilhadas (mesmo x para a peça "apagada" e a sua luz)
