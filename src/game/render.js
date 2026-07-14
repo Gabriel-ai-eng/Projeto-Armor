@@ -99,8 +99,12 @@ export function criarLoop(deps) {
     if (emPulo) modo = 'pular';
     else if (p.y > solo + 3) modo = 'ar';
     else if (p.agachado) modo = 'agachado'; // sem sprite ainda: cai no fallback "parado" abaixo
-    else if (vAbs < 0.06) modo = 'parado';
-    else if (vAbs > VEL_ANDAR) modo = 'correr';
+    // "parado" só quando a bolinha do manche está (quase) no centro — antes
+    // isso olhava pra vAbs (velocidade já suavizada por aceleração/atrito),
+    // que num toque bem de leve podia nunca passar do limiar e o personagem
+    // ficava "preso" no idle mesmo com o manche fora do centro.
+    else if (intensidade < 0.04) modo = 'parado';
+    else if (correndo) modo = 'correr';
     else modo = 'andar';
     
     if (modo === 'andar' && p.modo !== 'andar') p.animT = 0;
