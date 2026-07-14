@@ -21,8 +21,8 @@ export const LINHA_PES = 0.18;       // onde, na faixa de chão, ficam os pés (
 // ---------- Velocidades horizontais ----------
 // VEL_ANDAR é o teto da caminhada E o limite de corrida: acima dela o
 // personagem está correndo e a animação de corrida assume.
-export const VEL_ANDAR = 1.05;
-export const VEL_CORRER = 7.4;
+export const VEL_ANDAR = 1.3;
+export const VEL_CORRER = 9.0;
 export const LIMIAR_CORRER = 0.75;   // inclinação do joystick que dispara a corrida
 
 // ---------- Física vertical (pulo / voo) ----------
