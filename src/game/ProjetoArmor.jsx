@@ -471,11 +471,14 @@ export default function ProjetoArmor({ onVoltar }) {
     return salvarEstado(estadoRef.current);
   };
 
-  // Alterna o zoom da câmera (perto/longe) e salva a preferência.
+  // Alterna o zoom da câmera (perto/longe) e salva a preferência. Também
+  // recentraliza a câmera no personagem — desfaz qualquer arrasto manual
+  // (ver controles.js) que tenha deixado o foco fora dele.
   const alternarZoom = () => {
     const novo = !zoomPerto;
     setZoomPerto(novo);
     zoomAlvoRef.current = novo ? ZOOM_PERTO : 1;
+    if (G.current) G.current.camPanX = 0;
     estadoRef.current.prefs.zoomPerto = novo;
     if (carregadoRef.current) salvarEstado(estadoRef.current);
   };
