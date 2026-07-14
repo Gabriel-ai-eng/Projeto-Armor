@@ -100,13 +100,23 @@ export async function emailDaConta() {
 // projeto Supabase). null = sem sessão ou sem foto cadastrada (a UI então
 // mostra a silhueta padrão).
 export async function carregarFotoPerfil() {
-  const uid = await currentUserId();
-  if (!uid) return null;
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData?.session;
+  if (!session) return null;
+
+  // Caminho rápido: o AlpsPrime-OS mantém `profile_picture_url` sincronizado
+  // no `user_metadata` da própria sessão (ver AuthContext.jsx de lá) — lendo
+  // daqui a foto aparece na hora, sem outra ida ao banco.
+  const metaFoto = session.user?.user_metadata?.profile_picture_url;
+  if (metaFoto) return metaFoto;
+
+  // Fallback (raro: sessão ainda não sincronizada com a metadata) — busca
+  // direto na tabela `usuarios`.
   try {
     const { data, error } = await supabase
       .from('usuarios')
       .select('profile_picture_url')
-      .eq('id', uid)
+      .eq('id', session.user.id)
       .maybeSingle();
     if (error) throw error;
     return data?.profile_picture_url || null;

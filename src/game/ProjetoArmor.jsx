@@ -21,6 +21,25 @@ const SUPORTA_WEBM =
   document.createElement('video').canPlayType('video/webm; codecs="vp9"') !== '';
 const INTRO_SRC = SUPORTA_WEBM ? asset('armor-intro.webm?v=1') : asset('armor-intro.mp4?v=6');
 
+// Cache local (mesmo localStorage do AlpsPrime-OS, mesma origem) do último
+// nome/foto vistos — mostra o perfil na hora ao entrar, sem esperar a volta
+// do Supabase; o carregamento em segundo plano (useEffect abaixo) confirma/
+// atualiza o valor logo em seguida.
+const PERFIL_CACHE_KEY = 'armor_perfil_cache_v1';
+function lerPerfilCache() {
+  try {
+    const raw = localStorage.getItem(PERFIL_CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+function salvarPerfilCache(patch) {
+  try {
+    localStorage.setItem(PERFIL_CACHE_KEY, JSON.stringify({ ...lerPerfilCache(), ...patch }));
+  } catch (e) {}
+}
+
 function IconeRelogio({ size = 13 }) {
   return (
     <svg
@@ -68,8 +87,8 @@ export default function ProjetoArmor({ onVoltar }) {
   const [relogioAtivo, setRelogioAtivo] = useState(false);
   const [horaTexto, setHoraTexto] = useState('--:--');
   const [nivel, setNivel] = useState(0);
-  const [nomePiloto, setNomePiloto] = useState('');
-  const [fotoPerfil, setFotoPerfil] = useState(null);
+  const [nomePiloto, setNomePiloto] = useState(() => lerPerfilCache().nomePiloto || '');
+  const [fotoPerfil, setFotoPerfil] = useState(() => lerPerfilCache().fotoPerfil || null);
   const [emailConta, setEmailConta] = useState(null);
   const sensibilidadeRef = useRef(50);
   const vibracaoRef = useRef(true);
@@ -259,8 +278,15 @@ export default function ProjetoArmor({ onVoltar }) {
         setRelogioAtivo(true);
       }
 
-      setNivel(est.progresso.nivel || 0);
-      setNomePiloto(est.prefs.nomePiloto || '');
+      // Nível fica fixo em 0 por enquanto (tela inicial e Configurações) —
+      // o progresso continua sendo salvo por baixo, só não é exibido ainda.
+      // Só atualiza o nome (e o cache) quando vier um valor de verdade — não
+      // apaga o que já apareceu na hora (cache) por causa de uma falha
+      // passageira de rede, que devolve o mesmo formato "vazio" de sem-sessão.
+      if (est.prefs.nomePiloto) {
+        setNomePiloto(est.prefs.nomePiloto);
+        salvarPerfilCache({ nomePiloto: est.prefs.nomePiloto });
+      }
       sensibilidadeRef.current =
         typeof est.prefs.sensibilidade === 'number' ? est.prefs.sensibilidade : 50;
       vibracaoRef.current = est.prefs.vibracao !== false;
@@ -274,7 +300,10 @@ export default function ProjetoArmor({ onVoltar }) {
     // estado do jogo para aparecer.
     (async () => {
       const url = await carregarFotoPerfil();
-      if (vivo && url) setFotoPerfil(url);
+      if (vivo && url) {
+        setFotoPerfil(url);
+        salvarPerfilCache({ fotoPerfil: url });
+      }
     })();
 
     // E-mail da conta (só leitura, exibido no painel de Configurações).
@@ -296,11 +325,12 @@ export default function ProjetoArmor({ onVoltar }) {
       est.stats.tempoJogadoSeg = (est.stats.tempoJogadoSeg || 0) + 15;
       est.stats.ultimaVez = new Date().toISOString();
 
+      // Nível continua sendo calculado/salvo, só não é mais mostrado na UI
+      // (fica fixo em 0 na tela inicial e nas Configurações por enquanto).
       const nv = Math.floor(est.stats.tempoJogadoSeg / 120);
       if (nv !== est.progresso.nivel) {
         est.progresso.nivel = nv;
         est.progresso.xp = est.stats.tempoJogadoSeg;
-        setNivel(nv);
       }
 
       sincronizarPos();
