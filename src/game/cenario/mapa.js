@@ -47,7 +47,7 @@ export const AREA_CUBO = {
   maxX: 912,
   minZ: 24,
   maxZ: 38,
-  maxY: 178, // altura máxima do teto (não deixa voar acima do cubo)
+  maxY: 168, // altura máxima do teto (não deixa voar/pular acima do cubo)
 };
 
 const wh = (t, ts = TS) => ({ w: t.w * ts, h: t.h * ts });

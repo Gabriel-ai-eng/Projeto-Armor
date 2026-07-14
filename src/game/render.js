@@ -74,11 +74,14 @@ export function criarLoop(deps) {
     const solo = alturaSolo(p.x, p.z);   // apoio local: 0 = chão, >0 = em cima de algo
 
     // ===== FÍSICA VERTICAL (pulo roteirizado / voo) =====
+    // Teto sólido do cubo: trava tanto o pulo (arco roteirizado) quanto o voo
+    // livre — o Armor bate a cabeça no vidro de cima, igual bate nas paredes.
+    const teto = Math.min(ALT_MAX, AREA_CUBO.maxY);
     if (g.flying && g.jump) g.jump = null;
     if (g.jump) {
       g.jump.f += JUMP_ANIM_SPEED;
       if (g.jump.f >= PULAR_FRAMES) { g.jump = null; p.y = solo; p.vy = 0; }
-      else { p.y = (g.jump.base || 0) + jumpArc(g.jump.f); p.vy = 0; }
+      else { p.y = Math.min(teto, (g.jump.base || 0) + jumpArc(g.jump.f)); p.vy = 0; }
     }
     if (!g.jump) {
       if (g.flying) p.vy += FLY_THRUST;
@@ -86,7 +89,6 @@ export function criarLoop(deps) {
       p.vy = Math.max(-VY_FALL, Math.min(VY_MAX, p.vy));
       p.y += p.vy;
       if (p.y <= solo) { p.y = solo; if (p.vy < 0) p.vy = 0; }
-      const teto = Math.min(ALT_MAX, AREA_CUBO.maxY); // não deixa voar acima do cubo
       if (p.y >= teto) { p.y = teto; if (p.vy > 0) p.vy = 0; }
     }
 
