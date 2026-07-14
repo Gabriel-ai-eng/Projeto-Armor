@@ -61,17 +61,15 @@ export function criarLoop(deps) {
     if (aimActive && Math.abs(Math.cos(aimAng)) > 0.25) p.face = Math.cos(aimAng) >= 0 ? 1 : -1;
     else if (Math.abs(p.vx) > 0.08) p.face = p.vx > 0 ? 1 : -1;
 
-    // ===== PROFUNDIDADE (eixo do piso) =====
-    // O joystick vertical anda para "dentro"/"fora" do hangar. O personagem
-    // então fica ATRÁS ou NA FRENTE das caixas/plataforma (depth sorting por
-    // z), e as caixas de COLISOES (mapa.js) bloqueiam a passagem.
+    // ===== PROFUNDIDADE (travada) =====
+    // Estilo Terraria: o personagem só anda para os lados. O eixo vertical do
+    // joystick não move mais "para dentro/fora" do hangar — joystick para
+    // baixo (sem puxar muito para o lado) ativa o AGACHAR em vez disso (ainda
+    // sem sprite próprio: por enquanto só fica parado, pronto pra quando a
+    // folha de agachar existir). p.z fica fixo no valor de nascimento.
     const mzJoy = mv.y || 0;
-    p.vz = (p.vz || 0) + mzJoy * (correndo ? 0.45 : 0.12);
-    p.vz *= 0.8;
-    if (Math.abs(p.vz) < 0.04) p.vz = 0;
-    const velMaxZ = velMax * 0.5;
-    p.vz = Math.max(-velMaxZ, Math.min(velMaxZ, p.vz));
-    p.z = (p.z ?? Z_INICIAL) + p.vz;
+    p.agachado = mzJoy > 0.4 && mzJoy > Math.abs(mx);
+    if (p.z === undefined) p.z = Z_INICIAL;
     resolverColisao(p);
     const solo = alturaSolo(p.x, p.z);   // apoio local: 0 = chão, >0 = em cima de algo
 
@@ -93,13 +91,12 @@ export function criarLoop(deps) {
     }
 
     // ===== ANIMAÇÃO =====
-    // A profundidade também conta como andar/correr (o ×1.8 compensa o teto
-    // de velocidade menor do eixo z, para a corrida engatar igual).
-    const vAbs = Math.max(Math.abs(p.vx), Math.abs(p.vz) * 1.8);
+    const vAbs = Math.abs(p.vx);
     const emPulo = !!(g.jump && pular);
     let modo;
     if (emPulo) modo = 'pular';
     else if (p.y > solo + 3) modo = 'ar';
+    else if (p.agachado) modo = 'agachado'; // sem sprite ainda: cai no fallback "parado" abaixo
     else if (vAbs < 0.06) modo = 'parado';
     else if (vAbs > VEL_ANDAR) modo = 'correr';
     else modo = 'andar';
