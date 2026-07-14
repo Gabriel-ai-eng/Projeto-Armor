@@ -5,7 +5,7 @@
 // sobe: pulando/voando acima dele, passa; caixas com `sobe: true` servem de
 // apoio (dá para aterrissar e andar em cima).
 // ============================================================
-import { COLISOES, Z_MIN, Z_MAX } from './mapa';
+import { COLISOES, Z_MIN, Z_MAX, AREA_CUBO } from './mapa';
 
 const RAIO_X = 12;  // meia-largura "física" dos pés do personagem
 const RAIO_Z = 5;   // meia-profundidade dos pés
@@ -42,4 +42,14 @@ export function resolverColisao(p) {
     else { p.z = (p.z - t < b - p.z) ? t : b; p.vz = 0; }
     p.z = Math.max(Z_MIN, Math.min(Z_MAX, p.z));
   }
+
+  // Paredes sólidas do cubo holográfico: sempre travadas (não só quando já
+  // perto), senão um passo rápido o bastante escapa da margem num único
+  // frame e o Armor nunca mais é contido.
+  const cubeMinX = AREA_CUBO.minX - RAIO_X, cubeMaxX = AREA_CUBO.maxX + RAIO_X;
+  const cubeMinZ = AREA_CUBO.minZ - RAIO_Z, cubeMaxZ = AREA_CUBO.maxZ + RAIO_Z;
+  if (p.x < cubeMinX) { p.x = cubeMinX; p.vx = 0; }
+  else if (p.x > cubeMaxX) { p.x = cubeMaxX; p.vx = 0; }
+  if (p.z < cubeMinZ) { p.z = cubeMinZ; p.vz = 0; }
+  else if (p.z > cubeMaxZ) { p.z = cubeMaxZ; p.vz = 0; }
 }

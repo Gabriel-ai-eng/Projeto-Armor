@@ -22,7 +22,7 @@ import {
 } from './sprites';
 import { lerpArr, rgbStr, rgbaStr, jumpArc, faseDia } from './mundo';
 import { criarCenario } from './cenario/desenhar';
-import { Z_INICIAL, Z_MAX } from './cenario/mapa';
+import { Z_INICIAL, Z_MAX, AREA_CUBO } from './cenario/mapa';
 import { resolverColisao, alturaSolo } from './cenario/colisao';
 
 // deps: { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef }
@@ -88,7 +88,8 @@ export function criarLoop(deps) {
       p.vy = Math.max(-VY_FALL, Math.min(VY_MAX, p.vy));
       p.y += p.vy;
       if (p.y <= solo) { p.y = solo; if (p.vy < 0) p.vy = 0; }
-      if (p.y >= ALT_MAX) { p.y = ALT_MAX; if (p.vy > 0) p.vy = 0; }
+      const teto = Math.min(ALT_MAX, AREA_CUBO.maxY); // não deixa voar acima do cubo
+      if (p.y >= teto) { p.y = teto; if (p.vy > 0) p.vy = 0; }
     }
 
     // ===== ANIMAÇÃO =====

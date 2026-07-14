@@ -33,6 +33,23 @@ export const PISO_H = Math.round(TILES.piso.h * TS);      // 103 — profundidad
 export const Z_MIN = 8, Z_MAX = 96;                       // faixa em que dá pra andar
 export const Z_INICIAL = 46;                              // profundidade inicial dos pés
 
+// ======================================================
+// Área do cubo holográfico (limites de confinamento)
+// Usado pelo colisao.js para manter o Armor preso dentro do cubo.
+// Calibrado a partir do sprite 'cubo' (LUZES_SPRITES, tileset.js): desenhado
+// em x=738 (luzes.cubo em CAMADAS), largura 448*TS=224 → vidro de 738 a 962.
+// minX/maxX ficam mais para dentro (não só o RAIO_X do colisao.js) porque o
+// corpo do personagem é mais largo que a margem "física" dos pés — senão o
+// ombro/lança atravessa visualmente o vidro antes do clamp barrar os pés.
+// ======================================================
+export const AREA_CUBO = {
+  minX: 785,
+  maxX: 912,
+  minZ: 24,
+  maxZ: 38,
+  maxY: 178, // altura máxima do teto (não deixa voar acima do cubo)
+};
+
 const wh = (t, ts = TS) => ({ w: t.w * ts, h: t.h * ts });
 
 // Posições compartilhadas (mesmo x para a peça "apagada" e a sua luz)
