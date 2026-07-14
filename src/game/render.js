@@ -114,14 +114,14 @@ export function criarLoop(deps) {
       // Suaviza a velocidade usada na animação (média móvel) para evitar saltos
       // bruscos de quadro quando vAbs oscila — deixa a corrida mais fluida.
       p.animVCorrer = (p.animVCorrer ?? vAbs) + (vAbs - (p.animVCorrer ?? vAbs)) * 0.3;
-      // FIX DE VELOCIDADE: mais rápida que antes (0.042 -> 0.07)
-      p.animT += p.animVCorrer * 0.07;
+      // FIX DE VELOCIDADE: mais rápida que antes (0.07 -> 0.1)
+      p.animT += p.animVCorrer * 0.1;
       frameAtual = Math.floor(p.animT) % nFrames;
     } else if (modo === 'andar') {
       sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
       
-      // FIX DE VELOCIDADE: multiplicador mais rápido que antes (0.62 -> 0.85).
-      p.animT += (ANDAR_FRAMES_POR_TICK * 0.85);
+      // FIX DE VELOCIDADE: multiplicador mais rápido que antes (0.85 -> 1.1).
+      p.animT += (ANDAR_FRAMES_POR_TICK * 1.1);
       
       frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
     } else if (parado) {
