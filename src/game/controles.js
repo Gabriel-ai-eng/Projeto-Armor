@@ -2,6 +2,66 @@
 // PROJETO ARMOR · CONTROLES (input do jogador)
 // ============================================================
 import { alturaSolo } from './cenario/colisao';
+import { ZOOM_PERTO } from './ajustes';
+
+const ZOOM_LONGE = 1; // limite inferior do zoom (mesmo valor usado quando zoomPerto=false)
+
+const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+// ==========================================================
+// GESTOS DE CÂMERA (arrastar pros lados + pinça pra zoom)
+// Vivem fora do manche/mira: qualquer toque que caia na joyZona/miraZona mas
+// FORA do raio de ativação do respectivo manche vira gesto de câmera, em vez
+// de ser descartado. Os ponteiros ficam num Map compartilhado em G.current
+// (camPointers) — assim um dedo na zona esquerda e outro na direita (pinça
+// com os dois polegares) se combinam num único gesto de 2 pontos.
+// ==========================================================
+
+function camPointerDown(g, id, x, y) {
+  if (!g) return;
+  if (!g.camPointers) g.camPointers = new Map();
+  g.camPointers.set(id, { x, y });
+  camReancorar(g);
+}
+
+function camPointerMove(g, id, x, y, zoomAlvoRef) {
+  if (!g || !g.camPointers || !g.camPointers.has(id)) return;
+  g.camPointers.set(id, { x, y });
+  camAtualizar(g, zoomAlvoRef);
+}
+
+function camPointerUp(g, id) {
+  if (!g || !g.camPointers) return;
+  g.camPointers.delete(id);
+  camReancorar(g); // re-ancora com o(s) ponteiro(s) que sobrou(aram)
+}
+
+// Fixa um novo ponto de partida sempre que o número de dedos muda (1 = pan,
+// 2 = pinça) — evita "pulo" da câmera/zoom na troca de modo.
+function camReancorar(g) {
+  const pts = Array.from(g.camPointers.values());
+  if (pts.length === 1) {
+    g.camAncora = { tipo: 'pan', x0: pts[0].x, pan0: g.camPanX || 0 };
+  } else if (pts.length === 2) {
+    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+    g.camAncora = { tipo: 'pinch', dist0: dist, zoom0: g.zoom || 1 };
+  } else {
+    g.camAncora = null;
+  }
+}
+
+function camAtualizar(g, zoomAlvoRef) {
+  const a = g.camAncora;
+  if (!a) return;
+  const pts = Array.from(g.camPointers.values());
+  if (a.tipo === 'pan' && pts.length === 1) {
+    g.camPanX = a.pan0 + (pts[0].x - a.x0);
+  } else if (a.tipo === 'pinch' && pts.length === 2) {
+    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+    const alvo = clamp(a.zoom0 * (dist / a.dist0), ZOOM_LONGE, ZOOM_PERTO);
+    if (zoomAlvoRef) zoomAlvoRef.current = alvo;
+  }
+}
 
 export function criarControles(deps) {
   const {
@@ -30,7 +90,9 @@ export function criarControles(deps) {
 
     abrirConfiguracoes, // NOVO
 
-    sensibilidadeRef // sensibilidade da mira (0..100) vinda das Configurações
+    sensibilidadeRef, // sensibilidade da mira (0..100) vinda das Configurações
+
+    zoomAlvoRef // alvo do zoom (câmera) — a pinça ajusta isso, travado em [1, ZOOM_PERTO]
   } = deps;
 
   // ==========================================================
@@ -221,8 +283,16 @@ export function criarControles(deps) {
         e.clientY - cy
       ) >
       (r.width / 2) * 1.1
-    )
+    ) {
+      // Fora do alcance do manche: em vez de descartar o toque, vira gesto
+      // de câmera (arrastar pro lado sozinho, ou pinça se juntar com outro
+      // dedo — inclusive um vindo da miraZona do outro lado da tela).
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {}
+      camPointerDown(G.current, e.pointerId, e.clientX, e.clientY);
       return;
+    }
 
     try {
       e.currentTarget.setPointerCapture(
@@ -243,8 +313,10 @@ export function criarControles(deps) {
     if (
       joyPointerRef.current !==
       e.pointerId
-    )
+    ) {
+      camPointerMove(G.current, e.pointerId, e.clientX, e.clientY, zoomAlvoRef);
       return;
+    }
 
     joyAtualizar(
       e.clientX,
@@ -257,8 +329,10 @@ export function criarControles(deps) {
     if (
       joyPointerRef.current !==
       e.pointerId
-    )
+    ) {
+      camPointerUp(G.current, e.pointerId);
       return;
+    }
 
     joyPointerRef.current = null;
 
@@ -432,8 +506,15 @@ export function criarControles(deps) {
         e.clientY - cy
       ) >
       (r.width / 2) * 1.1
-    )
+    ) {
+      // Fora do alcance da mira: mesma ideia da joyZona — vira gesto de
+      // câmera em vez de ser descartado.
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {}
+      camPointerDown(G.current, e.pointerId, e.clientX, e.clientY);
       return;
+    }
 
     try {
       e.currentTarget.setPointerCapture(
@@ -454,8 +535,10 @@ export function criarControles(deps) {
     if (
       miraPointerRef.current !==
       e.pointerId
-    )
+    ) {
+      camPointerMove(G.current, e.pointerId, e.clientX, e.clientY, zoomAlvoRef);
       return;
+    }
 
     miraAtualizar(
       e.clientX,
@@ -468,8 +551,10 @@ export function criarControles(deps) {
     if (
       miraPointerRef.current !==
       e.pointerId
-    )
+    ) {
+      camPointerUp(G.current, e.pointerId);
       return;
+    }
 
     miraPointerRef.current = null;
 

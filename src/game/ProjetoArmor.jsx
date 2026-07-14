@@ -537,6 +537,7 @@ export default function ProjetoArmor({ onVoltar }) {
     mostrarEmBreve,
     abrirConfiguracoes, // (4) passa a função para controles
     sensibilidadeRef,   // sensibilidade da mira (painel de Configurações)
+    zoomAlvoRef,         // pinça (fora do manche/mira) ajusta o zoom por aqui
   });
 
   useEffect(() => {

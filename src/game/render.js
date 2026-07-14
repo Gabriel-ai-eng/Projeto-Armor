@@ -137,7 +137,11 @@ export function criarLoop(deps) {
     const perto = zAlvo > 1.001;
     const fyAlvo = (perto ? -(ALTURA_ARMOR * 0.5) : -(ALT * 0.22)) - p.y;
     const halfW = VW / (2 * g.zoom);
-    let fxAlvo = p.x;
+    // Arrastar a tela (fora do manche/mira, ver controles.js) desloca a
+    // câmera livremente para os lados, por cima do acompanhamento automático
+    // do personagem — camPanX vem em px de tela, convertido pra unidades do
+    // mundo pelo zoom atual (1 dedo = 1px de tela = 1/zoom unidades).
+    let fxAlvo = p.x + (g.camPanX || 0) / g.zoom;
     const minFx = halfW, maxFx = WORLD_W - halfW;
     fxAlvo = (maxFx > minFx) ? Math.max(minFx, Math.min(maxFx, fxAlvo)) : WORLD_W / 2;
     g.zoom += (zAlvo - g.zoom) * 0.08;
