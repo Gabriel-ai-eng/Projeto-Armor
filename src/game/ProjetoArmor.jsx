@@ -92,6 +92,7 @@ export default function ProjetoArmor({ onVoltar }) {
   const [emailConta, setEmailConta] = useState(null);
   const sensibilidadeRef = useRef(50);
   const vibracaoRef = useRef(true);
+  const volumeEfeitosRef = useRef(85); // "Volume dos efeitos" — bip dos botões da tela inicial
 
   const btnRefs = useRef({});
   const arrastoMenuRef = useRef({ ativo: false, atual: null, inicio: null, vagou: false });
@@ -290,6 +291,8 @@ export default function ProjetoArmor({ onVoltar }) {
       sensibilidadeRef.current =
         typeof est.prefs.sensibilidade === 'number' ? est.prefs.sensibilidade : 50;
       vibracaoRef.current = est.prefs.vibracao !== false;
+      volumeEfeitosRef.current =
+        typeof est.prefs.volumeEfeitos === 'number' ? est.prefs.volumeEfeitos : 85;
       estadoRef.current = est;
       carregadoRef.current = true;
       await salvarEstado(est);
@@ -464,6 +467,7 @@ export default function ProjetoArmor({ onVoltar }) {
     if (chave === 'nomePiloto') setNomePiloto(valor);
     if (chave === 'sensibilidade') sensibilidadeRef.current = valor;
     if (chave === 'vibracao') vibracaoRef.current = valor;
+    if (chave === 'volumeEfeitos') volumeEfeitosRef.current = valor;
   };
 
   const persistirEstado = () => {
@@ -541,6 +545,7 @@ export default function ProjetoArmor({ onVoltar }) {
     abrirConfiguracoes, // (4) passa a função para controles
     sensibilidadeRef,   // sensibilidade da mira (painel de Configurações)
     zoomAlvoRef,         // pinça (fora do manche/mira) ajusta o zoom por aqui
+    volumeEfeitosRef,    // bip ao clicar nos botões da tela inicial
   });
 
   useEffect(() => {

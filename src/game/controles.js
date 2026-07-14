@@ -3,6 +3,7 @@
 // ============================================================
 import { alturaSolo } from './cenario/colisao';
 import { ZOOM_PERTO } from './ajustes';
+import { tocarBip } from './som';
 
 const ZOOM_LONGE = 1; // limite inferior do zoom (mesmo valor usado quando zoomPerto=false)
 
@@ -92,7 +93,9 @@ export function criarControles(deps) {
 
     sensibilidadeRef, // sensibilidade da mira (0..100) vinda das Configurações
 
-    zoomAlvoRef // alvo do zoom (câmera) — a pinça ajusta isso, travado em [1, ZOOM_PERTO]
+    zoomAlvoRef, // alvo do zoom (câmera) — a pinça ajusta isso, travado em [1, ZOOM_PERTO]
+
+    volumeEfeitosRef // "Volume dos efeitos" — bip ao clicar nos botões da tela inicial
   } = deps;
 
   // ==========================================================
@@ -187,6 +190,8 @@ export function criarControles(deps) {
     }
 
     if (!d.vagou && d.inicio === d.atual) {
+
+      tocarBip(volumeEfeitosRef?.current);
 
       switch (d.inicio) {
 

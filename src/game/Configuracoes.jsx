@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { enviarFotoPerfil } from "../lib/playerSave";
+import { tocarBip } from "./som";
 
 // ============================================================
 // PROJETO ARMOR · PAINEL DE CONFIGURAÇÕES (HUD em paisagem)
@@ -141,28 +142,8 @@ export default function Configuracoes({
   }, []);
 
   // Bip de feedback (Web Audio) com volume proporcional ao "Volume dos efeitos".
-  const audioRef = useRef(null);
   const beep = (vol = volEfeitos, freq = 620) => {
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      if (!audioRef.current) audioRef.current = new AC();
-      const ac = audioRef.current;
-      if (ac.state === "suspended") ac.resume();
-      const g = ac.createGain();
-      const o = ac.createOscillator();
-      o.type = "sine";
-      o.frequency.value = freq;
-      const alvo = Math.max(0.0002, Math.min(1, vol / 100) * 0.16);
-      const t = ac.currentTime;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(alvo, t + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
-      o.connect(g);
-      g.connect(ac.destination);
-      o.start(t);
-      o.stop(t + 0.14);
-    } catch {}
+    tocarBip(vol, freq);
   };
 
   const persistir = () => onPersistir();
