@@ -5,7 +5,9 @@
 // igual à de pular — a folha nova veio em grade em vez de tira horizontal.
 // ============================================================
 export default {
-  src: 'armor-parado.webp?v=9', // arquivo em assets/ (?v=N fura o cache ao trocar)
+  // v=10: máscara/viseira pixel-art aplicada no rosto em todos os quadros
+  // (rastreada quadro a quadro pra acompanhar o balanço/virada da cabeça).
+  src: 'armor-parado.webp?v=10', // arquivo em assets/ (?v=N fura o cache ao trocar)
   cols: 10, rows: 26, frames: 251, // grade 10x26; última linha só usa 1 coluna (251 = 25*10 + 1)
   fps: 20,                         // velocidade do idle (20 fps ≈ loop de ~12,5 s)
 };
