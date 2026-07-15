@@ -162,17 +162,16 @@ export async function carregarSprites(aoChegarExtra) {
     })
     .catch(() => {});
 
-  // A folha do idle já vem com os pés ancorados no mesmo ponto de cada célula.
-  // Usamos a leitura do frame 0 para TODOS os frames: offset de desenho
-  // constante → pés fixos no chão (a autocalibração por frame compensaria o
-  // balanço do corpo e faria os pés tremerem). Folha em GRADE (como o pulo),
-  // não em tira horizontal — mede com calibrarGrade.
+  // Folha em GRADE (como o pulo), não em tira horizontal — mede com
+  // calibrarGrade. A folha NÃO tem o corpo pixel-a-pixel fixo na mesma
+  // posição em toda célula (o personagem balança/respira), então a âncora
+  // (pés/centro) precisa seguir a leitura de CADA quadro — como no andar/
+  // correr — senão o personagem "anda sozinho" na idle: o recorte da
+  // célula fica fixo na tela, mas o corpo desenhado dentro dela se desloca
+  // quadro a quadro. Só a ESCALA fica fixa (maior corpo da folha), pra não
+  // "respirar" de tamanho.
   carregarSprite(SPRITE_PARADO_ANIM, (im) => calibrarGrade(im, PARADO_COLS, PARADO_ROWS, FRAMES_PARADO_ANIM))
     .then((idle) => {
-      if (idle.leitura && idle.leitura.frames.length) {
-        const base = idle.leitura.frames[0];
-        idle.leitura = { ...idle.leitura, frames: idle.leitura.frames.map(() => base) };
-      }
       entregar({ parado: idle.img, calibParado: idle.leitura });
     })
     .catch(() => {});
