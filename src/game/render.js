@@ -194,7 +194,13 @@ export function criarLoop(deps) {
     const flip = (p.face === 1) !== (SPRITE_OLHA_PARA === 'direita');
     const desenharPersonagem = () => {
     if (emPulo) {
-      const jFrame = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
+      // Só os quadros ÍMPARES da folha (1º, 3º, 5º...) entram na animação —
+      // os pares são pulados (arredonda pra baixo até o índice par mais
+      // próximo). g.jump.f continua avançando quadro a quadro normalmente:
+      // é só a escolha do sprite que "segura" cada pose por 2 quadros, sem
+      // mexer no tempo/física do pulo (arco, decolagem, pouso).
+      const rawF = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
+      const jFrame = rawF - (rawF % 2);
       const cw = pular.width / PULAR_COLS, ch = pular.height / PULAR_ROWS;
       const col = jFrame % PULAR_COLS, row = Math.floor(jFrame / PULAR_COLS);
       // calibPular traz UMA leitura fixa (quadro 0, em pé) aplicada a todos os
