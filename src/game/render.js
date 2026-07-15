@@ -99,11 +99,14 @@ export function criarLoop(deps) {
     if (emPulo) modo = 'pular';
     else if (p.y > solo + 3) modo = 'ar';
     else if (p.agachado) modo = 'agachado'; // sem sprite ainda: cai no fallback "parado" abaixo
-    // "parado" só quando a bolinha do manche está (quase) no centro — antes
-    // isso olhava pra vAbs (velocidade já suavizada por aceleração/atrito),
-    // que num toque bem de leve podia nunca passar do limiar e o personagem
-    // ficava "preso" no idle mesmo com o manche fora do centro.
-    else if (intensidade < 0.04) modo = 'parado';
+    // "parado" enquanto a bolinha do manche não sai de perto do centro —
+    // olha pra intensidade BRUTA do manche (não pra vAbs, a velocidade já
+    // suavizada por aceleração/atrito: um toque bem de leve podia nunca
+    // passar do limiar e o personagem ficava "preso" no idle). O limiar
+    // (0.18) precisa ser alto o bastante pra um toque leve/sem querer não
+    // disparar a animação de andar sem o personagem realmente sair do
+    // lugar (senão ele fica "patinando" no mesmo ponto).
+    else if (intensidade < 0.18) modo = 'parado';
     else if (correndo) modo = 'correr';
     else modo = 'andar';
     

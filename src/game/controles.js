@@ -3,6 +3,7 @@
 // ============================================================
 import { alturaSolo } from './cenario/colisao';
 import { ZOOM_PERTO } from './ajustes';
+import { JUMP_LAND_F } from './sprites';
 import { tocarBip } from './som';
 
 const ZOOM_LONGE = 1; // limite inferior do zoom (mesmo valor usado quando zoomPerto=false)
@@ -378,8 +379,17 @@ export function criarControles(deps) {
         g.flying = true;
         g.jump = null;
 
-      } else if (g.p.y <= alturaSolo(g.p.x, g.p.z ?? 0) + 2 && !g.jump) {
+      } else if (
+        g.p.y <= alturaSolo(g.p.x, g.p.z ?? 0) + 2 &&
+        (!g.jump || g.jump.f >= JUMP_LAND_F)
+      ) {
 
+        // (!g.jump || g.jump.f >= JUMP_LAND_F): deixa pular de novo assim que
+        // ele TOCA o chão, mesmo que o pulo anterior ainda esteja terminando
+        // de tocar a animação de pouso/poeira (g.jump só vira null quando a
+        // folha INTEIRA acaba, uns quadros depois do pouso em si) — sem essa
+        // segunda condição, clicar em Pular logo após aterrissar não fazia
+        // nada.
         // `base` = altura do apoio no momento do salto (chão ou o topo de
         // uma caixa/plataforma do cenário) — o arco do pulo parte dela
         g.jump = {
