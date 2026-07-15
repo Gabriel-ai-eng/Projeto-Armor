@@ -2,8 +2,7 @@
 // GÊMEO da folha de PULAR · imagem: assets/armor-pular.webp
 // Folha em GRADE (colunas × linhas), lida esq→dir, cima→baixo:
 // agacha → impulso a jato → voo → aterrissagem → fica de pé.
-// Só os quadros ÍMPARES da folha (1º, 3º, 5º...) entram na animação — os
-// pares são pulados (ver render.js), igual foi feito no idle.
+// Todos os quadros entram na animação, em sequência.
 // Aqui você edita a grade, o CORTE/escala (bodyR, footR), a velocidade e os
 // quadros de decolagem/pouso do pulo.
 // ============================================================

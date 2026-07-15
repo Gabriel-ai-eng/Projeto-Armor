@@ -16,7 +16,7 @@ import {
   COOLDOWN_TIRO, VEL_TIRO, COOLDOWN_MISSIL, VEL_MISSIL, AZUL_RGB, OURO_RGB, NOITE, DIA, CREP,
 } from './ajustes';
 import {
-  SPRITE_OLHA_PARA, FRAMES_ANDAR, FRAMES_CORRER, FRAME_PARADO, FRAMES_PARADO_ANIM, FRAMES_PARADO_USADOS,
+  SPRITE_OLHA_PARA, FRAMES_ANDAR, FRAMES_CORRER, FRAME_PARADO, FRAMES_PARADO_ANIM,
   PARADO_FPS, PARADO_COLS, PARADO_ROWS, ANDAR_FRAMES_POR_TICK, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES,
   PULAR_BODY_R, PULAR_FOOT_R, JUMP_ANIM_SPEED,
 } from './sprites';
@@ -130,12 +130,10 @@ export function criarLoop(deps) {
       frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
     } else if (parado) {
       sprite = parado; calib = calibParado; nFrames = FRAMES_PARADO_ANIM;
-      // Só os quadros ÍMPARES da folha (1º, 3º, 5º...) entram na animação —
-      // os pares são pulados. fps pela metade pra não mudar a duração total
-      // do loop (mesma velocidade de antes); o índice real na folha (usado
-      // no corte/calibração abaixo) é o índice usado × 2.
-      p.idleT = (p.idleT || 0) + (PARADO_FPS / 2) / 60;
-      frameAtual = (Math.floor(p.idleT) % FRAMES_PARADO_USADOS) * 2;
+      // Ignora só o 1º quadro da folha (índice 0) — os demais entram todos,
+      // na ordem, em loop.
+      p.idleT = (p.idleT || 0) + PARADO_FPS / 60;
+      frameAtual = 1 + (Math.floor(p.idleT) % (FRAMES_PARADO_ANIM - 1));
     } else {
       sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; 
     }
@@ -194,13 +192,7 @@ export function criarLoop(deps) {
     const flip = (p.face === 1) !== (SPRITE_OLHA_PARA === 'direita');
     const desenharPersonagem = () => {
     if (emPulo) {
-      // Só os quadros ÍMPARES da folha (1º, 3º, 5º...) entram na animação —
-      // os pares são pulados (arredonda pra baixo até o índice par mais
-      // próximo). g.jump.f continua avançando quadro a quadro normalmente:
-      // é só a escolha do sprite que "segura" cada pose por 2 quadros, sem
-      // mexer no tempo/física do pulo (arco, decolagem, pouso).
-      const rawF = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
-      const jFrame = rawF - (rawF % 2);
+      const jFrame = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
       const cw = pular.width / PULAR_COLS, ch = pular.height / PULAR_ROWS;
       const col = jFrame % PULAR_COLS, row = Math.floor(jFrame / PULAR_COLS);
       // calibPular traz UMA leitura fixa (quadro 0, em pé) aplicada a todos os
