@@ -33,6 +33,7 @@ export const ANDAR_FRAMES_POR_TICK = (FRAMES_ANDAR - 1) / ANDAR_CICLO_TICKS;
 
 // ---- PARADO / idle (js/assets/armor-parado.js) ----
 export const SPRITE_PARADO_ANIM = url(PARADO.src);
+export const PARADO_COLS = PARADO.cols, PARADO_ROWS = PARADO.rows;
 export const FRAMES_PARADO_ANIM = PARADO.frames;
 export const PARADO_FPS = PARADO.fps;
 

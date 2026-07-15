@@ -1,9 +1,11 @@
 // ============================================================
 // GÊMEO da folha de PARADO (idle) · imagem: assets/armor-parado.webp
 // Idle animado: respiração/olhar em volta, em loop por tempo.
+// Folha em GRADE (colunas × linhas), lida em zigue-zague (esq→dir, cima→baixo),
+// igual à de pular — a folha nova veio em grade em vez de tira horizontal.
 // ============================================================
 export default {
-  src: 'armor-parado.webp?v=5', // arquivo em assets/ (?v=N fura o cache ao trocar)
-  frames: 100,                  // quadros da folha do idle
-  fps: 10,                      // velocidade do idle (10 fps ≈ loop de ~10 s)
+  src: 'armor-parado.webp?v=7', // arquivo em assets/ (?v=N fura o cache ao trocar)
+  cols: 10, rows: 26, frames: 251, // grade 10x26; última linha só usa 1 coluna (251 = 25*10 + 1)
+  fps: 10,                         // velocidade do idle (10 fps ≈ loop de ~25 s)
 };

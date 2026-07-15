@@ -17,7 +17,7 @@ import {
 } from './ajustes';
 import {
   SPRITE_OLHA_PARA, FRAMES_ANDAR, FRAMES_CORRER, FRAME_PARADO, FRAMES_PARADO_ANIM,
-  PARADO_FPS, ANDAR_FRAMES_POR_TICK, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES,
+  PARADO_FPS, PARADO_COLS, PARADO_ROWS, ANDAR_FRAMES_POR_TICK, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES,
   PULAR_BODY_R, PULAR_FOOT_R, JUMP_ANIM_SPEED,
 } from './sprites';
 import { lerpArr, rgbStr, rgbaStr, jumpArc, faseDia } from './mundo';
@@ -217,6 +217,28 @@ export function criarLoop(deps) {
       ctx.setTransform(flip ? -1 : 1, 0, 0, 1, ax, ay);
       ctx.imageSmoothingEnabled = false; // sem suavização no pulo: sprite mais nítida
       ctx.drawImage(pular, Math.round(col * cw), Math.round(row * ch), Math.round(cw), Math.round(ch), -Math.round(dW / 2) + dOffX, -dH + dGap, dW, dH);
+      ctx.restore();
+    } else if (sprite === parado) {
+      // IDLE em GRADE (colunas x linhas), igual ao pulo — a folha nova veio
+      // em grade em vez de tira horizontal (ver carregarSprites.js).
+      const cw = sprite.width / PARADO_COLS, ch = sprite.height / PARADO_ROWS;
+      const col = frameAtual % PARADO_COLS, row = Math.floor(frameAtual / PARADO_COLS);
+      let esc, gapPes = 0, offX = 0;
+      if (calib) {
+        esc = alturaCorpo / (calib.corpoR * ch);
+        const f = calib.frames[frameAtual];
+        gapPes = (1 - f.botR) * ch * esc; offX = (0.5 - f.cxR) * cw * esc;
+      } else esc = alturaCorpo / ch;
+      const destW = cw * esc, destH = ch * esc;
+      const mt = ctx.getTransform();
+      const ax = Math.round(mt.a * p.x + mt.c * corpoY + mt.e);
+      const ay = Math.round(mt.b * p.x + mt.d * corpoY + mt.f);
+      const sEff = Z * RENDER_SCALE;
+      const dW = Math.round(destW * sEff), dH = Math.round(destH * sEff);
+      const dOffX = Math.round(offX * sEff), dGap = Math.round(gapPes * sEff);
+      ctx.save();
+      ctx.setTransform(flip ? -1 : 1, 0, 0, 1, ax, ay);
+      ctx.drawImage(sprite, Math.round(col * cw), Math.round(row * ch), Math.round(cw), Math.round(ch), -Math.round(dW / 2) + dOffX, -dH + dGap, dW, dH);
       ctx.restore();
     } else {
       const fw = sprite.width / nFrames, fh = sprite.height;

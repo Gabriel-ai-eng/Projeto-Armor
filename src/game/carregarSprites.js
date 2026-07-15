@@ -10,6 +10,7 @@ import {
   SPRITE_ANDAR, SPRITE_CORRER, SPRITE_PULAR, SPRITE_PARADO_ANIM,
   FRAMES_ANDAR, FRAMES_CORRER, FRAMES_PARADO_ANIM, CORRER_ALTURA_REL,
   PULAR_COLS, PULAR_ROWS, PULAR_FRAMES,
+  PARADO_COLS, PARADO_ROWS,
 } from './sprites';
 import { URL_TILESET, URL_EMISSIVO } from './cenario/tileset';
 
@@ -164,8 +165,9 @@ export async function carregarSprites(aoChegarExtra) {
   // A folha do idle já vem com os pés ancorados no mesmo ponto de cada célula.
   // Usamos a leitura do frame 0 para TODOS os frames: offset de desenho
   // constante → pés fixos no chão (a autocalibração por frame compensaria o
-  // balanço do corpo e faria os pés tremerem).
-  carregarSprite(SPRITE_PARADO_ANIM, (im) => calibrar(im, FRAMES_PARADO_ANIM))
+  // balanço do corpo e faria os pés tremerem). Folha em GRADE (como o pulo),
+  // não em tira horizontal — mede com calibrarGrade.
+  carregarSprite(SPRITE_PARADO_ANIM, (im) => calibrarGrade(im, PARADO_COLS, PARADO_ROWS, FRAMES_PARADO_ANIM))
     .then((idle) => {
       if (idle.leitura && idle.leitura.frames.length) {
         const base = idle.leitura.frames[0];
