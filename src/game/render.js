@@ -55,8 +55,14 @@ export function criarLoop(deps) {
     const velMax = correndo ? VEL_CORRER : VEL_ANDAR;
     const aceler = correndo ? 0.75 : 0.17;
     p.vx += mx * aceler; p.vx *= 0.85;
-    if (Math.abs(p.vx) < 0.05) p.vx = 0;
+    // Zera só quando o manche está solto (mx===0) — zerar mesmo com o
+    // manche inclinado travava o personagem em vx=0 pra sempre com toques
+    // fracos/moderados: cada quadro somava só uma fração de aceler*mx (bem
+    // menor que 0.05) e o corte devolvia a 0 antes de conseguir acumular,
+    // então ele nunca saía do lugar por mais tempo que segurasse o manche.
+    if (mx === 0 && Math.abs(p.vx) < 0.05) p.vx = 0;
     p.vx = Math.max(-velMax, Math.min(velMax, p.vx));
+    const xAntes = p.x;
     p.x = Math.max(60, Math.min(WORLD_W - 60, p.x + p.vx));
     if (aimActive && Math.abs(Math.cos(aimAng)) > 0.25) p.face = Math.cos(aimAng) >= 0 ? 1 : -1;
     else if (Math.abs(p.vx) > 0.08) p.face = p.vx > 0 ? 1 : -1;
@@ -71,6 +77,11 @@ export function criarLoop(deps) {
     p.agachado = mzJoy > 0.4 && mzJoy > Math.abs(mx);
     if (p.z === undefined) p.z = Z_INICIAL;
     resolverColisao(p);
+    // Deslocamento REAL neste quadro — depois da colisão (não só do clamp da
+    // borda do mundo): sem isso, esbarrar numa caixa/parede do cenário com o
+    // manche todo inclinado mostrava "andar"/"correr" com o corpo empurrado
+    // de volta pro mesmo lugar a cada quadro (vx>0 mas p.x sempre devolvido).
+    const deslocouDeVerdade = Math.abs(p.x - xAntes) > 0.02;
     const solo = alturaSolo(p.x, p.z);   // apoio local: 0 = chão, >0 = em cima de algo
 
     // ===== FÍSICA VERTICAL (pulo roteirizado / voo) =====
@@ -105,8 +116,11 @@ export function criarLoop(deps) {
     // passar do limiar e o personagem ficava "preso" no idle). O limiar
     // (0.18) precisa ser alto o bastante pra um toque leve/sem querer não
     // disparar a animação de andar sem o personagem realmente sair do
-    // lugar (senão ele fica "patinando" no mesmo ponto).
-    else if (intensidade < 0.18) modo = 'parado';
+    // lugar. E mesmo com o manche bem inclinado, só entra "andar"/"correr"
+    // se ele REALMENTE se deslocou nesse quadro — sem isso, encostado numa
+    // parede/borda do mundo (vx não-nulo mas p.x travado no clamp) ele
+    // ficava "andando" parado no mesmo lugar.
+    else if (intensidade < 0.18 || !deslocouDeVerdade) modo = 'parado';
     else if (correndo) modo = 'correr';
     else modo = 'andar';
     
