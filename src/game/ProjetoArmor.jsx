@@ -414,6 +414,7 @@ export default function ProjetoArmor({ onVoltar }) {
       moveRef,
       aimRef,
       vibracaoRef,
+      volumeEfeitosRef,
     });
 
     loop.start();

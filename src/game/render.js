@@ -24,10 +24,11 @@ import { lerpArr, rgbStr, rgbaStr, jumpArc, faseDia } from './mundo';
 import { criarCenario } from './cenario/desenhar';
 import { Z_INICIAL, Z_MAX, AREA_CUBO } from './cenario/mapa';
 import { resolverColisao, alturaSolo } from './cenario/colisao';
+import { passosSetAtivo } from './som';
 
-// deps: { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef }
+// deps: { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef, volumeEfeitosRef }
 export function criarLoop(deps) {
-  const { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef, vibracaoRef } = deps;
+  const { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef, vibracaoRef, volumeEfeitosRef } = deps;
   let raf;
   let cen = null;   // instância do cenário (criada quando os atlas chegam)
 
@@ -126,6 +127,11 @@ export function criarLoop(deps) {
     
     if (modo === 'andar' && p.modo !== 'andar') p.animT = 0;
     p.modo = modo;
+
+    // Som de passos: só toca quando ele REALMENTE anda/corre (mesma condição
+    // da animação acima) — sem tremer/"patinar" perto de paredes nem em
+    // toques leves no manche.
+    passosSetAtivo(modo === 'andar' || modo === 'correr', volumeEfeitosRef?.current);
 
     let sprite, calib, nFrames, frameAtual;
     if (emPulo) {
