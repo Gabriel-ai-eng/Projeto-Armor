@@ -583,7 +583,11 @@ export default function ProjetoArmor({ onVoltar }) {
   }, []);
 
   return createPortal(
-    <div style={es.fundo}>
+    <div
+      className="armor-game-root"
+      style={es.fundo}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <canvas ref={canvasRef} className="armor-canvas" style={es.canvas} />
 
       {fase === 'jogando' && paisagem && (

@@ -8,6 +8,16 @@
 
 // CSS injetado via <style> no componente (animações e image-rendering).
 export const CSS_ARMOR = `
+  /* Trava seleção de texto/imagem, o menu de "Pesquisar/Copiar/Compartilhar"
+     e o balão de seleção do navegador em TODO o jogo (qualquer elemento
+     dentro da raiz) — sem isso, segurar o dedo em cima de um botão, do
+     relógio, do personagem etc. abre o menu de seleção do navegador em vez
+     de controlar o jogo. */
+  .armor-game-root, .armor-game-root * {
+    user-select: none; -webkit-user-select: none; -moz-user-select: none;
+    -webkit-touch-callout: none; -webkit-user-drag: none;
+    -webkit-tap-highlight-color: transparent;
+  }
   .armor-canvas { image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; image-rendering: pixelated; }
   /* Animação "VIRE O CELULAR" */
   .armor-rotate-phone { width:62px; height:110px; border:5px solid #7dd3fc; border-radius:14px;
