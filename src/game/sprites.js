@@ -36,6 +36,10 @@ export const SPRITE_PARADO_ANIM = url(PARADO.src);
 export const PARADO_COLS = PARADO.cols, PARADO_ROWS = PARADO.rows;
 export const FRAMES_PARADO_ANIM = PARADO.frames;
 export const PARADO_FPS = PARADO.fps;
+// A animação usa só os quadros ÍMPARES da folha (1º, 3º, 5º...), pulando os
+// pares — ver render.js. FRAMES_PARADO_USADOS é quantos quadros isso deixa;
+// o índice real na folha (0-based, par) é sempre o usado × 2.
+export const FRAMES_PARADO_USADOS = Math.ceil(FRAMES_PARADO_ANIM / 2);
 
 // ---- CORRER (js/assets/armor-correr.js) ----
 export const SPRITE_CORRER = url(CORRER.src);

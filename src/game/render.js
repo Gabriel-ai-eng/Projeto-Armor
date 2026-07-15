@@ -16,7 +16,7 @@ import {
   COOLDOWN_TIRO, VEL_TIRO, COOLDOWN_MISSIL, VEL_MISSIL, AZUL_RGB, OURO_RGB, NOITE, DIA, CREP,
 } from './ajustes';
 import {
-  SPRITE_OLHA_PARA, FRAMES_ANDAR, FRAMES_CORRER, FRAME_PARADO, FRAMES_PARADO_ANIM,
+  SPRITE_OLHA_PARA, FRAMES_ANDAR, FRAMES_CORRER, FRAME_PARADO, FRAMES_PARADO_ANIM, FRAMES_PARADO_USADOS,
   PARADO_FPS, PARADO_COLS, PARADO_ROWS, ANDAR_FRAMES_POR_TICK, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES,
   PULAR_BODY_R, PULAR_FOOT_R, JUMP_ANIM_SPEED,
 } from './sprites';
@@ -130,9 +130,13 @@ export function criarLoop(deps) {
       frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
     } else if (parado) {
       sprite = parado; calib = calibParado; nFrames = FRAMES_PARADO_ANIM;
-      p.idleT = (p.idleT || 0) + PARADO_FPS / 60;
-      frameAtual = Math.floor(p.idleT) % FRAMES_PARADO_ANIM;
-    } else { 
+      // Só os quadros ÍMPARES da folha (1º, 3º, 5º...) entram na animação —
+      // os pares são pulados. fps pela metade pra não mudar a duração total
+      // do loop (mesma velocidade de antes); o índice real na folha (usado
+      // no corte/calibração abaixo) é o índice usado × 2.
+      p.idleT = (p.idleT || 0) + (PARADO_FPS / 2) / 60;
+      frameAtual = (Math.floor(p.idleT) % FRAMES_PARADO_USADOS) * 2;
+    } else {
       sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; 
     }
 
