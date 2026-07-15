@@ -77,17 +77,20 @@ const calibrarGrade = (img, cols, rows, nFrames, excluir) => {
       const x0 = Math.round(col * fw), y0 = Math.round(row * fh);
       const W = Math.round(fw), H = Math.round(fh);
       const data = cx.getImageData(x0, y0, W, H).data;
-      let top = H, bot = -1, esq = W, dir = -1;
+      let top = H, bot = -1, esq = W, dir = -1, sumX = 0, cnt = 0;
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const i = (y * W + x) * 4;
         if (data[i + 3] <= 12) continue;
         if (excluir && excluir(data[i], data[i + 1], data[i + 2])) continue;
         if (y < top) top = y; if (y > bot) bot = y;
         if (x < esq) esq = x; if (x > dir) dir = x;
+        sumX += x; cnt++;   // p/ o centro de MASSA (mais estável que a caixa)
       }
       if (bot < 0) { frames.push(null); continue; }
       const corpo = bot - top + 1; if (corpo > maiorCorpo) maiorCorpo = corpo;
-      frames.push({ botR: bot / H, cxR: (esq + dir) / 2 / W, altR: corpo / H });
+      // cxR = centro da CAIXA; cxMassR = centro de MASSA (não balança com braço/
+      // perna esticados). altR = altura do corpo nesse quadro ÷ altura da célula.
+      frames.push({ botR: bot / H, cxR: (esq + dir) / 2 / W, cxMassR: sumX / cnt / W, altR: corpo / H });
     }
     const valido = frames.find(f => f !== null);
     if (!valido || maiorCorpo === 0) return null;
@@ -144,14 +147,30 @@ export async function carregarSprites(aoChegarExtra) {
     .catch(() => {});
 
   // PULO: cada quadro tem o corpo (agachado/voando/aterrissando) numa posição
-  // diferente dentro da célula — a âncora (pés/centro) segue a leitura de
-  // CADA quadro, como no andar/correr/parado, senão o personagem "pula" na
-  // tela a cada troca de quadro (a célula fica fixa, mas o corpo desenhado
-  // dentro dela se desloca). Só a ESCALA fica fixa (maior corpo da folha,
-  // já devolvido em corpoR por calibrarGrade), pra não "respirar" de tamanho
-  // entre agachar/voar/aterrissar.
+  // diferente dentro da célula, então a âncora segue CADA quadro. Mas duas
+  // fontes de tremor precisam de tratamento:
+  //  • horizontal: a caixa (cxR) balança ±25px quando braço/perna esticam no
+  //    voo — usamos o centro de MASSA (cxMassR), que fica preso no tronco.
+  //  • vertical: a base da caixa (botR) dá picos de ±40px no voo (perna
+  //    estendida / resto de chama do jato que escapa do filtro) — suavizamos
+  //    com média móvel (janela ±2), tirando o tremor sem perder o movimento
+  //    suave agachar→subir→aterrissar.
+  // ESCALA: fixa pela altura do corpo EM PÉ (último quadro, já "de pé"), pra o
+  // personagem parado/no pulo ficar do MESMO tamanho do andar/correr/parado —
+  // usar o maior corpo (uma pose esticada de voo) deixava o pulo menor.
   carregarSprite(SPRITE_PULAR, (im) => calibrarGrade(im, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES, ehChamaPropulsor))
     .then((pl) => {
+      const L = pl.leitura;
+      if (L && L.frames.length) {
+        const raw = L.frames, n = raw.length;
+        const suave = raw.map((f, i) => {
+          let s = 0, c = 0;
+          for (let k = -2; k <= 2; k++) { const j = i + k; if (j >= 0 && j < n) { s += raw[j].botR; c++; } }
+          return { botR: s / c, cxR: (f.cxMassR ?? f.cxR) };
+        });
+        const emPe = raw[n - 1].altR || L.corpoR;   // altura do corpo em pé
+        pl.leitura = { corpoR: emPe, frames: suave };
+      }
       entregar({ pular: pl.img, calibPular: pl.leitura });
     })
     .catch(() => {});

@@ -195,10 +195,9 @@ export function criarLoop(deps) {
       const jFrame = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
       const cw = pular.width / PULAR_COLS, ch = pular.height / PULAR_ROWS;
       const col = jFrame % PULAR_COLS, row = Math.floor(jFrame / PULAR_COLS);
-      // calibPular traz a leitura de CADA quadro (pés/centro) — escala fixa
-      // (maior corpo da folha) mas âncora por quadro, senão o personagem
-      // "pula" na tela a cada troca de pose (ver carregarSprites.js). Sem
-      // ela, corte fixo.
+      // calibPular: âncora por quadro (centro de massa + base suavizada) e
+      // escala fixa pela altura em pé — ver carregarSprites.js, onde o tremor
+      // do voo é tratado. Sem ela, corte fixo.
       let esc, footGap, offXPulo = 0;
       if (calibPular) {
         esc = alturaCorpo / (calibPular.corpoR * ch);
