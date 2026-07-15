@@ -143,21 +143,15 @@ export async function carregarSprites(aoChegarExtra) {
     })
     .catch(() => {});
 
-  // PULO: a folha tem 207 quadros gerados um a um (sem rig), então a caixa do
-  // corpo muda de tamanho/posição a cada quadro — se a âncora seguisse essas
-  // caixas, o personagem tremia e encolhia (a escala era normalizada pelo
-  // MAIOR corpo da folha, uma pose esticada de voo). Usamos a leitura do
-  // quadro 0 (em pé) para TODOS: escala constante — em pé fica do MESMO
-  // tamanho do andar/correr — e âncora fixa, sem tremor.
+  // PULO: cada quadro tem o corpo (agachado/voando/aterrissando) numa posição
+  // diferente dentro da célula — a âncora (pés/centro) segue a leitura de
+  // CADA quadro, como no andar/correr/parado, senão o personagem "pula" na
+  // tela a cada troca de quadro (a célula fica fixa, mas o corpo desenhado
+  // dentro dela se desloca). Só a ESCALA fica fixa (maior corpo da folha,
+  // já devolvido em corpoR por calibrarGrade), pra não "respirar" de tamanho
+  // entre agachar/voar/aterrissar.
   carregarSprite(SPRITE_PULAR, (im) => calibrarGrade(im, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES, ehChamaPropulsor))
     .then((pl) => {
-      if (pl.leitura && pl.leitura.frames.length) {
-        const base = pl.leitura.frames[0];
-        pl.leitura = {
-          corpoR: base.altR || pl.leitura.corpoR,
-          frames: pl.leitura.frames.map(() => base),
-        };
-      }
       entregar({ pular: pl.img, calibPular: pl.leitura });
     })
     .catch(() => {});
