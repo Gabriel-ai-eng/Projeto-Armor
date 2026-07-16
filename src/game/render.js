@@ -117,8 +117,17 @@ export function criarLoop(deps) {
     // penúltima inteira). Ao chegar no último quadro dessa sequência (fim da
     // última fileira), troca sozinho pra VOLTA: SOCAR_SEQ_VOLTA, que é só a
     // PRIMEIRA fileira ao contrário, terminando de volta no quadro 0 — aí sim
-    // o combo acaba (g.golpe = null) e a animação normal volta a mandar.
+    // o combo acaba (g.golpe = null) e a animação normal (andar/correr/…)
+    // volta a mandar, já na direção que o manche estiver apontando.
     if (g.golpe) {
+      // Jogador mexeu o manche em QUALQUER direção no meio do soco: cancela
+      // a ida na hora (não espera chegar no fim da última fileira) e pula
+      // direto pra volta — a mesma fileira 0 ao contrário de sempre, do
+      // último quadro dela pro primeiro.
+      if (!g.golpe.reversa && intensidade >= 0.18) {
+        g.golpe.reversa = true;
+        g.golpe.f = 0;
+      }
       g.golpe.f += SOCAR_ANIM_SPEED;
       const seqAtual = g.golpe.reversa ? SOCAR_SEQ_VOLTA : SOCAR_SEQ_IDA;
       if (g.golpe.f >= seqAtual.length - 1) {
