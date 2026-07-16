@@ -14,6 +14,7 @@ import PARADO from '../../js/assets/armor-parado.js';
 import CORRER from '../../js/assets/armor-correr.js';
 import PULAR from '../../js/assets/armor-pular.js';
 import AGACHAR from '../../js/assets/armor-agachar.js';
+import SOCAR from '../../js/assets/armor-socar.js';
 
 // Prefixo do deploy (Vite): '/jogo/' em produção, '/' no dev. Todo arquivo de
 // assets/ precisa dele para resolver através do proxy do domínio.
@@ -54,6 +55,11 @@ export const JUMP_LAUNCH_F = PULAR.launchF, JUMP_LAND_F = PULAR.landF, JUMP_ARC_
 export const SPRITE_AGACHAR = url(AGACHAR.src);
 export const FRAMES_AGACHAR = AGACHAR.frames;
 export const AGACHAR_VEL_TRANSICAO = AGACHAR.velTransicao;
+
+// ---- SOCAR / grade (js/assets/armor-socar.js) ----
+export const SPRITE_SOCAR = url(SOCAR.src);
+export const SOCAR_COLS = SOCAR.cols, SOCAR_ROWS = SOCAR.rows, FRAMES_SOCAR = SOCAR.frames;
+export const SOCAR_ANIM_SPEED = SOCAR.animSpeed;
 
 // ---- CENÁRIO ----
 // O chão/fundo antigos (imagem única) foram substituídos pelo cenário

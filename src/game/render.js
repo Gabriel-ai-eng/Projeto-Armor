@@ -19,6 +19,7 @@ import {
   SPRITE_OLHA_PARA, FRAMES_ANDAR, FRAMES_CORRER, FRAME_PARADO, FRAMES_PARADO_ANIM,
   PARADO_FPS, PARADO_COLS, PARADO_ROWS, ANDAR_FRAMES_POR_TICK, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES,
   PULAR_BODY_R, PULAR_FOOT_R, JUMP_ANIM_SPEED, FRAMES_AGACHAR, AGACHAR_VEL_TRANSICAO,
+  SOCAR_COLS, SOCAR_ROWS, FRAMES_SOCAR, SOCAR_ANIM_SPEED,
 } from './sprites';
 import { lerpArr, rgbStr, rgbaStr, jumpArc, faseDia } from './mundo';
 import { criarCenario } from './cenario/desenhar';
@@ -35,7 +36,7 @@ export function criarLoop(deps) {
   const passo = () => {
     raf = requestAnimationFrame(passo);
     const g = G.current;
-    const { andar, correr, cenario, emissivo, pular, parado, agachar, calibAndar, calibCorrer, calibParado, calibPular, calibAgachar } = imgsRef.current;
+    const { andar, correr, cenario, emissivo, pular, parado, agachar, socar, calibAndar, calibCorrer, calibParado, calibPular, calibAgachar, calibSocar } = imgsRef.current;
     if (!g || !andar || !cenario || !emissivo) return;
     if (!cen) cen = criarCenario({ tileset: cenario, emissivo });
 
@@ -111,12 +112,29 @@ export function criarLoop(deps) {
       if (p.y >= teto) { p.y = teto; if (p.vy > 0) p.vy = 0; }
     }
 
+    // ===== GOLPE (combo de socos, disparado pelo botão LUTAR) =====
+    // Toca a folha INTEIRA pra frente (g.golpe.reversa = false) e, ao chegar
+    // no último quadro, sozinha vira pra trás (reversa = true) até voltar ao
+    // quadro 0 — aí sim o combo termina (g.golpe = null) e a animação normal
+    // (parado/andar/…) volta a mandar.
+    if (g.golpe) {
+      g.golpe.f += SOCAR_ANIM_SPEED * (g.golpe.reversa ? -1 : 1);
+      if (!g.golpe.reversa && g.golpe.f >= FRAMES_SOCAR - 1) {
+        g.golpe.f = FRAMES_SOCAR - 1;
+        g.golpe.reversa = true;
+      } else if (g.golpe.reversa && g.golpe.f <= 0) {
+        g.golpe = null;
+      }
+    }
+    const emGolpe = !!(g.golpe && socar);
+
     // ===== ANIMAÇÃO =====
     const vAbs = Math.abs(p.vx);
     const emPulo = !!(g.jump && pular);
     let modo;
     if (emPulo) modo = 'pular';
     else if (p.y > solo + 3) modo = 'ar';
+    else if (emGolpe) modo = 'socar';
     // Continua em "agachado" enquanto p.agachaF > 0 mesmo depois de soltar o
     // manche — é o que deixa a animação de LEVANTAR (reverso da tira) tocar
     // até o fim antes de cair no parado/andar normal.
@@ -143,7 +161,7 @@ export function criarLoop(deps) {
     // toques leves no manche.
     passosSetAtivo(modo === 'andar' || modo === 'correr', volumeEfeitosRef?.current);
 
-    let sprite, calib, nFrames, frameAtual;
+    let sprite, calib, nFrames, frameAtual, gradeCols, gradeRows;
     if (emPulo) {
       // Pulo desenhado abaixo
     } else if (modo === 'correr' && correr) {
@@ -166,8 +184,16 @@ export function criarLoop(deps) {
       // agachar, desce (reverso) ao levantar — nada de loop por tempo aqui.
       sprite = agachar; calib = calibAgachar; nFrames = FRAMES_AGACHAR;
       frameAtual = Math.min(nFrames - 1, Math.round(p.agachaF));
+    } else if (modo === 'socar' && socar) {
+      // Quadro = o progresso calculado acima (g.golpe.f): sobe a grade pra
+      // frente no combo e desce (reverso) sozinha ao terminar — mesma ideia
+      // do agachar, mas em grade (cols x rows) em vez de tira.
+      sprite = socar; calib = calibSocar; nFrames = FRAMES_SOCAR;
+      gradeCols = SOCAR_COLS; gradeRows = SOCAR_ROWS;
+      frameAtual = Math.max(0, Math.min(nFrames - 1, Math.round(g.golpe.f)));
     } else if (parado) {
       sprite = parado; calib = calibParado; nFrames = FRAMES_PARADO_ANIM;
+      gradeCols = PARADO_COLS; gradeRows = PARADO_ROWS;
       // Ignora só o 1º quadro da folha (índice 0) — os demais entram todos,
       // na ordem, em loop.
       p.idleT = (p.idleT || 0) + PARADO_FPS / 60;
@@ -258,11 +284,12 @@ export function criarLoop(deps) {
       ctx.imageSmoothingEnabled = false; // sem suavização no pulo: sprite mais nítida
       ctx.drawImage(pular, Math.round(col * cw), Math.round(row * ch), Math.round(cw), Math.round(ch), -Math.round(dW / 2) + dOffX, -dH + dGap, dW, dH);
       ctx.restore();
-    } else if (sprite === parado) {
-      // IDLE em GRADE (colunas x linhas), igual ao pulo — a folha nova veio
-      // em grade em vez de tira horizontal (ver carregarSprites.js).
-      const cw = sprite.width / PARADO_COLS, ch = sprite.height / PARADO_ROWS;
-      const col = frameAtual % PARADO_COLS, row = Math.floor(frameAtual / PARADO_COLS);
+    } else if (gradeCols) {
+      // IDLE ou SOCAR em GRADE (colunas x linhas), igual ao pulo — em vez de
+      // tira horizontal (ver carregarSprites.js). `gradeCols`/`gradeRows` vêm
+      // de qual folha em grade está ativa (parado ou socar, ver "ANIMAÇÃO" acima).
+      const cw = sprite.width / gradeCols, ch = sprite.height / gradeRows;
+      const col = frameAtual % gradeCols, row = Math.floor(frameAtual / gradeCols);
       let esc, gapPes = 0, offX = 0;
       if (calib) {
         esc = alturaCorpo / (calib.corpoR * ch);
