@@ -70,9 +70,14 @@ export function criarLoop(deps) {
     // animação de andar realmente assumir. Só destrava no mesmo instante em
     // que o golpe é cancelado (correr, acima) ou termina (reverso completo).
     const travadoPeloGolpe = !!g.golpe;
+    // Mesma trava enquanto AGACHADO — inclusive no meio da transição de
+    // agachar/levantar (agachaF > 0, valor do quadro anterior) — o corpo não
+    // sai do lugar de jeito nenhum até voltar a ficar de pé.
+    const travadoPeloAgachar = seriaAgachar || (p.agachaF ?? 0) > 0;
+    const corpoTravado = travadoPeloGolpe || travadoPeloAgachar;
     const velMax = correndo ? VEL_CORRER : VEL_ANDAR;
     const aceler = correndo ? 0.75 : 0.17;
-    if (travadoPeloGolpe) {
+    if (corpoTravado) {
       p.vx = 0;
     } else {
       p.vx += mx * aceler; p.vx *= 0.85;
@@ -85,7 +90,7 @@ export function criarLoop(deps) {
       p.vx = Math.max(-velMax, Math.min(velMax, p.vx));
     }
     const xAntes = p.x;
-    if (!travadoPeloGolpe) {
+    if (!corpoTravado) {
       p.x = Math.max(60, Math.min(WORLD_W - 60, p.x + p.vx));
     }
     if (aimActive && Math.abs(Math.cos(aimAng)) > 0.25) p.face = Math.cos(aimAng) >= 0 ? 1 : -1;
