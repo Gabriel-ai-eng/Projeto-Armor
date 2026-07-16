@@ -29,13 +29,13 @@ export const LIMIAR_CORRER = 0.75;   // inclinação do joystick que dispara a c
 export const GRAV = 0.5, JUMP_V = 10, FLY_THRUST = 0.92, VY_MAX = 4.4, VY_FALL = 11, ALT_MAX = 210;
 
 // ---------- Armas ----------
-// TIRO: automático enquanto mira (joystick direito). MISSIL: golpe/rajada
-// dourada disparada pelo botão LUTAR — mais forte e com cooldown maior.
-export const COOLDOWN_TIRO = 8, COOLDOWN_MISSIL = 26, VEL_TIRO = 15, VEL_MISSIL = 8.5;
+// TIRO: automático enquanto mira (joystick direito). O botão LUTAR não
+// atira mais — só dispara o combo de socos (folha "socar", ver sprites.js).
+export const COOLDOWN_TIRO = 8, VEL_TIRO = 15;
 
 // ---------- Cores ----------
 export const AZUL = '#6ED8FF', OURO = '#F0C040';
-export const AZUL_RGB = [110, 216, 255], OURO_RGB = [240, 192, 64], FLY_RGB = [175, 228, 255];
+export const AZUL_RGB = [110, 216, 255], FLY_RGB = [175, 228, 255];
 
 // ---------- Cores do céu por fase do dia ----------
 export const NOITE = [[7, 10, 22], [16, 26, 51], [28, 42, 71]];

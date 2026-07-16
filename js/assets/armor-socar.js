@@ -9,5 +9,5 @@
 export default {
   src: 'armor-socar.webp?v=1', // arquivo em assets/ (?v=N fura o cache ao trocar)
   cols: 9, rows: 5, frames: 45, // grade densa 9x5, sem sobra (45 = 5*9)
-  animSpeed: 1, // quadros de sprite por tick (60/s) — combo de ida leva ~0,75s
+  animSpeed: 0.3, // quadros de sprite por tick (60/s) — combo de ida bem mais lento (~2,5s)
 };
