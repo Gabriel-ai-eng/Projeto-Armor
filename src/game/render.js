@@ -13,7 +13,7 @@
 import {
   RENDER_SCALE, WORLD_W, ALT, ALTURA_ARMOR,
   VEL_ANDAR, VEL_CORRER, LIMIAR_CORRER, GRAV, FLY_THRUST, VY_MAX, VY_FALL, ALT_MAX,
-  COOLDOWN_TIRO, VEL_TIRO, COOLDOWN_MISSIL, VEL_MISSIL, AZUL_RGB, OURO_RGB, NOITE, DIA, CREP,
+  COOLDOWN_TIRO, VEL_TIRO, AZUL_RGB, NOITE, DIA, CREP,
 } from './ajustes';
 import {
   SPRITE_OLHA_PARA, FRAMES_ANDAR, FRAMES_CORRER, FRAME_PARADO, FRAMES_PARADO_ANIM,
@@ -373,45 +373,16 @@ export function criarLoop(deps) {
       }
     }
 
-    // ===== GOLPE (botão LUTAR) — rajada dourada, mais forte que o tiro =====
-    if (g.missilCd > 0) g.missilCd--;
-    if (g.missilQueued && g.missilCd <= 0) {
-      g.projeteis.push({ tipo: 'missil', x: ox + dir.x * 12, y: oy + dir.y * 12, vx: dir.x * VEL_MISSIL, vy: dir.y * VEL_MISSIL, vida: 140 });
-      g.missilCd = COOLDOWN_MISSIL;
-      if (g.projeteis.length > 90) g.projeteis.shift();
-      if (vibracaoRef && vibracaoRef.current && typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(22);
-      }
-    }
-    g.missilQueued = false;
-
     ctx.globalCompositeOperation = 'lighter';
     for (let i = g.projeteis.length - 1; i >= 0; i--) {
       const pr = g.projeteis[i];
       pr.x += pr.vx; pr.y += pr.vy; pr.vida--;
-      if (pr.tipo === 'tiro') {
-        const gl = ctx.createRadialGradient(pr.x, pr.y, 0, pr.x, pr.y, 9);
-        gl.addColorStop(0, rgbaStr([220, 245, 255], 0.95)); gl.addColorStop(1, rgbaStr(AZUL_RGB, 0));
-        ctx.fillStyle = gl; ctx.fillRect(pr.x - 9, pr.y - 9, 18, 18);
-        ctx.strokeStyle = rgbaStr([235, 250, 255], 0.9); ctx.lineWidth = 2.4;
-        ctx.beginPath(); ctx.moveTo(pr.x, pr.y); ctx.lineTo(pr.x - pr.vx * 0.5, pr.y - pr.vy * 0.5); ctx.stroke();
-      } else {
-        g.particulas.push({ x: pr.x - pr.vx * 0.4, y: pr.y - pr.vy * 0.4, vida: 1, ouro: Math.random() < 0.6 });
-        const gl = ctx.createRadialGradient(pr.x, pr.y, 0, pr.x, pr.y, 13);
-        gl.addColorStop(0, rgbaStr([255, 220, 150], 0.95)); gl.addColorStop(1, rgbaStr(OURO_RGB, 0));
-        ctx.fillStyle = gl; ctx.fillRect(pr.x - 13, pr.y - 13, 26, 26);
-        ctx.save(); ctx.translate(pr.x, pr.y); ctx.rotate(Math.atan2(pr.vy, pr.vx));
-        ctx.fillStyle = rgbStr(OURO_RGB); ctx.fillRect(-6, -2.4, 12, 4.8);
-        ctx.restore();
-      }
+      const gl = ctx.createRadialGradient(pr.x, pr.y, 0, pr.x, pr.y, 9);
+      gl.addColorStop(0, rgbaStr([220, 245, 255], 0.95)); gl.addColorStop(1, rgbaStr(AZUL_RGB, 0));
+      ctx.fillStyle = gl; ctx.fillRect(pr.x - 9, pr.y - 9, 18, 18);
+      ctx.strokeStyle = rgbaStr([235, 250, 255], 0.9); ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(pr.x, pr.y); ctx.lineTo(pr.x - pr.vx * 0.5, pr.y - pr.vy * 0.5); ctx.stroke();
       if (pr.vida <= 0 || Math.abs(pr.x - p.x) > 1700) g.projeteis.splice(i, 1);
-    }
-    
-    for (let i = g.particulas.length - 1; i >= 0; i--) {
-      const q = g.particulas[i]; q.vida -= 0.06;
-      if (q.vida <= 0) { g.particulas.splice(i, 1); continue; }
-      ctx.fillStyle = rgbaStr(q.ouro ? OURO_RGB : AZUL_RGB, q.vida * 0.7);
-      ctx.beginPath(); ctx.arc(q.x, q.y, 2 * q.vida + 0.5, 0, 7); ctx.fill();
     }
     ctx.globalCompositeOperation = 'source-over';
 

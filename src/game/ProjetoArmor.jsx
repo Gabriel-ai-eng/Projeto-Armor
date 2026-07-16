@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { carregarEstado, salvarEstado, estadoInicial, carregarFotoPerfil, emailDaConta } from '../lib/playerSave';
-import { ALT, RENDER_SCALE, ZOOM_PERTO } from './ajustes';
+import { ALT, RENDER_SCALE, ZOOM_PERTO, AZUL, OURO } from './ajustes';
 import { asset, BOTOES_INICIO } from './sprites';
 import { calcularSol } from './mundo';
 import { carregarSprites } from './carregarSprites';
@@ -392,10 +392,7 @@ export default function ProjetoArmor({ onVoltar }) {
       jump: null,
       tiroHeld: false,
       tiroCd: 0,
-      missilQueued: false,
-      missilCd: 0,
       projeteis: [],
-      particulas: [],
     };
   };
 
@@ -698,8 +695,21 @@ export default function ProjetoArmor({ onVoltar }) {
               transform: `translate(-50%, -50%) scale(${lutarAtivo ? 1.1 : 1})`,
             }}
           >
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
-              <path d="M13 2L4.5 14h5.7l-1.4 8L19 9.5h-5.8z" />
+            {/* Punho cibernético: mesma paleta da manopla do personagem (chapa
+                escura, trim dourado nos nós dos dedos/punho, núcleo azul
+                aceso no dorso da mão) — em vez de um ícone genérico. */}
+            <svg viewBox="0 0 24 24" fill="none" stroke="none">
+              <rect x="8.1" y="17.3" width="7.8" height="3.5" rx="1.2" fill="#141a24" stroke={OURO} strokeWidth="1" />
+              <rect x="5.5" y="8.3" width="13" height="9.7" rx="3.2" fill="#141a24" stroke={OURO} strokeWidth="1" />
+              <rect x="3.4" y="11.5" width="3.7" height="5.3" rx="1.6" fill="#141a24" stroke={OURO} strokeWidth="0.9" transform="rotate(-20 5.25 14.15)" />
+              <rect x="6.55" y="6.5" width="2.3" height="3.3" rx="1" fill={OURO} />
+              <rect x="9.35" y="6" width="2.3" height="3.7" rx="1" fill={OURO} />
+              <rect x="12.15" y="6" width="2.3" height="3.7" rx="1" fill={OURO} />
+              <rect x="14.95" y="6.5" width="2.3" height="3.3" rx="1" fill={OURO} />
+              <line x1="9" y1="10.2" x2="9" y2="15.8" stroke={AZUL} strokeWidth="0.5" opacity="0.55" />
+              <line x1="15" y1="10.2" x2="15" y2="15.8" stroke={AZUL} strokeWidth="0.5" opacity="0.55" />
+              <circle cx="12" cy="12.6" r="2.3" fill={AZUL} opacity="0.3" />
+              <circle cx="12" cy="12.6" r="1.05" fill={AZUL} />
             </svg>
           </div>
 
