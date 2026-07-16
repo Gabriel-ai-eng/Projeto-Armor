@@ -27,6 +27,33 @@ import { Z_INICIAL, Z_MAX, AREA_CUBO } from './cenario/mapa';
 import { resolverColisao, alturaSolo } from './cenario/colisao';
 import { passosSetAtivo } from './som';
 
+// ============================================================
+// COLLISION BOX POR FRAME (do sprite × cubo)
+// Dado o frame decidido (sprite/calib/frameAtual + escala do corpo), retorna
+// as distâncias, em px do mundo, do ponto de âncora do personagem (p.x) até
+// as EXTREMIDADES esquerda e direita do corpo naquele quadro. É a "collision
+// box" horizontal por frame — o motor usa isso pra prender qualquer pixel
+// do sprite dentro da parede interna do cubo (ver AREA_CUBO).
+// Ignora flip aqui: o chamador aplica flip trocando esq↔dir.
+// Retorna { extEsq, extDir } em px do mundo, ou null se não der pra medir.
+// ============================================================
+function calcCaixaFrame({ sprite, calib, frameAtual, gradeCols, gradeRows, alturaCorpo }) {
+  if (!sprite || !calib || !calib.frames) return null;
+  const f = calib.frames[frameAtual] || calib.frames.find(x => x);
+  if (!f || f.esqR == null || f.dirR == null) return null;
+  // Célula do frame (world px, mesma matemática do desenho).
+  const cw = gradeCols ? sprite.width / gradeCols : sprite.width / (calib.frames.length);
+  const ch = gradeRows ? sprite.height / gradeRows : sprite.height;
+  const esc = alturaCorpo / (calib.corpoR * ch);
+  // Centro do CORPO na célula (mesmo `offX` do desenho): o sprite é
+  // desenhado com esse ponto alinhado em p.x. As extremidades do corpo em
+  // px do mundo são a distância desse centro até esq/dir da caixa medida.
+  const centroCorpoR = f.cxR;
+  const extEsq = Math.max(0, (centroCorpoR - f.esqR) * cw * esc);
+  const extDir = Math.max(0, (f.dirR - centroCorpoR) * cw * esc);
+  return { extEsq, extDir };
+}
+
 // deps: { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef, volumeEfeitosRef }
 export function criarLoop(deps) {
   const { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef, vibracaoRef, volumeEfeitosRef } = deps;
@@ -247,7 +274,61 @@ export function criarLoop(deps) {
       p.idleT = (p.idleT || 0) + PARADO_FPS / 60;
       frameAtual = 1 + (Math.floor(p.idleT) % (FRAMES_PARADO_ANIM - 1));
     } else {
-      sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; 
+      sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO;
+    }
+
+    // ===== COLISÃO POR FRAME (sprite × paredes do cubo) =====
+    // Nível AAA: cada frame tem uma "collision box" própria (extremidades
+    // esquerda/direita do CORPO daquele quadro, medidas em fração da célula
+    // pelo calibrador — ver carregarSprites.js: `esqR`/`dirR`). Aqui traduzo
+    // essas frações pra coordenadas do MUNDO, considerando a escala real do
+    // frame + o flip do personagem, e clampo p.x contra a parede interna do
+    // cubo (AREA_CUBO.minX/maxX). Como isso é feito ANTES do desenho, nenhum
+    // pixel do sprite pode atravessar o vidro — nem punho estendido, nem
+    // ombro largo, nem perna em pose de agachar/pular.
+    const alturaCorpoP = ALTURA_ARMOR * (0.9 + (p.z / Z_MAX) * 0.2);
+    const flipP = (p.face === 1) !== (SPRITE_OLHA_PARA === 'direita');
+    const caixa = calcCaixaFrame({ sprite, calib, frameAtual, gradeCols, gradeRows, alturaCorpo: alturaCorpoP });
+    if (caixa) {
+      // Extensão do corpo pra esquerda/direita a partir de p.x (já com flip).
+      const extEsq = flipP ? caixa.extDir : caixa.extEsq;
+      const extDir = flipP ? caixa.extEsq : caixa.extDir;
+      const cubeL = AREA_CUBO.minX + extEsq;
+      const cubeR = AREA_CUBO.maxX - extDir;
+      if (cubeR >= cubeL) {
+        if (p.x < cubeL) { p.x = cubeL; if (p.vx < 0) p.vx = 0; }
+        else if (p.x > cubeR) { p.x = cubeR; if (p.vx > 0) p.vx = 0; }
+      } else {
+        // Frame mais largo que o cubo (não deveria acontecer com sprites
+        // atuais, mas se acontecer, prende no centro pra não oscilar).
+        p.x = (AREA_CUBO.minX + AREA_CUBO.maxX) / 2;
+        p.vx = 0;
+      }
+      // No SOCO, se o próximo quadro esticaria o braço além da parede mesmo
+      // com o corpo já encostado, congelo o combo no quadro atual — o punho
+      // fica "pressionando" a parede em vez de atravessá-la.
+      if (g.golpe && !g.golpe.reversa && socar && calibSocar) {
+        const seqAtual = SOCAR_SEQ_IDA;
+        const iAtual = Math.min(seqAtual.length - 1, Math.round(g.golpe.f));
+        if (iAtual + 1 < seqAtual.length) {
+          const proxFrame = seqAtual[iAtual + 1];
+          const proxCaixa = calcCaixaFrame({ sprite: socar, calib: calibSocar, frameAtual: proxFrame, gradeCols: SOCAR_COLS, gradeRows: SOCAR_ROWS, alturaCorpo: alturaCorpoP });
+          if (proxCaixa) {
+            const pExtEsq = flipP ? proxCaixa.extDir : proxCaixa.extEsq;
+            const pExtDir = flipP ? proxCaixa.extEsq : proxCaixa.extDir;
+            const pLarg = pExtEsq + pExtDir;
+            const cubeLarg = AREA_CUBO.maxX - AREA_CUBO.minX;
+            const encostadoEsq = p.x <= AREA_CUBO.minX + extEsq + 0.5;
+            const encostadoDir = p.x >= AREA_CUBO.maxX - extDir - 0.5;
+            // Só congela se o próximo frame REALMENTE cabe MENOS que o
+            // atual E o corpo já está encostado no lado pro qual o braço
+            // vai crescer (não trava se ainda dá pra recuar).
+            if (pLarg > cubeLarg && (encostadoEsq || encostadoDir)) {
+              g.golpe.f = iAtual; // freia o combo no frame atual
+            }
+          }
+        }
+      }
     }
 
     // ===== CÂMERA =====
