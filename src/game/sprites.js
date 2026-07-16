@@ -60,6 +60,24 @@ export const AGACHAR_VEL_TRANSICAO = AGACHAR.velTransicao;
 export const SPRITE_SOCAR = url(SOCAR.src);
 export const SOCAR_COLS = SOCAR.cols, SOCAR_ROWS = SOCAR.rows, FRAMES_SOCAR = SOCAR.frames;
 export const SOCAR_ANIM_SPEED = SOCAR.animSpeed;
+// Sequência de IDA: todas as fileiras da grade, na ordem, PULANDO a
+// penúltima inteira (fica de fora do combo). Sequência de VOLTA: só a
+// PRIMEIRA fileira, ao contrário — toca depois que a ida chega no último
+// quadro da última fileira, e devolve o personagem ao quadro 0 (frame 1).
+export const SOCAR_SEQ_IDA = (() => {
+  const seq = [];
+  const penultima = SOCAR_ROWS - 2;
+  for (let r = 0; r < SOCAR_ROWS; r++) {
+    if (r === penultima) continue;
+    for (let c = 0; c < SOCAR_COLS; c++) seq.push(r * SOCAR_COLS + c);
+  }
+  return seq;
+})();
+export const SOCAR_SEQ_VOLTA = (() => {
+  const seq = [];
+  for (let c = SOCAR_COLS - 1; c >= 0; c--) seq.push(c);
+  return seq;
+})();
 
 // ---- CENÁRIO ----
 // O chão/fundo antigos (imagem única) foram substituídos pelo cenário
