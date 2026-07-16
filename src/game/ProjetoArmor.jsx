@@ -594,9 +594,6 @@ export default function ProjetoArmor({ onVoltar }) {
 
       {fase === 'jogando' && paisagem && (
         <div>
-          <div style={{ ...es.barra, top: 0 }} />
-          <div style={{ ...es.barra, bottom: 0 }} />
-
           <button
             onClick={alternarZoom}
             className="armor-hud-btn"
