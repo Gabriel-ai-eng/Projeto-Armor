@@ -50,14 +50,7 @@ const calibrar = (img, nFrames, excluir) => {
       if (bot < 0) { frames.push(null); continue; }
       const corpo = bot - top + 1; if (corpo > maiorCorpo) maiorCorpo = corpo;
       areas.push(area);
-      // esqR/dirR = extremidades HORIZONTAIS do corpo naquele quadro (em
-      // fração da largura da célula) — usadas pelo motor pra "collision box"
-      // por frame, garantindo que nenhum pixel do sprite atravesse o cubo.
-      // topR = topo pra fechar a caixa (colisão com o teto, se precisar).
-      frames.push({
-        botR: bot / CH, cxR: (esq + dir) / 2 / W,
-        esqR: esq / W, dirR: dir / W, topR: top / CH,
-      });
+      frames.push({ botR: bot / CH, cxR: (esq + dir) / 2 / W });
     }
     const valido = frames.find(f => f !== null);
     if (!valido || maiorCorpo === 0) return null;
@@ -98,12 +91,7 @@ const calibrarGrade = (img, cols, rows, nFrames, excluir) => {
       const corpo = bot - top + 1; if (corpo > maiorCorpo) maiorCorpo = corpo;
       // cxR = centro da CAIXA; cxMassR = centro de MASSA (não balança com braço/
       // perna esticados). altR = altura do corpo nesse quadro ÷ altura da célula.
-      // esqR/dirR/topR = "collision box" do frame (extremidades do sprite),
-      // usadas pra prender qualquer pixel do corpo dentro do cubo.
-      frames.push({
-        botR: bot / H, cxR: (esq + dir) / 2 / W, cxMassR: sumX / cnt / W, altR: corpo / H,
-        esqR: esq / W, dirR: dir / W, topR: top / H,
-      });
+      frames.push({ botR: bot / H, cxR: (esq + dir) / 2 / W, cxMassR: sumX / cnt / W, altR: corpo / H });
     }
     const valido = frames.find(f => f !== null);
     if (!valido || maiorCorpo === 0) return null;
@@ -179,9 +167,7 @@ export async function carregarSprites(aoChegarExtra) {
         const suave = raw.map((f, i) => {
           let s = 0, c = 0;
           for (let k = -2; k <= 2; k++) { const j = i + k; if (j >= 0 && j < n) { s += raw[j].botR; c++; } }
-          // Preserva esqR/dirR/topR pra colisão por frame (a suavização
-          // só se aplica a botR/cxR, pra tirar o tremor da âncora).
-          return { botR: s / c, cxR: (f.cxMassR ?? f.cxR), esqR: f.esqR, dirR: f.dirR, topR: f.topR };
+          return { botR: s / c, cxR: (f.cxMassR ?? f.cxR) };
         });
         const emPe = raw[n - 1].altR || L.corpoR;   // altura do corpo em pé
         pl.leitura = { corpoR: emPe, frames: suave };
