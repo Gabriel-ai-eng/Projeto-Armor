@@ -48,24 +48,46 @@ export function criarLoop(deps) {
     if (window.innerWidth <= window.innerHeight) return;
     // ===== INPUT (mover + mirar) — vem dos joysticks DOM (por imagem) =====
     const mv = moveRef.current, am = aimRef.current;
-    const mx = mv.x, intensidade = mv.mag;
+    const mx = mv.x, my = mv.y || 0, intensidade = mv.mag;
     const aimActive = am.active, aimAng = am.ang;
+    const correndo = intensidade > LIMIAR_CORRER;
+    // Mesma regra do p.agachado (mais abaixo), adiantada aqui só pra separar
+    // "correndo de verdade" de um empurrão pra BAIXO com bastante força
+    // (que é intenção de AGACHAR, não de correr, mesmo tendo intensidade alta).
+    const seriaAgachar = my > 0.4 && my > Math.abs(mx);
+
+    // ===== GOLPE — cancelamento por CORRER =====
+    // Correr no meio do soco cancela a animação NA HORA, sem tocar o reverso
+    // da 1ª fileira — o corpo já sai correndo no mesmo instante. Andar/agachar
+    // continuam cancelando pro reverso (tratado mais abaixo, junto do resto
+    // da física do golpe).
+    if (g.golpe && correndo && !seriaAgachar) g.golpe = null;
 
     // ===== FÍSICA HORIZONTAL =====
     const p = g.p;
-    const correndo = intensidade > LIMIAR_CORRER;
+    // Enquanto o combo de socos estiver tocando (ida OU reverso) o corpo
+    // fica TRAVADO onde está — não sai do lugar de jeito nenhum — até a
+    // animação de andar realmente assumir. Só destrava no mesmo instante em
+    // que o golpe é cancelado (correr, acima) ou termina (reverso completo).
+    const travadoPeloGolpe = !!g.golpe;
     const velMax = correndo ? VEL_CORRER : VEL_ANDAR;
     const aceler = correndo ? 0.75 : 0.17;
-    p.vx += mx * aceler; p.vx *= 0.85;
-    // Zera só quando o manche está solto (mx===0) — zerar mesmo com o
-    // manche inclinado travava o personagem em vx=0 pra sempre com toques
-    // fracos/moderados: cada quadro somava só uma fração de aceler*mx (bem
-    // menor que 0.05) e o corte devolvia a 0 antes de conseguir acumular,
-    // então ele nunca saía do lugar por mais tempo que segurasse o manche.
-    if (mx === 0 && Math.abs(p.vx) < 0.05) p.vx = 0;
-    p.vx = Math.max(-velMax, Math.min(velMax, p.vx));
+    if (travadoPeloGolpe) {
+      p.vx = 0;
+    } else {
+      p.vx += mx * aceler; p.vx *= 0.85;
+      // Zera só quando o manche está solto (mx===0) — zerar mesmo com o
+      // manche inclinado travava o personagem em vx=0 pra sempre com toques
+      // fracos/moderados: cada quadro somava só uma fração de aceler*mx (bem
+      // menor que 0.05) e o corte devolvia a 0 antes de conseguir acumular,
+      // então ele nunca saía do lugar por mais tempo que segurasse o manche.
+      if (mx === 0 && Math.abs(p.vx) < 0.05) p.vx = 0;
+      p.vx = Math.max(-velMax, Math.min(velMax, p.vx));
+    }
     const xAntes = p.x;
-    p.x = Math.max(60, Math.min(WORLD_W - 60, p.x + p.vx));
+    if (!travadoPeloGolpe) {
+      p.x = Math.max(60, Math.min(WORLD_W - 60, p.x + p.vx));
+    }
     if (aimActive && Math.abs(Math.cos(aimAng)) > 0.25) p.face = Math.cos(aimAng) >= 0 ? 1 : -1;
     else if (Math.abs(p.vx) > 0.08) p.face = p.vx > 0 ? 1 : -1;
 
@@ -74,8 +96,7 @@ export function criarLoop(deps) {
     // joystick não move mais "para dentro/fora" do hangar — joystick para
     // baixo (sem puxar muito para o lado) ativa o AGACHAR em vez disso. p.z
     // fica fixo no valor de nascimento.
-    const mzJoy = mv.y || 0;
-    p.agachado = mzJoy > 0.4 && mzJoy > Math.abs(mx);
+    p.agachado = seriaAgachar;
     // Progresso do agachar (0 = de pé, FRAMES_AGACHAR-1 = totalmente agachado)
     // anda pra FRENTE enquanto o manche fica pro chão e pra TRÁS (mesma tira,
     // ao contrário) assim que ele volta pro centro — é o que faz o personagem
@@ -117,13 +138,14 @@ export function criarLoop(deps) {
     // penúltima inteira). Ao chegar no último quadro dessa sequência (fim da
     // última fileira), troca sozinho pra VOLTA: SOCAR_SEQ_VOLTA, que é só a
     // PRIMEIRA fileira ao contrário, terminando de volta no quadro 0 — aí sim
-    // o combo acaba (g.golpe = null) e a animação normal (andar/correr/…)
-    // volta a mandar, já na direção que o manche estiver apontando.
+    // o combo acaba (g.golpe = null) e a animação normal (andar/…) volta a
+    // mandar, já na direção que o manche estiver apontando. (Correr já foi
+    // tratado ANTES, lá em cima — cancela na hora, sem passar por aqui.)
     if (g.golpe) {
-      // Jogador mexeu o manche em QUALQUER direção no meio do soco: cancela
-      // a ida na hora (não espera chegar no fim da última fileira) e pula
-      // direto pra volta — a mesma fileira 0 ao contrário de sempre, do
-      // último quadro dela pro primeiro.
+      // Jogador começou a ANDAR ou AGACHAR no meio do soco: cancela a ida na
+      // hora (não espera chegar no fim da última fileira) e pula direto pra
+      // volta — a mesma fileira 0 ao contrário de sempre, do último quadro
+      // dela pro primeiro.
       if (!g.golpe.reversa && intensidade >= 0.18) {
         g.golpe.reversa = true;
         g.golpe.f = 0;
