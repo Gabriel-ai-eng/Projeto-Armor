@@ -19,7 +19,7 @@ import {
   SPRITE_OLHA_PARA, FRAMES_ANDAR, FRAMES_CORRER, FRAME_PARADO, FRAMES_PARADO_ANIM,
   PARADO_FPS, PARADO_COLS, PARADO_ROWS, ANDAR_FRAMES_POR_TICK, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES,
   PULAR_BODY_R, PULAR_FOOT_R, JUMP_ANIM_SPEED, FRAMES_AGACHAR, AGACHAR_VEL_TRANSICAO,
-  SOCAR_COLS, SOCAR_ROWS, FRAMES_SOCAR, SOCAR_ANIM_SPEED,
+  SOCAR_COLS, SOCAR_ROWS, FRAMES_SOCAR, SOCAR_ANIM_SPEED, SOCAR_SEQ_IDA, SOCAR_SEQ_VOLTA,
 } from './sprites';
 import { lerpArr, rgbStr, rgbaStr, jumpArc, faseDia } from './mundo';
 import { criarCenario } from './cenario/desenhar';
@@ -113,17 +113,21 @@ export function criarLoop(deps) {
     }
 
     // ===== GOLPE (combo de socos, disparado pelo botão LUTAR) =====
-    // Toca a folha INTEIRA pra frente (g.golpe.reversa = false) e, ao chegar
-    // no último quadro, sozinha vira pra trás (reversa = true) até voltar ao
-    // quadro 0 — aí sim o combo termina (g.golpe = null) e a animação normal
-    // (parado/andar/…) volta a mandar.
+    // IDA: percorre SOCAR_SEQ_IDA (todas as fileiras da grade, PULANDO a
+    // penúltima inteira). Ao chegar no último quadro dessa sequência (fim da
+    // última fileira), troca sozinho pra VOLTA: SOCAR_SEQ_VOLTA, que é só a
+    // PRIMEIRA fileira ao contrário, terminando de volta no quadro 0 — aí sim
+    // o combo acaba (g.golpe = null) e a animação normal volta a mandar.
     if (g.golpe) {
-      g.golpe.f += SOCAR_ANIM_SPEED * (g.golpe.reversa ? -1 : 1);
-      if (!g.golpe.reversa && g.golpe.f >= FRAMES_SOCAR - 1) {
-        g.golpe.f = FRAMES_SOCAR - 1;
-        g.golpe.reversa = true;
-      } else if (g.golpe.reversa && g.golpe.f <= 0) {
-        g.golpe = null;
+      g.golpe.f += SOCAR_ANIM_SPEED;
+      const seqAtual = g.golpe.reversa ? SOCAR_SEQ_VOLTA : SOCAR_SEQ_IDA;
+      if (g.golpe.f >= seqAtual.length - 1) {
+        if (!g.golpe.reversa) {
+          g.golpe.reversa = true;
+          g.golpe.f = 0;
+        } else {
+          g.golpe = null;
+        }
       }
     }
     const emGolpe = !!(g.golpe && socar);
@@ -185,12 +189,14 @@ export function criarLoop(deps) {
       sprite = agachar; calib = calibAgachar; nFrames = FRAMES_AGACHAR;
       frameAtual = Math.min(nFrames - 1, Math.round(p.agachaF));
     } else if (modo === 'socar' && socar) {
-      // Quadro = o progresso calculado acima (g.golpe.f): sobe a grade pra
-      // frente no combo e desce (reverso) sozinha ao terminar — mesma ideia
-      // do agachar, mas em grade (cols x rows) em vez de tira.
+      // g.golpe.f é o progresso DENTRO da sequência ativa (ida ou volta, ver
+      // acima) — aqui só traduz esse índice pro número de quadro real da
+      // grade através de SOCAR_SEQ_IDA/SOCAR_SEQ_VOLTA.
       sprite = socar; calib = calibSocar; nFrames = FRAMES_SOCAR;
       gradeCols = SOCAR_COLS; gradeRows = SOCAR_ROWS;
-      frameAtual = Math.max(0, Math.min(nFrames - 1, Math.round(g.golpe.f)));
+      const seqAtual = g.golpe.reversa ? SOCAR_SEQ_VOLTA : SOCAR_SEQ_IDA;
+      const idx = Math.max(0, Math.min(seqAtual.length - 1, Math.round(g.golpe.f)));
+      frameAtual = seqAtual[idx];
     } else if (parado) {
       sprite = parado; calib = calibParado; nFrames = FRAMES_PARADO_ANIM;
       gradeCols = PARADO_COLS; gradeRows = PARADO_ROWS;
