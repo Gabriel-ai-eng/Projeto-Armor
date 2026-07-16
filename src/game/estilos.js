@@ -273,7 +273,7 @@ export const CSS_ARMOR = `
 export const es = {
   fundo: { position: 'fixed', inset: 0, backgroundColor: '#000', zIndex: 999999, overflow: 'hidden', touchAction: 'none' },
   canvas: { width: '100%', height: '100%', display: 'block', imageRendering: 'pixelated', touchAction: 'none' },
-  barra: { position: 'absolute', left: 0, width: '100%', height: 22, backgroundColor: '#000', zIndex: 5, pointerEvents: 'none' },
+  barra: { position: 'absolute', left: 0, width: '100%', height: 'clamp(32px, 8vh, 56px)', backgroundColor: '#000', zIndex: 5, pointerEvents: 'none' },
   // Aparência (vidro translúcido cinza-prata + glow) vem das classes
   // .armor-hud-btn / .armor-hud-pill em CSS_ARMOR — aqui só posição/tamanho.
   botaoZoom: { position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', width: 50, height: 54, borderRadius: 18, cursor: 'pointer', zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'Rajdhani', sans-serif", border: 'none', padding: 0, outline: 'none' },
