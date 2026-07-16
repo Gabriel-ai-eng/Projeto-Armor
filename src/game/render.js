@@ -101,10 +101,16 @@ export function criarLoop(deps) {
     // anda pra FRENTE enquanto o manche fica pro chão e pra TRÁS (mesma tira,
     // ao contrário) assim que ele volta pro centro — é o que faz o personagem
     // "levantar" com a animação em modo reverso em vez de só sumir o sprite.
+    // Congelado enquanto o soco estiver tocando (mesma trava do corpo, acima):
+    // sem isso ele avançava esses quadros ESCONDIDO atrás do soco, e quando o
+    // agachar finalmente aparecia (soco terminado) já estava quase no fim —
+    // parecia um agachar "rápido demais" em vez da mesma velocidade do idle.
     const agachaAlvo = p.agachado ? FRAMES_AGACHAR - 1 : 0;
     p.agachaF = p.agachaF ?? 0;
-    if (p.agachaF < agachaAlvo) p.agachaF = Math.min(agachaAlvo, p.agachaF + AGACHAR_VEL_TRANSICAO);
-    else if (p.agachaF > agachaAlvo) p.agachaF = Math.max(agachaAlvo, p.agachaF - AGACHAR_VEL_TRANSICAO);
+    if (!travadoPeloGolpe) {
+      if (p.agachaF < agachaAlvo) p.agachaF = Math.min(agachaAlvo, p.agachaF + AGACHAR_VEL_TRANSICAO);
+      else if (p.agachaF > agachaAlvo) p.agachaF = Math.max(agachaAlvo, p.agachaF - AGACHAR_VEL_TRANSICAO);
+    }
     if (p.z === undefined) p.z = Z_INICIAL;
     resolverColisao(p);
     // Deslocamento REAL neste quadro — depois da colisão (não só do clamp da
