@@ -7,10 +7,11 @@
 // Chamado uma vez, na abertura (fase 'carregando' → 'pronto'/'erro').
 // ============================================================
 import {
-  SPRITE_ANDAR, SPRITE_CORRER, SPRITE_PULAR, SPRITE_PARADO_ANIM, SPRITE_AGACHAR,
-  FRAMES_ANDAR, FRAMES_CORRER, FRAMES_PARADO_ANIM, FRAMES_AGACHAR, CORRER_ALTURA_REL,
+  SPRITE_ANDAR, SPRITE_CORRER, SPRITE_PULAR, SPRITE_PARADO_ANIM, SPRITE_AGACHAR, SPRITE_SOCAR,
+  FRAMES_ANDAR, FRAMES_CORRER, FRAMES_PARADO_ANIM, FRAMES_AGACHAR, FRAMES_SOCAR, CORRER_ALTURA_REL,
   PULAR_COLS, PULAR_ROWS, PULAR_FRAMES,
   PARADO_COLS, PARADO_ROWS,
+  SOCAR_COLS, SOCAR_ROWS,
 } from './sprites';
 import { URL_TILESET, URL_EMISSIVO } from './cenario/tileset';
 
@@ -195,6 +196,14 @@ export async function carregarSprites(aoChegarExtra) {
   carregarSprite(SPRITE_AGACHAR, (im) => calibrar(im, FRAMES_AGACHAR))
     .then((r) => {
       entregar({ agachar: r.img, calibAgachar: r.leitura });
+    })
+    .catch(() => {});
+
+  // SOCAR: folha em GRADE (como o pulo/idle), 45 quadros do combo de socos —
+  // mede-se sozinha por `calibrarGrade` (sem filtro de efeito).
+  carregarSprite(SPRITE_SOCAR, (im) => calibrarGrade(im, SOCAR_COLS, SOCAR_ROWS, FRAMES_SOCAR))
+    .then((s) => {
+      entregar({ socar: s.img, calibSocar: s.leitura });
     })
     .catch(() => {});
 

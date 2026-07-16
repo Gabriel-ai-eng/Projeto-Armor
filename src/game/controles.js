@@ -416,8 +416,11 @@ export function criarControles(deps) {
   };
 
   // ==========================================================
-  // BOTÃO LUTAR (golpe/rajada dourada — dispara o "missil" reservado
-  // no estado do jogo; o cooldown e o disparo em si vivem no render.js)
+  // BOTÃO LUTAR (ícone de raio) — dispara dois efeitos independentes:
+  // a rajada dourada ("missil" no estado do jogo; cooldown/disparo vivem
+  // no render.js) e o COMBO DE SOCOS na sprite do personagem (g.golpe:
+  // toca a folha inteira pra frente e depois sozinha em reverso — física
+  // e escolha de quadro também em render.js).
   // ==========================================================
 
   const lutarPress = (e) => {
@@ -431,7 +434,13 @@ export function criarControles(deps) {
     } catch {}
 
     const g = G.current;
-    if (g) g.missilQueued = true;
+    if (g) {
+      g.missilQueued = true;
+      // Combo de socos: só começa um novo se não tiver nenhum tocando —
+      // evita reiniciar/"pular" quadro no meio da animação se o jogador
+      // clicar de novo antes do combo (ida + volta) terminar sozinho.
+      if (!g.golpe) g.golpe = { f: 0, reversa: false };
+    }
 
     setLutarAtivo(true);
   };
