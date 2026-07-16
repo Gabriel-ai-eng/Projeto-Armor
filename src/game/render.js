@@ -18,7 +18,7 @@ import {
 import {
   SPRITE_OLHA_PARA, FRAMES_ANDAR, FRAMES_CORRER, FRAME_PARADO, FRAMES_PARADO_ANIM,
   PARADO_FPS, PARADO_COLS, PARADO_ROWS, ANDAR_FRAMES_POR_TICK, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES,
-  PULAR_BODY_R, PULAR_FOOT_R, JUMP_ANIM_SPEED,
+  PULAR_BODY_R, PULAR_FOOT_R, JUMP_ANIM_SPEED, FRAMES_AGACHAR, AGACHAR_VEL_TRANSICAO,
 } from './sprites';
 import { lerpArr, rgbStr, rgbaStr, jumpArc, faseDia } from './mundo';
 import { criarCenario } from './cenario/desenhar';
@@ -35,7 +35,7 @@ export function criarLoop(deps) {
   const passo = () => {
     raf = requestAnimationFrame(passo);
     const g = G.current;
-    const { andar, correr, cenario, emissivo, pular, parado, calibAndar, calibCorrer, calibParado, calibPular } = imgsRef.current;
+    const { andar, correr, cenario, emissivo, pular, parado, agachar, calibAndar, calibCorrer, calibParado, calibPular, calibAgachar } = imgsRef.current;
     if (!g || !andar || !cenario || !emissivo) return;
     if (!cen) cen = criarCenario({ tileset: cenario, emissivo });
 
@@ -71,11 +71,18 @@ export function criarLoop(deps) {
     // ===== PROFUNDIDADE (travada) =====
     // Estilo Terraria: o personagem só anda para os lados. O eixo vertical do
     // joystick não move mais "para dentro/fora" do hangar — joystick para
-    // baixo (sem puxar muito para o lado) ativa o AGACHAR em vez disso (ainda
-    // sem sprite próprio: por enquanto só fica parado, pronto pra quando a
-    // folha de agachar existir). p.z fica fixo no valor de nascimento.
+    // baixo (sem puxar muito para o lado) ativa o AGACHAR em vez disso. p.z
+    // fica fixo no valor de nascimento.
     const mzJoy = mv.y || 0;
     p.agachado = mzJoy > 0.4 && mzJoy > Math.abs(mx);
+    // Progresso do agachar (0 = de pé, FRAMES_AGACHAR-1 = totalmente agachado)
+    // anda pra FRENTE enquanto o manche fica pro chão e pra TRÁS (mesma tira,
+    // ao contrário) assim que ele volta pro centro — é o que faz o personagem
+    // "levantar" com a animação em modo reverso em vez de só sumir o sprite.
+    const agachaAlvo = p.agachado ? FRAMES_AGACHAR - 1 : 0;
+    p.agachaF = p.agachaF ?? 0;
+    if (p.agachaF < agachaAlvo) p.agachaF = Math.min(agachaAlvo, p.agachaF + AGACHAR_VEL_TRANSICAO);
+    else if (p.agachaF > agachaAlvo) p.agachaF = Math.max(agachaAlvo, p.agachaF - AGACHAR_VEL_TRANSICAO);
     if (p.z === undefined) p.z = Z_INICIAL;
     resolverColisao(p);
     // Deslocamento REAL neste quadro — depois da colisão (não só do clamp da
@@ -110,7 +117,10 @@ export function criarLoop(deps) {
     let modo;
     if (emPulo) modo = 'pular';
     else if (p.y > solo + 3) modo = 'ar';
-    else if (p.agachado) modo = 'agachado'; // sem sprite ainda: cai no fallback "parado" abaixo
+    // Continua em "agachado" enquanto p.agachaF > 0 mesmo depois de soltar o
+    // manche — é o que deixa a animação de LEVANTAR (reverso da tira) tocar
+    // até o fim antes de cair no parado/andar normal.
+    else if (p.agachado || p.agachaF > 0) modo = 'agachado';
     // "parado" enquanto a bolinha do manche não sai de perto do centro —
     // olha pra intensidade BRUTA do manche (não pra vAbs, a velocidade já
     // suavizada por aceleração/atrito: um toque bem de leve podia nunca
@@ -146,11 +156,16 @@ export function criarLoop(deps) {
       frameAtual = Math.floor(p.animT) % nFrames;
     } else if (modo === 'andar') {
       sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR;
-      
+
       // FIX DE VELOCIDADE: multiplicador mais rápido que antes (0.85 -> 1.1).
       p.animT += (ANDAR_FRAMES_POR_TICK * 1.1);
-      
+
       frameAtual = 1 + (Math.floor(p.animT) % (FRAMES_ANDAR - 1));
+    } else if (modo === 'agachado' && agachar) {
+      // Quadro = o progresso calculado acima (p.agachaF): sobe a tira ao
+      // agachar, desce (reverso) ao levantar — nada de loop por tempo aqui.
+      sprite = agachar; calib = calibAgachar; nFrames = FRAMES_AGACHAR;
+      frameAtual = Math.min(nFrames - 1, Math.round(p.agachaF));
     } else if (parado) {
       sprite = parado; calib = calibParado; nFrames = FRAMES_PARADO_ANIM;
       // Ignora só o 1º quadro da folha (índice 0) — os demais entram todos,

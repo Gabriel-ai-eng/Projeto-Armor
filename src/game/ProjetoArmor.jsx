@@ -130,10 +130,12 @@ export default function ProjetoArmor({ onVoltar }) {
     correr: null,
     pular: null,
     parado: null,
+    agachar: null,
     calibAndar: null,
     calibCorrer: null,
     calibParado: null,
     calibPular: null,
+    calibAgachar: null,
     // atlas do cenário modular do hangar (src/game/cenario/)
     cenario: null,
     emissivo: null,

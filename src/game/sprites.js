@@ -13,6 +13,7 @@ import ANDAR from '../../js/assets/armor-andar.js';
 import PARADO from '../../js/assets/armor-parado.js';
 import CORRER from '../../js/assets/armor-correr.js';
 import PULAR from '../../js/assets/armor-pular.js';
+import AGACHAR from '../../js/assets/armor-agachar.js';
 
 // Prefixo do deploy (Vite): '/jogo/' em produção, '/' no dev. Todo arquivo de
 // assets/ precisa dele para resolver através do proxy do domínio.
@@ -48,6 +49,11 @@ export const PULAR_COLS = PULAR.cols, PULAR_ROWS = PULAR.rows, PULAR_FRAMES = PU
 export const PULAR_BODY_R = PULAR.bodyR, PULAR_FOOT_R = PULAR.footR;
 export const JUMP_ANIM_SPEED = PULAR.animSpeed;
 export const JUMP_LAUNCH_F = PULAR.launchF, JUMP_LAND_F = PULAR.landF, JUMP_ARC_H = PULAR.arcH;
+
+// ---- AGACHAR (js/assets/armor-agachar.js) ----
+export const SPRITE_AGACHAR = url(AGACHAR.src);
+export const FRAMES_AGACHAR = AGACHAR.frames;
+export const AGACHAR_VEL_TRANSICAO = AGACHAR.velTransicao;
 
 // ---- CENÁRIO ----
 // O chão/fundo antigos (imagem única) foram substituídos pelo cenário
