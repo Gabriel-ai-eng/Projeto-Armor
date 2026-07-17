@@ -24,8 +24,35 @@ import {
 import { lerpArr, rgbStr, rgbaStr, jumpArc, faseDia } from './mundo';
 import { criarCenario } from './cenario/desenhar';
 import { Z_INICIAL, Z_MAX, AREA_CUBO } from './cenario/mapa';
-import { resolverColisao, alturaSolo } from './cenario/colisao';
+import { resolverColisao, alturaSolo, clipparNoCubo } from './cenario/colisao';
 import { passosSetAtivo } from './som';
+
+// ============================================================
+// BORDAS VISÍVEIS DO QUADRO ATUAL (pro clipping do cubo)
+// Mesma matemática do desenho (escala/âncora/flip), devolvendo em px do
+// MUNDO, relativo a (p.x, linha dos pés): esq/dir/topo = bordas visíveis;
+// yEsq/yDir/xTopo = onde fica o pixel extremo (ponto exato do impacto).
+// Devolve null se a folha ainda não foi calibrada (ex.: sem CORS) — aí só
+// vale o confinamento estático de sempre (resolverColisao).
+// ============================================================
+function medirBordasFrame({ img, calib, frame, cols, rows, alturaCorpo, flip }) {
+  if (!img || !calib || !calib.frames) return null;
+  const f = calib.frames[frame];
+  if (!f || f.esqR === undefined) return null;
+  const cw = img.width / cols, ch = img.height / rows;
+  const esc = alturaCorpo / (calib.corpoR * ch);
+  const dW = cw * esc, dH = ch * esc;
+  const offX = (0.5 - f.cxR) * dW;      // mesmo offX do desenho
+  const gap = (1 - f.botR) * dH;        // mesma âncora dos pés do desenho
+  const xa = -dW / 2 + offX + f.esqR * dW;
+  const xb = -dW / 2 + offX + f.dirR * dW;
+  const topo = -dH + gap + f.topR * dH;
+  const yEsqL = -dH + gap + f.esqYR * dH;
+  const yDirL = -dH + gap + f.dirYR * dH;
+  const xTopL = -dW / 2 + offX + f.topXR * dW;
+  if (!flip) return { esq: xa, dir: xb, topo, yEsq: yEsqL, yDir: yDirL, xTopo: xTopL };
+  return { esq: -xb, dir: -xa, topo, yEsq: yDirL, yDir: yEsqL, xTopo: -xTopL };
+}
 
 // deps: { ctx, canvas, G, imgsRef, zoomAlvoRef, relogioAtivoRef, solRef, moveRef, aimRef, volumeEfeitosRef }
 export function criarLoop(deps) {
@@ -247,7 +274,31 @@ export function criarLoop(deps) {
       p.idleT = (p.idleT || 0) + PARADO_FPS / 60;
       frameAtual = 1 + (Math.floor(p.idleT) % (FRAMES_PARADO_ANIM - 1));
     } else {
-      sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO; 
+      sprite = andar; calib = calibAndar; nFrames = FRAMES_ANDAR; frameAtual = FRAME_PARADO;
+    }
+
+    // ===== CLIPPING NO CUBO (nenhum pixel visível atravessa o vidro) =====
+    // Com o quadro do frame já decidido, mede as bordas visíveis DELE e
+    // empurra o corpo o mínimo necessário pra tudo (punho do soco, ombro,
+    // perna, cabeça) ficar dentro das faces internas do vidro — e registra
+    // o ponto exato do toque pro brilho de impacto. Antes da câmera, pra
+    // ela já seguir a posição corrigida (sem tremor). Não mexe em nenhuma
+    // outra física: é só uma restrição a mais, por cima das existentes.
+    // (Perspectiva sutil: mais "fundo" (z menor) = levemente menor.)
+    const alturaCorpo = ALTURA_ARMOR * (0.9 + (p.z / Z_MAX) * 0.2);
+    const flip = (p.face === 1) !== (SPRITE_OLHA_PARA === 'direita');
+    {
+      let ext = null;
+      if (emPulo) {
+        const jf = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
+        ext = medirBordasFrame({ img: pular, calib: calibPular, frame: jf, cols: PULAR_COLS, rows: PULAR_ROWS, alturaCorpo, flip });
+      } else if (sprite) {
+        ext = medirBordasFrame({ img: sprite, calib, frame: frameAtual, cols: gradeCols || nFrames, rows: gradeRows || 1, alturaCorpo, flip });
+      }
+      if (ext) {
+        if (!g.cuboFx) g.cuboFx = { tocando: {}, ponto: {}, cd: {}, fx: [] };
+        clipparNoCubo(p, ext, g.cuboFx, g.t);
+      }
     }
 
     // ===== CÂMERA =====
@@ -295,13 +346,11 @@ export function criarLoop(deps) {
     cen.desenharLuzes(ctx, leftW, rightW, g.t, corCeu, 'chao');   // linha do rodapé, reflexos
 
     // Pés do personagem: profundidade no piso (z) menos a altura (pulo/voo)
+    // (alturaCorpo e flip já foram calculados acima, junto do clipping do cubo)
     const corpoY = p.z - p.y;
-    // Perspectiva sutil: mais "fundo" (z menor) = levemente menor
-    const alturaCorpo = ALTURA_ARMOR * (0.9 + (p.z / Z_MAX) * 0.2);
 
     // PROJETO ARMOR — o desenho vira uma função para entrar no depth sorting
     // (objetos do cenário e personagem ordenados pelo z da base).
-    const flip = (p.face === 1) !== (SPRITE_OLHA_PARA === 'direita');
     const desenharPersonagem = () => {
     if (emPulo) {
       const jFrame = Math.min(Math.floor(g.jump.f), PULAR_FRAMES - 1);
@@ -387,6 +436,37 @@ export function criarLoop(deps) {
     itens.push({ z: p.z, desenhar: desenharPersonagem });
     itens.sort((a, b) => a.z - b.z);
     for (const it of itens) it.desenhar(ctx, g.t, corCeu);
+
+    // ===== IMPACTOS NO CUBO — brilho de energia (ver clipparNoCubo) =====
+    // Glow aditivo no PONTO EXATO do toque: núcleo quase branco + halo azul,
+    // achatado contra a superfície e alongado ao longo dela (a "onda" se
+    // propaga pelo vidro) — apaga suavemente em ~0,3s. Barato: no máximo 10
+    // gradientes por frame, e só enquanto houver impacto vivo.
+    if (g.cuboFx && g.cuboFx.fx.length) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const fx = g.cuboFx.fx;
+      for (let i = fx.length - 1; i >= 0; i--) {
+        const b = fx[i];
+        const vida = (g.t - b.t0) / 20;             // ~0,33s a 60fps
+        if (vida >= 1) { fx.splice(i, 1); continue; }
+        const sobra = (1 - vida) * (1 - vida);      // easing: forte → some
+        const raio = 13 + vida * 26;                // propagação pela superfície
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        // Paredes laterais: elipse "em pé" (espalha na vertical, fininha na
+        // horizontal); teto: deitada. Fica colado na superfície do vidro.
+        if (b.lado === 'teto') ctx.scale(1.8, 0.55); else ctx.scale(0.55, 1.8);
+        const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, raio);
+        glow.addColorStop(0, rgbaStr([225, 246, 255], 0.5 * sobra));
+        glow.addColorStop(0.35, rgbaStr(AZUL_RGB, 0.32 * sobra));
+        glow.addColorStop(1, rgbaStr(AZUL_RGB, 0));
+        ctx.fillStyle = glow;
+        ctx.fillRect(-raio, -raio, raio * 2, raio * 2);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
 
     cen.desenharFrente(ctx, leftW, rightW);   // camada "frente"
 

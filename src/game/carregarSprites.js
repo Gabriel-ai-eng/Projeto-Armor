@@ -39,18 +39,30 @@ const calibrar = (img, nFrames, excluir) => {
       const x0 = Math.round(f * fw), W = Math.round(fw);
       const data = cx.getImageData(x0, 0, W, CH).data;
       let top = CH, bot = -1, esq = W, dir = -1, area = 0;
+      // Onde FICAM os pixels extremos (média das linhas/colunas no extremo):
+      // é o ponto exato de contato quando o quadro encosta no vidro do cubo
+      // (punho no soco, ombro, topo da cabeça) — usado pelo brilho de impacto.
+      let esqY = 0, esqYn = 0, dirY = 0, dirYn = 0, topX = 0, topXn = 0;
       for (let y = 0; y < CH; y++) for (let x = 0; x < W; x++) {
         const i = (y * W + x) * 4;
         if (data[i + 3] <= 12) continue;
         if (excluir && excluir(data[i], data[i + 1], data[i + 2])) continue;
         area++;
-        if (y < top) top = y; if (y > bot) bot = y;
-        if (x < esq) esq = x; if (x > dir) dir = x;
+        if (y < top) { top = y; topX = x; topXn = 1; } else if (y === top) { topX += x; topXn++; }
+        if (y > bot) bot = y;
+        if (x < esq) { esq = x; esqY = y; esqYn = 1; } else if (x === esq) { esqY += y; esqYn++; }
+        if (x > dir) { dir = x; dirY = y; dirYn = 1; } else if (x === dir) { dirY += y; dirYn++; }
       }
       if (bot < 0) { frames.push(null); continue; }
       const corpo = bot - top + 1; if (corpo > maiorCorpo) maiorCorpo = corpo;
       areas.push(area);
-      frames.push({ botR: bot / CH, cxR: (esq + dir) / 2 / W });
+      // esqR/dirR/topR = bordas VISÍVEIS do quadro (fração da célula) e
+      // esqYR/dirYR/topXR = posição do pixel extremo — pro clipping do cubo.
+      frames.push({
+        botR: bot / CH, cxR: (esq + dir) / 2 / W,
+        esqR: esq / W, dirR: (dir + 1) / W, topR: top / CH,
+        esqYR: (esqY / esqYn) / CH, dirYR: (dirY / dirYn) / CH, topXR: (topX / topXn) / W,
+      });
     }
     const valido = frames.find(f => f !== null);
     if (!valido || maiorCorpo === 0) return null;
@@ -79,19 +91,30 @@ const calibrarGrade = (img, cols, rows, nFrames, excluir) => {
       const W = Math.round(fw), H = Math.round(fh);
       const data = cx.getImageData(x0, y0, W, H).data;
       let top = H, bot = -1, esq = W, dir = -1, sumX = 0, cnt = 0;
+      // Pixels extremos (ver comentário na `calibrar`): ponto de contato
+      // exato pro clipping/brilho de impacto do cubo.
+      let esqY = 0, esqYn = 0, dirY = 0, dirYn = 0, topX = 0, topXn = 0;
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const i = (y * W + x) * 4;
         if (data[i + 3] <= 12) continue;
         if (excluir && excluir(data[i], data[i + 1], data[i + 2])) continue;
-        if (y < top) top = y; if (y > bot) bot = y;
-        if (x < esq) esq = x; if (x > dir) dir = x;
+        if (y < top) { top = y; topX = x; topXn = 1; } else if (y === top) { topX += x; topXn++; }
+        if (y > bot) bot = y;
+        if (x < esq) { esq = x; esqY = y; esqYn = 1; } else if (x === esq) { esqY += y; esqYn++; }
+        if (x > dir) { dir = x; dirY = y; dirYn = 1; } else if (x === dir) { dirY += y; dirYn++; }
         sumX += x; cnt++;   // p/ o centro de MASSA (mais estável que a caixa)
       }
       if (bot < 0) { frames.push(null); continue; }
       const corpo = bot - top + 1; if (corpo > maiorCorpo) maiorCorpo = corpo;
       // cxR = centro da CAIXA; cxMassR = centro de MASSA (não balança com braço/
       // perna esticados). altR = altura do corpo nesse quadro ÷ altura da célula.
-      frames.push({ botR: bot / H, cxR: (esq + dir) / 2 / W, cxMassR: sumX / cnt / W, altR: corpo / H });
+      // esqR/dirR/topR + esqYR/dirYR/topXR = bordas visíveis e pixels extremos
+      // do quadro (pro clipping pixel-perfeito do cubo — ver colisao.js).
+      frames.push({
+        botR: bot / H, cxR: (esq + dir) / 2 / W, cxMassR: sumX / cnt / W, altR: corpo / H,
+        esqR: esq / W, dirR: (dir + 1) / W, topR: top / H,
+        esqYR: (esqY / esqYn) / H, dirYR: (dirY / dirYn) / H, topXR: (topX / topXn) / W,
+      });
     }
     const valido = frames.find(f => f !== null);
     if (!valido || maiorCorpo === 0) return null;
@@ -167,7 +190,13 @@ export async function carregarSprites(aoChegarExtra) {
         const suave = raw.map((f, i) => {
           let s = 0, c = 0;
           for (let k = -2; k <= 2; k++) { const j = i + k; if (j >= 0 && j < n) { s += raw[j].botR; c++; } }
-          return { botR: s / c, cxR: (f.cxMassR ?? f.cxR) };
+          // Bordas visíveis (esqR/dirR/…) passam DIRETO, sem suavizar: o
+          // clipping do cubo precisa do quadro real, não da média.
+          return {
+            botR: s / c, cxR: (f.cxMassR ?? f.cxR),
+            esqR: f.esqR, dirR: f.dirR, topR: f.topR,
+            esqYR: f.esqYR, dirYR: f.dirYR, topXR: f.topXR,
+          };
         });
         const emPe = raw[n - 1].altR || L.corpoR;   // altura do corpo em pé
         pl.leitura = { corpoR: emPe, frames: suave };
