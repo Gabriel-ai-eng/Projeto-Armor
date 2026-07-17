@@ -50,6 +50,25 @@ export const AREA_CUBO = {
   maxY: 168, // altura máxima do teto (não deixa voar/pular acima do cubo)
 };
 
+// ======================================================
+// Faces INTERNAS do vidro do cubo (para o clipping pixel-perfeito)
+// Medidas na arte do sprite 'cubo' (LUZES_SPRITES, 448×433 no atlas
+// emissivo): as barras de luz verticais ficam nas colunas ~26–31 (parede
+// esquerda) e ~414–419 (direita); a horizontal de cima nas linhas ~25–28.
+// Convertendo pro mundo (x=738 + col·TS, y=-252 + linha·TS):
+//   esquerda 738+31·0,5 ≈ 754 · direita 738+414·0,5 ≈ 945 · teto -252+28·0,5 ≈ -238
+// Diferente do AREA_CUBO acima (limites dos PÉS, encolhidos à mão), estes
+// são os limites do VIDRO em si: o colisao.js compara as bordas visíveis
+// do QUADRO ATUAL do sprite com estas faces — nenhum pixel atravessa, sem
+// apertar o espaço além do necessário. Só APERTA o confinamento existente
+// (nunca alarga): o clamp estático do AREA_CUBO continua valendo.
+// ======================================================
+export const PAREDES_CUBO = {
+  esq: 754,    // x da face interna do vidro esquerdo
+  dir: 945,    // x da face interna do vidro direito
+  teto: -238,  // y da face interna do vidro de cima (negativo = acima do chão)
+};
+
 const wh = (t, ts = TS) => ({ w: t.w * ts, h: t.h * ts });
 
 // Posições compartilhadas (mesmo x para a peça "apagada" e a sua luz)
