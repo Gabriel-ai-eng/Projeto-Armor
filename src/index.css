@@ -1,4 +1,13 @@
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* Jogo com cara de nativo: sem realce ao tocar, sem selecionar texto da UI e
+   sem menu de long-press do navegador (o zoom já é bloqueado pelo viewport +
+   touch-action:none no body). Campos de digitação re-liberam a seleção abaixo. */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
 
 html, body, #root {
   width: 100%;
