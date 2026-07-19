@@ -94,6 +94,7 @@ const calibrarGrade = (img, cols, rows, nFrames, excluir) => {
       // Pixels extremos (ver comentário na `calibrar`): ponto de contato
       // exato pro clipping/brilho de impacto do cubo.
       let esqY = 0, esqYn = 0, dirY = 0, dirYn = 0, topX = 0, topXn = 0;
+      const colCnt = new Int32Array(W);   // pixels do corpo por coluna (p/ mediana)
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const i = (y * W + x) * 4;
         if (data[i + 3] <= 12) continue;
@@ -103,15 +104,22 @@ const calibrarGrade = (img, cols, rows, nFrames, excluir) => {
         if (x < esq) { esq = x; esqY = y; esqYn = 1; } else if (x === esq) { esqY += y; esqYn++; }
         if (x > dir) { dir = x; dirY = y; dirYn = 1; } else if (x === dir) { dirY += y; dirYn++; }
         sumX += x; cnt++;   // p/ o centro de MASSA (mais estável que a caixa)
+        colCnt[x]++;
       }
       if (bot < 0) { frames.push(null); continue; }
+      // Mediana espacial de X (coluna onde a contagem acumulada cruza 50%): ao
+      // contrário do centro de MASSA, um braço/perna fino esticado pro lado NÃO
+      // arrasta a mediana — ela fica presa no núcleo (tronco/pernas), que é o
+      // que o olho usa como "centro" do personagem.
+      let acc = 0, medX = esq; const meio = cnt / 2;
+      for (let x = 0; x < W; x++) { acc += colCnt[x]; if (acc >= meio) { medX = x; break; } }
       const corpo = bot - top + 1; if (corpo > maiorCorpo) maiorCorpo = corpo;
       // cxR = centro da CAIXA; cxMassR = centro de MASSA (não balança com braço/
       // perna esticados). altR = altura do corpo nesse quadro ÷ altura da célula.
       // esqR/dirR/topR + esqYR/dirYR/topXR = bordas visíveis e pixels extremos
       // do quadro (pro clipping pixel-perfeito do cubo — ver colisao.js).
       frames.push({
-        botR: bot / H, cxR: (esq + dir) / 2 / W, cxMassR: sumX / cnt / W, altR: corpo / H,
+        botR: bot / H, cxR: (esq + dir) / 2 / W, cxMassR: sumX / cnt / W, cxMedR: medX / W, altR: corpo / H,
         esqR: esq / W, dirR: (dir + 1) / W, topR: top / H,
         esqYR: (esqY / esqYn) / H, dirYR: (dirY / dirYn) / H, topXR: (topX / topXn) / W,
       });
@@ -171,37 +179,39 @@ export async function carregarSprites(aoChegarExtra) {
     .catch(() => {});
 
   // PULO: cada quadro tem o corpo (agachado/voando/aterrissando) numa posição
-  // diferente dentro da célula, então a âncora segue CADA quadro. Mas duas
-  // fontes de tremor precisam de tratamento:
-  //  • horizontal: a caixa (cxR) balança ±25px quando braço/perna esticam no
-  //    voo — usamos o centro de MASSA (cxMassR), que fica preso no tronco.
-  //  • vertical: a base da caixa (botR) dá picos de ±40px no voo (perna
-  //    estendida / resto de chama do jato que escapa do filtro).
-  // Além disso, a folha reempacotada (v=5) tem alguns quadros ISOLADOS (ex.:
-  // o 1º de várias fileiras) com uma pose visivelmente mais "fechada"/estreita
-  // que os vizinhos de cada lado — resíduo do reempacote, não movimento real
-  // do personagem. Uma média móvel comum ainda deixava esse quadro fora da
-  // curva puxar a âncora ~20% na direção dele (o personagem "teleportava" de
-  // lado a cada troca de quadro do pulo). Por isso usamos a MEDIANA (não a
-  // média) numa janela de 5 quadros: um único quadro estranho é descartado em
-  // vez de arrastar o resultado, e o movimento genuíno (agachar→voo→pouso)
-  // continua passando normalmente.
+  // diferente dentro da célula — E a folha reempacotada (v=5) ainda empacota o
+  // corpo ora no centro da célula (~0,50) ora deslocado pra direita (~0,70),
+  // em blocos de vários quadros. A âncora horizontal PRECISA seguir esse
+  // deslocamento quadro a quadro: assim o desenho reposiciona a célula pra que
+  // o TRONCO caia sempre em p.x, e o corpo não "anda" de lado ao trocar de
+  // quadro. O que NÃO pode é a âncora se deixar puxar por um braço/perna
+  // esticado, chama do jato ou pixel solto — aí ela erra a posição do tronco e
+  // o personagem "teleporta".
+  //  • horizontal: usamos a MEDIANA ESPACIAL da coluna dos pixels do corpo
+  //    (cxMedR) — a coluna onde metade dos pixels já ficou pra trás. Diferente
+  //    do centro de MASSA (média, cxMassR), um membro fino esticado pro lado
+  //    quase não move a mediana: ela fica presa no núcleo (tronco/pernas), que
+  //    é o "centro" que o olho acompanha. Por quadro, SEM média temporal — é o
+  //    valor real de cada quadro que mantém o tronco colado em p.x (suavizar no
+  //    tempo reintroduzia justamente um salto na fronteira entre um bloco
+  //    centralizado e um deslocado).
+  //  • vertical: a base (botR) ganha uma média móvel curta (janela ±2) só pra
+  //    tirar o tremor de perna estendida / resto de jato, sem perder o
+  //    movimento agachar→subir→aterrissar.
+  // ESCALA: fixa pela altura do corpo EM PÉ (último quadro), pra o personagem
+  // no pulo ficar do MESMO tamanho do andar/correr/parado.
   carregarSprite(SPRITE_PULAR, (im) => calibrarGrade(im, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES, ehChamaPropulsor))
     .then((pl) => {
       const L = pl.leitura;
       if (L && L.frames.length) {
         const raw = L.frames, n = raw.length;
-        const mediana = (arr) => { const s = [...arr].sort((a, b) => a - b); return s[s.length >> 1]; };
         const suave = raw.map((f, i) => {
-          const bots = [], cxs = [];
-          for (let k = -2; k <= 2; k++) {
-            const j = i + k;
-            if (j >= 0 && j < n) { bots.push(raw[j].botR); cxs.push(raw[j].cxMassR ?? raw[j].cxR); }
-          }
+          let sBot = 0, c = 0;
+          for (let k = -2; k <= 2; k++) { const j = i + k; if (j >= 0 && j < n) { sBot += raw[j].botR; c++; } }
           // Bordas visíveis (esqR/dirR/…) passam DIRETO, sem suavizar: o
-          // clipping do cubo precisa do quadro real, não da mediana.
+          // clipping do cubo precisa do quadro real.
           return {
-            botR: mediana(bots), cxR: mediana(cxs),
+            botR: sBot / c, cxR: (f.cxMedR ?? f.cxMassR ?? f.cxR),
             esqR: f.esqR, dirR: f.dirR, topR: f.topR,
             esqYR: f.esqYR, dirYR: f.dirYR, topXR: f.topXR,
           };
