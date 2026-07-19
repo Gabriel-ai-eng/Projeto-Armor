@@ -176,24 +176,32 @@ export async function carregarSprites(aoChegarExtra) {
   //  • horizontal: a caixa (cxR) balança ±25px quando braço/perna esticam no
   //    voo — usamos o centro de MASSA (cxMassR), que fica preso no tronco.
   //  • vertical: a base da caixa (botR) dá picos de ±40px no voo (perna
-  //    estendida / resto de chama do jato que escapa do filtro) — suavizamos
-  //    com média móvel (janela ±2), tirando o tremor sem perder o movimento
-  //    suave agachar→subir→aterrissar.
-  // ESCALA: fixa pela altura do corpo EM PÉ (último quadro, já "de pé"), pra o
-  // personagem parado/no pulo ficar do MESMO tamanho do andar/correr/parado —
-  // usar o maior corpo (uma pose esticada de voo) deixava o pulo menor.
+  //    estendida / resto de chama do jato que escapa do filtro).
+  // Além disso, a folha reempacotada (v=5) tem alguns quadros ISOLADOS (ex.:
+  // o 1º de várias fileiras) com uma pose visivelmente mais "fechada"/estreita
+  // que os vizinhos de cada lado — resíduo do reempacote, não movimento real
+  // do personagem. Uma média móvel comum ainda deixava esse quadro fora da
+  // curva puxar a âncora ~20% na direção dele (o personagem "teleportava" de
+  // lado a cada troca de quadro do pulo). Por isso usamos a MEDIANA (não a
+  // média) numa janela de 5 quadros: um único quadro estranho é descartado em
+  // vez de arrastar o resultado, e o movimento genuíno (agachar→voo→pouso)
+  // continua passando normalmente.
   carregarSprite(SPRITE_PULAR, (im) => calibrarGrade(im, PULAR_COLS, PULAR_ROWS, PULAR_FRAMES, ehChamaPropulsor))
     .then((pl) => {
       const L = pl.leitura;
       if (L && L.frames.length) {
         const raw = L.frames, n = raw.length;
+        const mediana = (arr) => { const s = [...arr].sort((a, b) => a - b); return s[s.length >> 1]; };
         const suave = raw.map((f, i) => {
-          let s = 0, c = 0;
-          for (let k = -2; k <= 2; k++) { const j = i + k; if (j >= 0 && j < n) { s += raw[j].botR; c++; } }
+          const bots = [], cxs = [];
+          for (let k = -2; k <= 2; k++) {
+            const j = i + k;
+            if (j >= 0 && j < n) { bots.push(raw[j].botR); cxs.push(raw[j].cxMassR ?? raw[j].cxR); }
+          }
           // Bordas visíveis (esqR/dirR/…) passam DIRETO, sem suavizar: o
-          // clipping do cubo precisa do quadro real, não da média.
+          // clipping do cubo precisa do quadro real, não da mediana.
           return {
-            botR: s / c, cxR: (f.cxMassR ?? f.cxR),
+            botR: mediana(bots), cxR: mediana(cxs),
             esqR: f.esqR, dirR: f.dirR, topR: f.topR,
             esqYR: f.esqYR, dirYR: f.dirYR, topXR: f.topXR,
           };
