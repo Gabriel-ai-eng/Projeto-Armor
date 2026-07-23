@@ -8,7 +8,7 @@
 //   definirLuz('cubo', { cor: '#ff4a4a', intensidade: 1.2 });
 //   aplicarPreset('alerta');
 //
-// No jogo rodando também dá pelo console: window.ARMOR_CENARIO.aplicarPreset('noturno')
+// No jogo rodando também dá pelo console: window.WONDERBOUND_CENARIO.aplicarPreset('noturno')
 // ============================================================
 
 // Estado vivo das luzes (mutável em tempo real)

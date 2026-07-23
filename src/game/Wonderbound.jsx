@@ -9,7 +9,7 @@ import { criarLoop } from './render';
 import { Z_INICIAL, CAMADAS, COLISOES } from './cenario/mapa';
 import { LUZ, PRESETS, definirLuz, aplicarPreset } from './cenario/luzes';
 import { criarControles } from './controles';
-import { es, CSS_ARMOR } from './estilos';
+import { es, CSS_WONDERBOUND } from './estilos';
 import Configuracoes from './Configuracoes'; // (1) nova importação
 
 // Vídeo da tela inicial: WebM/VP9 (bem mais leve) quando o navegador toca,
@@ -19,13 +19,13 @@ import Configuracoes from './Configuracoes'; // (1) nova importação
 const SUPORTA_WEBM =
   typeof document !== 'undefined' &&
   document.createElement('video').canPlayType('video/webm; codecs="vp9"') !== '';
-const INTRO_SRC = SUPORTA_WEBM ? asset('armor-intro.webm?v=1') : asset('armor-intro.mp4?v=6');
+const INTRO_SRC = SUPORTA_WEBM ? asset('wonderbound-intro.webm?v=1') : asset('wonderbound-intro.mp4?v=6');
 
 // Cache local (mesmo localStorage do AlpsPrime-OS, mesma origem) do último
 // nome/foto vistos — mostra o perfil na hora ao entrar, sem esperar a volta
 // do Supabase; o carregamento em segundo plano (useEffect abaixo) confirma/
 // atualiza o valor logo em seguida.
-const PERFIL_CACHE_KEY = 'armor_perfil_cache_v1';
+const PERFIL_CACHE_KEY = 'wonderbound_perfil_cache_v1';
 function lerPerfilCache() {
   try {
     const raw = localStorage.getItem(PERFIL_CACHE_KEY);
@@ -81,7 +81,7 @@ function IconeMenu({ size = 18 }) {
   );
 }
 
-export default function ProjetoArmor({ onVoltar }) {
+export default function Wonderbound({ onVoltar }) {
   const [fase, setFase] = useState('carregando');
   const [zoomPerto, setZoomPerto] = useState(false);
   const [relogioAtivo, setRelogioAtivo] = useState(false);
@@ -163,9 +163,9 @@ export default function ProjetoArmor({ onVoltar }) {
     document.body.style.overflow = 'hidden';
     let vivos = true;
     // Console de controle do cenário em tempo real (útil para testar/afinar):
-    //   window.ARMOR_CENARIO.aplicarPreset('alerta' | 'noturno' | 'claro' ...)
-    //   window.ARMOR_CENARIO.definirLuz('cubo', { cor: '#ff44aa', intensidade: 1.2 })
-    window.ARMOR_CENARIO = { LUZ, PRESETS, definirLuz, aplicarPreset, CAMADAS, COLISOES };
+    //   window.WONDERBOUND_CENARIO.aplicarPreset('alerta' | 'noturno' | 'claro' ...)
+    //   window.WONDERBOUND_CENARIO.definirLuz('cubo', { cor: '#ff44aa', intensidade: 1.2 })
+    window.WONDERBOUND_CENARIO = { LUZ, PRESETS, definirLuz, aplicarPreset, CAMADAS, COLISOES };
     // As folhas pesadas (correr/pular/parado) chegam DEPOIS, em segundo plano,
     // via patch — o menu abre só com o essencial (andar + chão), bem mais rápido.
     carregarSprites((patch) => {
@@ -586,17 +586,17 @@ export default function ProjetoArmor({ onVoltar }) {
 
   return createPortal(
     <div
-      className="armor-game-root"
+      className="wonderbound-game-root"
       style={es.fundo}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <canvas ref={canvasRef} className="armor-canvas" style={es.canvas} />
+      <canvas ref={canvasRef} className="wonderbound-canvas" style={es.canvas} />
 
       {fase === 'jogando' && paisagem && (
         <div>
           <button
             onClick={alternarZoom}
-            className="armor-hud-btn"
+            className="wonderbound-hud-btn"
             style={es.botaoZoom}
             title="Alternar câmera"
             aria-label="Alternar câmera"
@@ -609,7 +609,7 @@ export default function ProjetoArmor({ onVoltar }) {
 
           <button
             onClick={ativarRelogio}
-            className={`armor-hud-btn armor-hud-pill${relogioAtivo ? ' is-ativo' : ''}`}
+            className={`wonderbound-hud-btn wonderbound-hud-pill${relogioAtivo ? ' is-ativo' : ''}`}
             style={es.botaoRelogio}
             title="Relógio do mundo real"
             aria-label="Relógio do mundo real"
@@ -622,7 +622,7 @@ export default function ProjetoArmor({ onVoltar }) {
 
           <button
             onClick={() => setMenuPausa(true)}
-            className="armor-hud-btn"
+            className="wonderbound-hud-btn"
             style={es.menuBtn}
             title="Menu"
             aria-label="Menu"
@@ -657,7 +657,7 @@ export default function ProjetoArmor({ onVoltar }) {
           </div>
 
           <div
-            className={`armor-action-btn is-voar${voarAtivo ? ' is-ativo' : ''}`}
+            className={`wonderbound-action-btn is-voar${voarAtivo ? ' is-ativo' : ''}`}
             role="button"
             aria-label="Pular"
             draggable="false"
@@ -678,7 +678,7 @@ export default function ProjetoArmor({ onVoltar }) {
           </div>
 
           <div
-            className={`armor-action-btn is-lutar${lutarAtivo ? ' is-ativo' : ''}`}
+            className={`wonderbound-action-btn is-lutar${lutarAtivo ? ' is-ativo' : ''}`}
             role="button"
             aria-label="Lutar"
             draggable="false"
@@ -738,17 +738,17 @@ export default function ProjetoArmor({ onVoltar }) {
 
           {menuPausa && (
             <div
-              className="armor-pause-overlay"
+              className="wonderbound-pause-overlay"
               onClick={() => setMenuPausa(false)}
               onContextMenu={(e) => e.preventDefault()}
             >
-              <div className="armor-pause-painel" onClick={(e) => e.stopPropagation()}>
-                <p className="armor-pause-titulo">Pausado</p>
-                <button className="armor-pause-btn" onClick={() => setMenuPausa(false)}>
+              <div className="wonderbound-pause-painel" onClick={(e) => e.stopPropagation()}>
+                <p className="wonderbound-pause-titulo">Pausado</p>
+                <button className="wonderbound-pause-btn" onClick={() => setMenuPausa(false)}>
                   Continuar
                 </button>
                 <button
-                  className="armor-pause-btn sair"
+                  className="wonderbound-pause-btn sair"
                   onClick={() => {
                     setMenuPausa(false);
                     setFase('pronto');
@@ -773,7 +773,7 @@ export default function ProjetoArmor({ onVoltar }) {
 
       {fase !== 'erro' && !paisagem && (
         <div style={es.overlay}>
-          <div className="armor-rotate-phone" />
+          <div className="wonderbound-rotate-phone" />
           <p style={es.txtRodar}>VIRE O CELULAR</p>
           <button onClick={sair} style={es.cancelarRodar}>
             Cancelar
@@ -811,8 +811,8 @@ export default function ProjetoArmor({ onVoltar }) {
                   ref={(el) => {
                     if (el) btnRefs.current[b.id] = el;
                   }}
-                  data-armor-btn={b.id}
-                  className="armor-menu-btn"
+                  data-wonderbound-btn={b.id}
+                  className="wonderbound-menu-btn"
                   role="button"
                   aria-label={b.id}
                   onPointerDown={(e) => menuDown(e, b.id)}
@@ -897,7 +897,7 @@ export default function ProjetoArmor({ onVoltar }) {
         />
       )}
 
-      <style>{CSS_ARMOR}</style>
+      <style>{CSS_WONDERBOUND}</style>
     </div>,
     document.body
   );

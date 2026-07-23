@@ -1,31 +1,31 @@
 // ============================================================
-// PROJETO ARMOR · ESTILOS (visual das telas, HUD e animações)
+// WONDERBOUND · ESTILOS (visual das telas, HUD e animações)
 // `es`  = estilos inline dos elementos (fundo, canvas, joysticks, botões,
-//         overlays, perfil…). CSS_ARMOR = as animações (girar o celular,
+//         overlays, perfil…). CSS_WONDERBOUND = as animações (girar o celular,
 //         onda/efeito piano dos botões do menu) e o pixelado do canvas.
 // Só aparência — nenhuma lógica de jogo aqui.
 // ============================================================
 
 // CSS injetado via <style> no componente (animações e image-rendering).
-export const CSS_ARMOR = `
+export const CSS_WONDERBOUND = `
   /* Trava seleção de texto/imagem, o menu de "Pesquisar/Copiar/Compartilhar"
      e o balão de seleção do navegador em TODO o jogo (qualquer elemento
      dentro da raiz) — sem isso, segurar o dedo em cima de um botão, do
      relógio, do personagem etc. abre o menu de seleção do navegador em vez
      de controlar o jogo. */
-  .armor-game-root, .armor-game-root * {
+  .wonderbound-game-root, .wonderbound-game-root * {
     user-select: none; -webkit-user-select: none; -moz-user-select: none;
     -webkit-touch-callout: none; -webkit-user-drag: none;
     -webkit-tap-highlight-color: transparent;
   }
-  .armor-canvas { image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; image-rendering: pixelated; }
+  .wonderbound-canvas { image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; image-rendering: pixelated; }
   /* Animação "VIRE O CELULAR" */
-  .armor-rotate-phone { width:62px; height:110px; border:5px solid #7dd3fc; border-radius:14px;
+  .wonderbound-rotate-phone { width:62px; height:110px; border:5px solid #7dd3fc; border-radius:14px;
     position:relative; margin-bottom:30px; box-shadow:0 0 26px rgba(125,211,252,.5);
     animation:rodarCelular 2.4s ease-in-out infinite; }
-  .armor-rotate-phone::before { content:''; position:absolute; left:50%; bottom:7px; width:20px; height:4px;
+  .wonderbound-rotate-phone::before { content:''; position:absolute; left:50%; bottom:7px; width:20px; height:4px;
     border-radius:3px; background:#7dd3fc; transform:translateX(-50%); }
-  .armor-rotate-phone::after { content:''; position:absolute; inset:7px; border-radius:7px;
+  .wonderbound-rotate-phone::after { content:''; position:absolute; inset:7px; border-radius:7px;
     background:rgba(125,211,252,.12); }
   @keyframes rodarCelular {
     0%,16%   { transform:rotate(0deg); }
@@ -33,7 +33,7 @@ export const CSS_ARMOR = `
     96%,100% { transform:rotate(0deg); }
   }
   /* --- Botões do menu inicial: onda / efeito piano ao deslizar --- */
-  .armor-menu-btn {
+  .wonderbound-menu-btn {
     position:absolute;
     background-size:contain; background-position:center; background-repeat:no-repeat;
     transform-origin:center; transform:translate(-50%,-50%) scale(1);
@@ -42,13 +42,13 @@ export const CSS_ARMOR = `
     touch-action:none; will-change:transform,opacity,filter;
     transition:transform .12s ease, opacity .12s ease, filter .12s ease;
   }
-  .armor-menu-btn.is-ativo {
+  .wonderbound-menu-btn.is-ativo {
     opacity:1; transform:translate(-50%,-50%) scale(1.28);
     filter:drop-shadow(0 0 9px rgba(96,199,255,.95)) drop-shadow(0 0 20px rgba(56,150,255,.55));
     transition:transform .08s ease-out, opacity .08s ease-out, filter .08s ease-out;
   }
-  .armor-menu-btn.is-onda { animation:armorOnda .5s cubic-bezier(.2,.9,.25,1) forwards; }
-  @keyframes armorOnda {
+  .wonderbound-menu-btn.is-onda { animation:wonderboundOnda .5s cubic-bezier(.2,.9,.25,1) forwards; }
+  @keyframes wonderboundOnda {
     0%   { opacity:1; transform:translate(-50%,-50%) scale(1.28);
            filter:drop-shadow(0 0 9px rgba(96,199,255,.95)) drop-shadow(0 0 20px rgba(56,150,255,.55)); }
     30%  { opacity:1; transform:translate(-50%,-50%) scale(1.44);
@@ -128,7 +128,7 @@ export const CSS_ARMOR = `
 
   /* === BOTÕES DE AÇÃO (Pular / Lutar) — mesmo idioma visual dos joysticks:
      vidro translúcido, brilho difuso, sem nenhuma imagem. === */
-  .armor-action-btn {
+  .wonderbound-action-btn {
     position: absolute;
     border-radius: 50%;
     box-sizing: border-box;
@@ -143,9 +143,9 @@ export const CSS_ARMOR = `
     backdrop-filter: blur(0.5px);
     transition: box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
   }
-  .armor-action-btn svg { width: 42%; height: 42%; }
+  .wonderbound-action-btn svg { width: 42%; height: 42%; }
 
-  .armor-action-btn.is-voar {
+  .wonderbound-action-btn.is-voar {
     background: radial-gradient(circle at 32% 32%, rgba(130,210,255,0.16) 0%, rgba(60,140,200,0.05) 55%, transparent 100%);
     border: 1px solid rgba(130,200,255,0.3);
     color: rgba(190,230,255,0.8);
@@ -154,7 +154,7 @@ export const CSS_ARMOR = `
       inset 0 0 18px rgba(130,200,255,0.06),
       inset 0 1px 2px rgba(255,255,255,0.06);
   }
-  .armor-action-btn.is-voar.is-ativo {
+  .wonderbound-action-btn.is-voar.is-ativo {
     background: radial-gradient(circle at 32% 32%, rgba(160,225,255,0.38) 0%, rgba(80,170,230,0.12) 55%, transparent 100%);
     border-color: rgba(190,230,255,0.8);
     color: #eaf8ff;
@@ -164,7 +164,7 @@ export const CSS_ARMOR = `
       inset 0 0 20px rgba(160,220,255,0.16);
   }
 
-  .armor-action-btn.is-lutar {
+  .wonderbound-action-btn.is-lutar {
     background: radial-gradient(circle at 32% 32%, rgba(255,200,110,0.16) 0%, rgba(200,140,50,0.05) 55%, transparent 100%);
     border: 1px solid rgba(240,192,64,0.32);
     color: rgba(255,214,140,0.82);
@@ -173,7 +173,7 @@ export const CSS_ARMOR = `
       inset 0 0 18px rgba(240,192,64,0.06),
       inset 0 1px 2px rgba(255,255,255,0.06);
   }
-  .armor-action-btn.is-lutar.is-ativo {
+  .wonderbound-action-btn.is-lutar.is-ativo {
     background: radial-gradient(circle at 32% 32%, rgba(255,216,140,0.42) 0%, rgba(220,160,60,0.12) 55%, transparent 100%);
     border-color: rgba(255,222,150,0.85);
     color: #fff3da;
@@ -185,7 +185,7 @@ export const CSS_ARMOR = `
 
   /* === HUD do topo (zoom, relógio, menu) — vidro cinza-prata, mesmo
      idioma visual dos joysticks/botões de ação, sem ser tudo azul === */
-  .armor-hud-btn {
+  .wonderbound-hud-btn {
     appearance: none;
     -webkit-appearance: none;
     background: radial-gradient(circle at 30% 25%, rgba(205,215,228,0.12) 0%, rgba(120,140,160,0.04) 60%, transparent 100%);
@@ -198,8 +198,8 @@ export const CSS_ARMOR = `
     color: rgba(214,224,234,0.78);
     transition: box-shadow .15s ease, border-color .15s ease, color .15s ease, background .15s ease, transform .1s ease;
   }
-  .armor-hud-btn:active { transform: scale(0.94); }
-  .armor-hud-btn.is-ativo {
+  .wonderbound-hud-btn:active { transform: scale(0.94); }
+  .wonderbound-hud-btn.is-ativo {
     border-color: rgba(120,216,255,0.55);
     color: #eaf8ff;
     background: radial-gradient(circle at 30% 25%, rgba(110,216,255,0.16) 0%, rgba(60,140,200,0.05) 60%, transparent 100%);
@@ -209,7 +209,7 @@ export const CSS_ARMOR = `
   }
 
   /* === PAINEL DE PAUSA (Continuar / Sair) === */
-  .armor-pause-overlay {
+  .wonderbound-pause-overlay {
     position: absolute;
     inset: 0;
     z-index: 50;
@@ -218,10 +218,10 @@ export const CSS_ARMOR = `
     justify-content: center;
     background: rgba(4,8,16,0.55);
     backdrop-filter: blur(6px);
-    animation: armorFadeIn .18s ease;
+    animation: wonderboundFadeIn .18s ease;
   }
-  @keyframes armorFadeIn { from { opacity: 0; } to { opacity: 1; } }
-  .armor-pause-painel {
+  @keyframes wonderboundFadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .wonderbound-pause-painel {
     min-width: 230px;
     padding: 28px 32px 24px;
     border-radius: 18px;
@@ -233,7 +233,7 @@ export const CSS_ARMOR = `
     gap: 12px;
     font-family: 'Rajdhani', sans-serif;
   }
-  .armor-pause-titulo {
+  .wonderbound-pause-titulo {
     color: #DCE8FF;
     font-size: 14px;
     letter-spacing: 0.24em;
@@ -243,7 +243,7 @@ export const CSS_ARMOR = `
     opacity: 0.6;
     font-weight: 600;
   }
-  .armor-pause-btn {
+  .wonderbound-pause-btn {
     appearance: none;
     -webkit-appearance: none;
     border: none;
@@ -261,8 +261,8 @@ export const CSS_ARMOR = `
     color: #DCE8FF;
     box-shadow: 0 0 14px rgba(110,216,255,0.14), inset 0 0 14px rgba(110,216,255,0.05);
   }
-  .armor-pause-btn:active { transform: scale(0.97); }
-  .armor-pause-btn.sair {
+  .wonderbound-pause-btn:active { transform: scale(0.97); }
+  .wonderbound-pause-btn.sair {
     border-color: rgba(255,107,129,0.4);
     color: #FFD8DE;
     background: radial-gradient(circle at 30% 25%, rgba(255,107,129,0.16), rgba(200,60,80,0.05) 60%, transparent 100%);
@@ -274,7 +274,7 @@ export const es = {
   fundo: { position: 'fixed', inset: 0, backgroundColor: '#000', zIndex: 999999, overflow: 'hidden', touchAction: 'none' },
   canvas: { width: '100%', height: '100%', display: 'block', imageRendering: 'pixelated', touchAction: 'none' },
   // Aparência (vidro translúcido cinza-prata + glow) vem das classes
-  // .armor-hud-btn / .armor-hud-pill em CSS_ARMOR — aqui só posição/tamanho.
+  // .wonderbound-hud-btn / .wonderbound-hud-pill em CSS_WONDERBOUND — aqui só posição/tamanho.
   botaoZoom: { position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', width: 50, height: 54, borderRadius: 18, cursor: 'pointer', zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'Rajdhani', sans-serif", border: 'none', padding: 0, outline: 'none' },
   botaoRelogio: { position: 'absolute', top: 28, right: 16, display: 'flex', alignItems: 'center', borderRadius: 20, padding: '7px 14px', cursor: 'pointer', zIndex: 30, fontFamily: "'Rajdhani', sans-serif", border: 'none', outline: 'none' },
   menuBtn: { position: 'absolute', top: 26, left: 16, width: 46, height: 46, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 30, border: 'none', outline: 'none', padding: 0 },
@@ -319,8 +319,8 @@ export const es = {
   
   // Botões de ação (Pular/Lutar): posicionados entre os dois joysticks, um
   // pouco acima da linha deles, formando um par diagonal — igual ao padrão
-  // de jogos de ação mobile. Estilo visual vem da classe .armor-action-btn
-  // (CSS_ARMOR); aqui só posição/tamanho.
+  // de jogos de ação mobile. Estilo visual vem da classe .wonderbound-action-btn
+  // (CSS_WONDERBOUND); aqui só posição/tamanho.
   botaoVoar: { position: 'absolute', left: '75%', top: '86%', width: 'clamp(50px,7.3vw,80px)', aspectRatio: '1', transformOrigin: 'center', transition: 'transform 0.1s ease', zIndex: 28 },
   botaoLutar: { position: 'absolute', left: '78%', top: '70%', width: 'clamp(46px,6.6vw,72px)', aspectRatio: '1', transformOrigin: 'center', transition: 'transform 0.1s ease', zIndex: 28 },
   miraZona: { position: 'absolute', left: '50%', top: '22%', right: 0, bottom: 0, zIndex: 25, touchAction: 'none', background: 'transparent' },

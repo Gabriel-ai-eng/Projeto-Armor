@@ -1,5 +1,5 @@
 // ============================================================
-// PROJETO ARMOR · CONTROLES (input do jogador)
+// WONDERBOUND · CONTROLES (input do jogador)
 // ============================================================
 import { alturaSolo } from './cenario/colisao';
 import { ZOOM_PERTO } from './ajustes';
@@ -127,10 +127,10 @@ export function criarControles(deps) {
     const alvo = document.elementFromPoint(x, y);
     const btn =
       alvo && alvo.closest
-        ? alvo.closest("[data-armor-btn]")
+        ? alvo.closest("[data-wonderbound-btn]")
         : null;
 
-    return btn ? btn.dataset.armorBtn : null;
+    return btn ? btn.dataset.wonderboundBtn : null;
   };
 
   // Abaixo deste tanto de deslocamento (px), o toque conta como "parado":
@@ -223,7 +223,7 @@ export function criarControles(deps) {
   };
 
   const menuFimAnim = (e) => {
-    if (e.animationName === "armorOnda") {
+    if (e.animationName === "wonderboundOnda") {
       e.currentTarget.classList.remove("is-onda");
     }
   };

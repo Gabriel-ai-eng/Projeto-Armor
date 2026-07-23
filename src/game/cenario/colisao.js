@@ -45,7 +45,7 @@ export function resolverColisao(p) {
 
   // Paredes sólidas do cubo holográfico: sempre travadas (não só quando já
   // perto), senão um passo rápido o bastante escapa da margem num único
-  // frame e o Armor nunca mais é contido.
+  // frame e o personagem nunca mais é contido.
   const cubeMinX = AREA_CUBO.minX - RAIO_X, cubeMaxX = AREA_CUBO.maxX + RAIO_X;
   const cubeMinZ = AREA_CUBO.minZ - RAIO_Z, cubeMaxZ = AREA_CUBO.maxZ + RAIO_Z;
   if (p.x < cubeMinX) { p.x = cubeMinX; p.vx = 0; }

@@ -83,7 +83,7 @@ export async function carregarEstado() {
     if (error) throw error;
     return mesclarEstado(data?.state);
   } catch (e) {
-    console.warn('[armor] falha ao carregar estado:', e && e.message);
+    console.warn('[wonderbound] falha ao carregar estado:', e && e.message);
     return estadoInicial();
   }
 }
@@ -121,7 +121,7 @@ export async function carregarFotoPerfil() {
     if (error) throw error;
     return data?.profile_picture_url || null;
   } catch (e) {
-    console.warn('[armor] falha ao carregar foto de perfil:', e && e.message);
+    console.warn('[wonderbound] falha ao carregar foto de perfil:', e && e.message);
     return null;
   }
 }
@@ -201,7 +201,7 @@ export async function salvarEstado(state) {
     if (error) throw error;
     return true;
   } catch (e) {
-    console.warn('[armor] falha ao salvar estado:', e && e.message);
+    console.warn('[wonderbound] falha ao salvar estado:', e && e.message);
     return false;
   }
 }

@@ -1,5 +1,5 @@
 // ============================================================
-// PROJETO ARMOR · AJUSTES FINOS
+// WONDERBOUND · AJUSTES FINOS
 // Só os números que "afinam" o jogo: tamanho, mundo, câmera, física,
 // velocidades, armas e cores. Mexer aqui muda o comportamento/aparência
 // sem tocar na lógica.
@@ -13,7 +13,7 @@
 export const ALT = 360;              // altura do mundo em px (antes do RENDER_SCALE)
 export const RENDER_SCALE = 2;       // canvas desenhado em 2x → mais nítido
 export const WORLD_W = 1700;         // largura do mundo (limites de caminhada)
-export const ALTURA_ARMOR = 105;     // altura do personagem em px do mundo
+export const ALTURA_WONDERBOUND = 105;     // altura do personagem em px do mundo
 export const ZOOM_PERTO = 1.7;       // zoom do modo "perto"
 export const ALTURA_IMG_CHAO = 230;  // altura desenhada da faixa de chão
 export const LINHA_PES = 0.18;       // onde, na faixa de chão, ficam os pés (0..1)

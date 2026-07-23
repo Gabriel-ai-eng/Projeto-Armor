@@ -3,11 +3,11 @@ import { enviarFotoPerfil } from "../lib/playerSave";
 import { tocarBip } from "./som";
 
 // ============================================================
-// PROJETO ARMOR · PAINEL DE CONFIGURAÇÕES (HUD em paisagem)
+// WONDERBOUND · PAINEL DE CONFIGURAÇÕES (HUD em paisagem)
 // Recriação do layout de referência: cabeçalho com "voltar" + título, coluna
 // esquerda (perfil, idioma, e-mail, vibração) e coluna direita (volumes).
 //
-// Não fala com o banco direto: recebe do ProjetoArmor.jsx o estado atual e
+// Não fala com o banco direto: recebe do Wonderbound.jsx o estado atual e
 // callbacks:
 //   • onAplicarPref(chave, valor) → aplica a preferência em memória (efeito ao
 //     vivo: nome no perfil, vibração no tiro etc.)
@@ -98,7 +98,7 @@ function SliderVolume({ valor, onInput, onCommit }) {
         onChange={(e) => onInput(Number(e.target.value))}
         onPointerUp={onCommit}
         onKeyUp={onCommit}
-        className="armor-cfg-range"
+        className="wonderbound-cfg-range"
         style={{ background: fundo }}
       />
       <span style={estilos.sliderPct}>{pct}%</span>
@@ -189,7 +189,7 @@ export default function Configuracoes({
       onFotoAlterada(url);
       beep(volEfeitos, 720);
     } catch (err) {
-      console.warn("[armor] falha ao enviar foto:", err && err.message);
+      console.warn("[wonderbound] falha ao enviar foto:", err && err.message);
       setErroFoto("Não deu pra enviar a foto. Tenta de novo.");
     } finally {
       setEnviandoFoto(false);
@@ -359,23 +359,23 @@ export default function Configuracoes({
 }
 
 const CSS = `
-@keyframes armorCfgEntrada {
+@keyframes wonderboundCfgEntrada {
   from { opacity: 0; transform: scale(0.985); }
   to { opacity: 1; transform: scale(1); }
 }
-@keyframes armorCfgGirar { to { transform: rotate(360deg); } }
-.armor-cfg-range {
+@keyframes wonderboundCfgGirar { to { transform: rotate(360deg); } }
+.wonderbound-cfg-range {
   -webkit-appearance: none; appearance: none;
   height: 6px; border-radius: 6px; outline: none; cursor: pointer;
 }
-.armor-cfg-range::-webkit-slider-thumb {
+.wonderbound-cfg-range::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
   width: 22px; height: 22px; border-radius: 50%;
   background: ${CIANO}; border: 3px solid #eafcff;
   box-shadow: 0 0 12px ${CIANO}, 0 0 4px ${CIANO};
   cursor: pointer;
 }
-.armor-cfg-range::-moz-range-thumb {
+.wonderbound-cfg-range::-moz-range-thumb {
   width: 20px; height: 20px; border-radius: 50%;
   background: ${CIANO}; border: 3px solid #eafcff;
   box-shadow: 0 0 12px ${CIANO}; cursor: pointer;
@@ -395,7 +395,7 @@ const estilos = {
     padding: "clamp(6px, 1.6vw, 20px)",
     boxSizing: "border-box",
     fontFamily: "'Rajdhani', 'Segoe UI', sans-serif",
-    animation: "armorCfgEntrada .25s ease",
+    animation: "wonderboundCfgEntrada .25s ease",
   },
   escudo: { position: "absolute", inset: 0, zIndex: 20 },
   moldura: {
@@ -533,7 +533,7 @@ const estilos = {
     border: `3px solid rgba(67,229,255,0.25)`,
     borderTopColor: CIANO,
     display: "inline-block",
-    animationName: "armorCfgGirar",
+    animationName: "wonderboundCfgGirar",
     animationDuration: ".7s",
     animationTimingFunction: "linear",
     animationIterationCount: "infinite",

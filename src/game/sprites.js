@@ -1,7 +1,7 @@
 // ============================================================
-// PROJETO ARMOR · FOLHAS DE SPRITE (índice dos "gêmeos")
+// WONDERBOUND · FOLHAS DE SPRITE (índice dos "gêmeos")
 // Mesma ideia do Free Kick World:
-//   • as IMAGENS ficam em  assets/        (armor-*.webp)
+//   • as IMAGENS ficam em  assets/        (wonderbound-*.webp)
 //   • a CONFIG de cada folha fica em  js/assets/<mesmo-nome>.js  (o "gêmeo"):
 //     quadros, corte, velocidade — é LÁ que você edita cada sprite.
 //
@@ -9,12 +9,12 @@
 // (render.js) e o carregador (carregarSprites.js). Para trocar/afinar um
 // sprite, edite o arquivo em js/assets/ — não precisa mexer aqui.
 // ============================================================
-import ANDAR from '../../js/assets/armor-andar.js';
-import PARADO from '../../js/assets/armor-parado.js';
-import CORRER from '../../js/assets/armor-correr.js';
-import PULAR from '../../js/assets/armor-pular.js';
-import AGACHAR from '../../js/assets/armor-agachar.js';
-import SOCAR from '../../js/assets/armor-socar.js';
+import ANDAR from '../../js/assets/wonderbound-andar.js';
+import PARADO from '../../js/assets/wonderbound-parado.js';
+import CORRER from '../../js/assets/wonderbound-correr.js';
+import PULAR from '../../js/assets/wonderbound-pular.js';
+import AGACHAR from '../../js/assets/wonderbound-agachar.js';
+import SOCAR from '../../js/assets/wonderbound-socar.js';
 
 // Prefixo do deploy (Vite): '/jogo/' em produção, '/' no dev. Todo arquivo de
 // assets/ precisa dele para resolver através do proxy do domínio.
@@ -26,37 +26,37 @@ const url = (s) => (s.startsWith('http') ? s : asset(s));
 // Lado para o qual a arte do personagem "olha" na folha original.
 export const SPRITE_OLHA_PARA = 'direita';
 
-// ---- ANDAR (js/assets/armor-andar.js) ----
+// ---- ANDAR (js/assets/wonderbound-andar.js) ----
 export const SPRITE_ANDAR = url(ANDAR.src);
 export const FRAMES_ANDAR = ANDAR.frames;
 export const FRAME_PARADO = ANDAR.frameParado;
 export const ANDAR_CICLO_TICKS = ANDAR.cicloTicks;
 export const ANDAR_FRAMES_POR_TICK = (FRAMES_ANDAR - 1) / ANDAR_CICLO_TICKS;
 
-// ---- PARADO / idle (js/assets/armor-parado.js) ----
+// ---- PARADO / idle (js/assets/wonderbound-parado.js) ----
 export const SPRITE_PARADO_ANIM = url(PARADO.src);
 export const PARADO_COLS = PARADO.cols, PARADO_ROWS = PARADO.rows;
 export const FRAMES_PARADO_ANIM = PARADO.frames;
 export const PARADO_FPS = PARADO.fps;
 
-// ---- CORRER (js/assets/armor-correr.js) ----
+// ---- CORRER (js/assets/wonderbound-correr.js) ----
 export const SPRITE_CORRER = url(CORRER.src);
 export const FRAMES_CORRER = CORRER.frames;
 export const CORRER_ALTURA_REL = CORRER.alturaRel ?? 1;
 
-// ---- PULAR / grade (js/assets/armor-pular.js) ----
+// ---- PULAR / grade (js/assets/wonderbound-pular.js) ----
 export const SPRITE_PULAR = url(PULAR.src);
 export const PULAR_COLS = PULAR.cols, PULAR_ROWS = PULAR.rows, PULAR_FRAMES = PULAR.frames;
 export const PULAR_BODY_R = PULAR.bodyR, PULAR_FOOT_R = PULAR.footR;
 export const JUMP_ANIM_SPEED = PULAR.animSpeed;
 export const JUMP_LAUNCH_F = PULAR.launchF, JUMP_LAND_F = PULAR.landF, JUMP_ARC_H = PULAR.arcH;
 
-// ---- AGACHAR (js/assets/armor-agachar.js) ----
+// ---- AGACHAR (js/assets/wonderbound-agachar.js) ----
 export const SPRITE_AGACHAR = url(AGACHAR.src);
 export const FRAMES_AGACHAR = AGACHAR.frames;
 export const AGACHAR_VEL_TRANSICAO = AGACHAR.velTransicao;
 
-// ---- SOCAR / grade (js/assets/armor-socar.js) ----
+// ---- SOCAR / grade (js/assets/wonderbound-socar.js) ----
 export const SPRITE_SOCAR = url(SOCAR.src);
 export const SOCAR_COLS = SOCAR.cols, SOCAR_ROWS = SOCAR.rows, FRAMES_SOCAR = SOCAR.frames;
 export const SOCAR_ANIM_SPEED = SOCAR.animSpeed;

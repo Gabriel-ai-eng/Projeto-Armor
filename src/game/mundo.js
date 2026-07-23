@@ -1,5 +1,5 @@
 // ============================================================
-// PROJETO ARMOR · MUNDO (matemática pura do céu, sol/lua e pulo)
+// WONDERBOUND · MUNDO (matemática pura do céu, sol/lua e pulo)
 // Funções SEM estado e SEM desenho: só calculam cores, mistura, posição do
 // sol pela hora/latitude e a altura do pulo roteirizado. O motor (motor.js)
 // usa tudo isto na hora de pintar a cena.

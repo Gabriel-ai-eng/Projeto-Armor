@@ -1,5 +1,5 @@
 // ============================================================
-// PROJETO ARMOR · RENDER (o "cérebro": laço + desenho)  ⭐
+// WONDERBOUND · RENDER (o "cérebro": laço + desenho)  ⭐
 // Equivale ao render.js do Free Kick World (aqui juntando o laço e o desenho).
 // A cada frame ele: lê os controles (joysticks/voar), aplica a FÍSICA
 // (andar/correr, pulo roteirizado, voo), ESCOLHE o sprite pelo estado do
@@ -11,7 +11,7 @@
 // o requestAnimationFrame.
 // ============================================================
 import {
-  RENDER_SCALE, WORLD_W, ALT, ALTURA_ARMOR,
+  RENDER_SCALE, WORLD_W, ALT, ALTURA_WONDERBOUND,
   VEL_ANDAR, VEL_CORRER, LIMIAR_CORRER, GRAV, FLY_THRUST, VY_MAX, VY_FALL, ALT_MAX,
   COOLDOWN_TIRO, VEL_TIRO, AZUL_RGB, NOITE, DIA, CREP,
 } from './ajustes';
@@ -154,7 +154,7 @@ export function criarLoop(deps) {
 
     // ===== FÍSICA VERTICAL (pulo roteirizado / voo) =====
     // Teto sólido do cubo: trava tanto o pulo (arco roteirizado) quanto o voo
-    // livre — o Armor bate a cabeça no vidro de cima, igual bate nas paredes.
+    // livre — o personagem bate a cabeça no vidro de cima, igual bate nas paredes.
     const teto = Math.min(ALT_MAX, AREA_CUBO.maxY);
     if (g.flying && g.jump) g.jump = null;
     if (g.jump) {
@@ -285,7 +285,7 @@ export function criarLoop(deps) {
     // ela já seguir a posição corrigida (sem tremor). Não mexe em nenhuma
     // outra física: é só uma restrição a mais, por cima das existentes.
     // (Perspectiva sutil: mais "fundo" (z menor) = levemente menor.)
-    const alturaCorpo = ALTURA_ARMOR * (0.9 + (p.z / Z_MAX) * 0.2);
+    const alturaCorpo = ALTURA_WONDERBOUND * (0.9 + (p.z / Z_MAX) * 0.2);
     const flip = (p.face === 1) !== (SPRITE_OLHA_PARA === 'direita');
     {
       let ext = null;
@@ -304,7 +304,7 @@ export function criarLoop(deps) {
     // ===== CÂMERA =====
     const zAlvo = zoomAlvoRef.current;
     const perto = zAlvo > 1.001;
-    const fyAlvo = (perto ? -(ALTURA_ARMOR * 0.5) : -(ALT * 0.22)) - p.y;
+    const fyAlvo = (perto ? -(ALTURA_WONDERBOUND * 0.5) : -(ALT * 0.22)) - p.y;
     const halfW = VW / (2 * g.zoom);
     // Arrastar a tela (fora do manche/mira, ver controles.js) desloca a
     // câmera livremente para os lados, por cima do acompanhamento automático
@@ -349,7 +349,7 @@ export function criarLoop(deps) {
     // (alturaCorpo e flip já foram calculados acima, junto do clipping do cubo)
     const corpoY = p.z - p.y;
 
-    // PROJETO ARMOR — o desenho vira uma função para entrar no depth sorting
+    // WONDERBOUND — o desenho vira uma função para entrar no depth sorting
     // (objetos do cenário e personagem ordenados pelo z da base).
     const desenharPersonagem = () => {
     if (emPulo) {

@@ -1,5 +1,5 @@
 // ============================================================
-// PROJETO ARMOR · CARREGAMENTO + AUTOCALIBRAÇÃO DAS SPRITES
+// WONDERBOUND · CARREGAMENTO + AUTOCALIBRAÇÃO DAS SPRITES
 // Baixa as folhas de sprite e MEDE cada quadro (onde estão o corpo e os pés)
 // para o motor plantar o personagem no chão sem tremor. Devolve as imagens já
 // carregadas + as "leituras" (calibração) de cada uma.

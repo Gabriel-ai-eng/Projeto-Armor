@@ -1,7 +1,7 @@
 // ============================================================
-// PROJETO ARMOR · SOM (bip de feedback + passos, via Web Audio)
+// WONDERBOUND · SOM (bip de feedback + passos, via Web Audio)
 // O bip é sintetizado na hora (sem arquivo). Os passos usam uma gravação
-// curta (assets/armor-passos.mp3 — mp3 por compatibilidade: o m4a/aac
+// curta (assets/wonderbound-passos.mp3 — mp3 por compatibilidade: o m4a/aac
 // original não decodifica em todo navegador via Web Audio) recortada pra dar
 // loop contínuo sem costura enquanto o personagem anda/corre.
 // Volume proporcional à preferência "Volume dos efeitos" (Configurações).
@@ -51,7 +51,7 @@ let passosGain = null;
 async function carregarPassos(ctx) {
   if (passosBuffer) return passosBuffer;
   if (!passosCarregando) {
-    passosCarregando = fetch(asset('armor-passos.mp3'))
+    passosCarregando = fetch(asset('wonderbound-passos.mp3'))
       .then((r) => r.arrayBuffer())
       .then((buf) => ctx.decodeAudioData(buf))
       .then((decoded) => { passosBuffer = decoded; return decoded; })

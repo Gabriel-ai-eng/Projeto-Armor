@@ -1,4 +1,4 @@
-# Projeto Armor — Guia de Estrutura
+# Wonderbound — Guia de Estrutura
 
 Organizado no mesmo espírito do **Free Kick World**: as imagens ficam em
 `assets/`, cada folha de sprite tem um arquivo "gêmeo" com o mesmo nome em
@@ -17,30 +17,30 @@ Todas em `assets/` — são WebP puros, sem código (o vídeo da intro também):
 
 | Arquivo | O que é |
 |---|---|
-| `armor-parado.webp` | Parado (idle) |
-| `armor-andar.webp` | Andando |
-| `armor-pular.webp` | Pulando (folha em grade 10×17) |
+| `wonderbound-parado.webp` | Parado (idle) |
+| `wonderbound-andar.webp` | Andando |
+| `wonderbound-pular.webp` | Pulando (folha em grade 10×17) |
 | `btn-*.webp` | Botões da tela inicial (jogar, armadura, missões…) |
 | `botao-voar.webp` | Botão de voar |
-| `armor-intro.webm` · `armor-intro.mp4` · `armor-logo.webp` | Vídeo (WebM/VP9 com fallback MP4/H.264) e logo da tela inicial |
+| `wonderbound-intro.webm` · `wonderbound-intro.mp4` · `wonderbound-logo.webp` | Vídeo (WebM/VP9 com fallback MP4/H.264) e logo da tela inicial |
 
 > Correr vem de imagem hospedada fora (`i.ibb.co`) — o link está no gêmeo
-> `js/assets/armor-correr.js`. O CENÁRIO do hangar fica em `assets/cenario/`
+> `js/assets/wonderbound-correr.js`. O CENÁRIO do hangar fica em `assets/cenario/`
 > (`tileset.webp` = arte das peças, `emissivo.webp` = máscaras de luz) — ver
 > a seção 6.
 
 ## 3. Quem CONFIGURA cada folha — `js/assets/` (os "gêmeos")
 
 Cada folha de sprite tem um arquivo de código com o **mesmo nome** da imagem.
-Ex.: `assets/armor-andar.webp` ↔ `js/assets/armor-andar.js`. É **aqui** que você
+Ex.: `assets/wonderbound-andar.webp` ↔ `js/assets/wonderbound-andar.js`. É **aqui** que você
 edita a folha:
 
 | Gêmeo | O que você edita |
 |---|---|
-| `js/assets/armor-andar.js` | URL da folha, nº de quadros e a cadência (velocidade) do andar |
-| `js/assets/armor-parado.js` | quadros e fps do idle |
-| `js/assets/armor-correr.js` | URL e quadros da corrida |
-| `js/assets/armor-pular.js` | grade (colunas/linhas), **corte** (bodyR/footR), velocidade e quadros de decolagem/pouso |
+| `js/assets/wonderbound-andar.js` | URL da folha, nº de quadros e a cadência (velocidade) do andar |
+| `js/assets/wonderbound-parado.js` | quadros e fps do idle |
+| `js/assets/wonderbound-correr.js` | URL e quadros da corrida |
+| `js/assets/wonderbound-pular.js` | grade (colunas/linhas), **corte** (bodyR/footR), velocidade e quadros de decolagem/pouso |
 | `js/assets/chao.js` | (desativado) a antiga imagem única do chão — o piso agora é tile do cenário |
 
 > Observação sobre o "corte": nas tiras (andar/parado/correr) o corte/escala do
@@ -52,7 +52,7 @@ edita a folha:
 | Arquivo | O que é / o que você edita |
 |---|---|
 | `render.js` ⭐ | O **cérebro**: laço principal — física + escolha do sprite + desenho. |
-| `ProjetoArmor.jsx` | As **telas** e o fluxo (carregando → tela inicial → jogando); monta o render e os controles. |
+| `Wonderbound.jsx` | As **telas** e o fluxo (carregando → tela inicial → jogando); monta o render e os controles. |
 | `sprites.js` | Junta os gêmeos de `js/assets/` e entrega os valores prontos (+ botões do menu). |
 | `ajustes.js` | Números de ajuste fino: física, tamanho, velocidades, armas e cores. |
 | `mundo.js` | Matemática pura do céu/sol/lua e do pulo. |
@@ -71,7 +71,7 @@ edita a folha:
 | Afinar física, tamanho, velocidades ou cores | `ajustes.js` |
 | Mudar **quando/como** um sprite aparece (prioridade) | `render.js` |
 | Mexer nos joysticks / botão de voar | `controles.js` |
-| Mudar as telas, botões do menu ou HUD | `ProjetoArmor.jsx` (visual em `estilos.js`) |
+| Mudar as telas, botões do menu ou HUD | `Wonderbound.jsx` (visual em `estilos.js`) |
 | Mudar o que é salvo na nuvem | `../lib/playerSave.js` |
 | Mover/adicionar objetos, luzes ou colisões do cenário | `src/game/cenario/mapa.js` |
 | Mudar cor/intensidade das luzes ou criar presets | `src/game/cenario/luzes.js` |
@@ -107,5 +107,5 @@ Como funciona no jogo:
   `sobe: true` permitem aterrissar em cima (pulo/voo).
 - Nenhuma luz está gravada na arte: o relógio do jogo pinta as janelas e a luz
   ambiente; os presets trocam o clima inteiro em tempo real. No console:
-  `window.ARMOR_CENARIO.aplicarPreset('alerta')` ou
-  `window.ARMOR_CENARIO.definirLuz('cubo', { cor: '#ff44cc', intensidade: 1.2 })`.
+  `window.WONDERBOUND_CENARIO.aplicarPreset('alerta')` ou
+  `window.WONDERBOUND_CENARIO.definirLuz('cubo', { cor: '#ff44cc', intensidade: 1.2 })`.

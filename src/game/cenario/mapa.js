@@ -35,7 +35,7 @@ export const Z_INICIAL = 46;                              // profundidade inicia
 
 // ======================================================
 // Área do cubo holográfico (limites de confinamento)
-// Usado pelo colisao.js para manter o Armor preso dentro do cubo.
+// Usado pelo colisao.js para manter o personagem preso dentro do cubo.
 // Calibrado a partir do sprite 'cubo' (LUZES_SPRITES, tileset.js): desenhado
 // em x=738 (luzes.cubo em CAMADAS), largura 448*TS=224 → vidro de 738 a 962.
 // minX/maxX ficam mais para dentro (não só o RAIO_X do colisao.js) porque o
